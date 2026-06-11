@@ -1,4 +1,3 @@
-import React,{useState} from 'react'
 import { GoClockFill } from "react-icons/go";
 import { FaMoneyCheck } from "react-icons/fa";
 import { IoIosArrowDown } from "react-icons/io";
@@ -6,25 +5,19 @@ import { IoIosArrowUp } from "react-icons/io";
 import { RxScissors } from "react-icons/rx";
 
 const Cortes = () => {
-    const [openTab,setOpenTab] = useState(null)
   return (
     <>
-        <div className='flex flex-col items-center py-3 bg-linear-to-br from-zinc-900 via-orange-800 to-amber-700'>
-            <h1 className='flex items-center justify-between  text-white px-5 py-4 rounded-xl font-bold font-cinzel text-2xl md:text-3xl'>NUESTRA CARTA DE SERVICIOS</h1>
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className=' cursor-pointer z-50'>
-                        <div className='flex items-center text-2xl  text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl'>
-                            <h1 className='font-bold font-cinzel tracking-wide text-xl mx-2 '>Barberias</h1>
-                            
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-1 max-w-3xl mx-auto gap-4'>
+        <div className='grid justify-center items-center py-3 bg-linear-to-br from-zinc-900 via-orange-800 to-amber-700'>
+            <h1 className='flex items-center justify-center text-white py-3 font-bold font-cinzel text-3xl lg:text-6xl'>NUESTRA CARTA DE SERVICIOS</h1>
+            <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Barberias</h1>
+                <div className='grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 items-center py-2 text-left p-2'>
+
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>SERVICIO DE BARBA TRADICIONAL</h1>
                             <p className='flex items-center gap-2'><GoClockFill />45 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$48.000</span></p>
                         </div>
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
-                            <h1>MASCARILLA BLACK MASK COMPLETA CON VAPOR</h1>
+                            <h1>MASCARILLA BLACK MASK COMPLETA</h1>
                             <p className='flex items-center gap-2'><GoClockFill />45 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$69.000</span></p>
                         </div>
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
@@ -51,16 +44,12 @@ const Cortes = () => {
                             <h1>TINTURA BARABA BIGEN</h1>
                             <p className='flex items-center gap-2'><GoClockFill />30 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$58.000</span></p>
                         </div>
-                    </div>
+
                 </div>  
 
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className='cursor-pointer z-50 '>
-                        <div className='flex items-center text-2xl bg-black text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl'>
-                            <h1 className='font-bold tracking-wide text-xl mx-2'>Cortes</h1>
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-1 max-w-3xl mx-auto gap-4'>
+                <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Cortes</h1>
+                <div className='grid md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5 gap-4 items-center py-2 text-left p-2'>
+                    
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>CORTE CLASICO</h1>
                             <p className='flex items-center gap-2'><GoClockFill />35 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$55.000</span></p>
@@ -81,16 +70,11 @@ const Cortes = () => {
                             <h1>CORTE PREMIUM</h1>
                             <p className='flex items-center gap-2'><GoClockFill />1 h 30 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$100.000</span></p>
                         </div>
-                    </div>
                 </div>
 
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className='cursor-pointer z-50 '>
-                        <div className='flex items-center text-2xl bg-black text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl'>
-                            <h1 className='font-bold tracking-wide text-xl mx-2'>Uñas</h1>
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-1 max-w-3xl mx-auto gap-4'>
+                <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Uñas</h1>
+                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-center py-2 text-left p-2'>
+
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>MANICURE TRADICIONAL</h1>
                             <p className='flex items-center gap-2'><GoClockFill />30 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$30.000</span></p>
@@ -129,22 +113,17 @@ const Cortes = () => {
                         </div>
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>SPAN DE PIES</h1>
-                            <p className='flex items-center gap-2'><GoClockFill />1 h|<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$40.000</span></p>
+                            <p className='flex items-center gap-2'><GoClockFill />1 h |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$40.000</span></p>
                         </div>
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>JELLY SPA PARA PIES</h1>
                             <p className='flex items-center gap-2'><GoClockFill />1 h |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$30.000</span></p>
                         </div>
                     </div>
-                </div>
 
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className=' cursor-pointer z-50'>
-                        <div className='flex items-center text-2xl bg-black text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl'>
-                            <h1 className='font-bold tracking-wide text-xl mx-2'>Barberias</h1>
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-1 max-w-3xl mx-auto gap-4'>
+                <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Barberias</h1>
+                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-center py-2 text-left p-2'>
+
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>PEINADO Y SHAMPOO</h1>
                             <p className='flex items-center gap-2'><GoClockFill />15 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$25.000</span></p>
@@ -178,35 +157,25 @@ const Cortes = () => {
                             <p className='flex items-center gap-2'><GoClockFill />2 h|<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$300.000</span></p>
                         </div>
                     </div>
-                </div>
 
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className=' cursor-pointer z-50'>
-                        <div className='flex items-center text-2xl bg-black text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl'>
-                            <h1 className='font-bold tracking-wide text-xl mx-2'>Cejas</h1>
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-1 max-w-3xl mx-auto gap-4'>
+                <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Cejas</h1>
+                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-center py-2 text-left p-2'>
+
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>DEPILACIÓN DE CEJAS</h1>
                             <p className='flex items-center gap-2'><GoClockFill />15 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$25.000</span></p>
                         </div>
                     </div>  
-                </div>
 
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className='cursor-pointer z-50 '>
-                        <div className='flex items-center text-2xl bg-black text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl' >
-                            <h1 className='font-bold tracking-wide text-xl mx-2'>Mascarillas</h1>
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-1 max-w-3xl mx-auto gap-4'>
+                <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Mascarillas</h1>
+                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-center py-2 text-left p-2'>
+
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1>BLACK MASK TRADICIONAL</h1>
                             <p className='flex items-center gap-2'><GoClockFill />1 h |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$35.000</span></p>
                         </div>
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
-                            <h1>MASCARILLA BLACK MASK COMPLETA TOALLAS</h1>
+                            <h1>MASCARILLA BLACK MASK COMPLETA </h1>
                             <p className='flex items-center gap-2'><GoClockFill />1 h|<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$63.000</span></p>
                         </div>
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
@@ -258,15 +227,10 @@ const Cortes = () => {
                             <p className='flex items-center gap-2'><GoClockFill />30 min |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$80.000</span></p>
                         </div>
                     </div>
-                </div>
 
-                <div className='flex flex-col items-center py-2 text-left'>
-                    <div className='cursor-pointer z-50 '>
-                        <div className='flex items-center text-2xl bg-black text-white w-100 md:min-w-dvh h-12 transition-all duration-300 justify-between rounded-xl'>
-                            <h1 className='font-bold tracking-wide text-xl mx-2'>Combos</h1>
-                        </div>
-                    </div>
-                    <div className='overflow-hidden transition-all duration-500 ease-in-out bg-cover bg-center bg-no-repeat flex flex-col items-start text-left w-full py-2 px-10 max-w-3xl mx-auto gap-4'>
+                <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Combos</h1> 
+                <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-4 items-center py-2 text-left p-2'>
+
                         <div className='bg-white rounded-2xl p-5 shadow-lg hover:-translate-y-1 transition-all duration-300'>
                             <h1 className='flex items-center gap-2'><RxScissors /> CORTE + SPA FACIAL</h1>
                             <p className='flex items-center gap-2'><GoClockFill />1 h |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$140.000</span></p>
@@ -315,9 +279,8 @@ const Cortes = () => {
                             <h1 className='flex items-center gap-2'><RxScissors /> CORTE + BARBA VAPOR + MASCARILLA  ANTIEDAD</h1>
                             <p className='flex items-center gap-2'><GoClockFill />1 h |<FaMoneyCheck className='text-[#d4af37]'/> <span className='text-black font-bold'>$210.000</span></p>
                         </div>
-                    </div>
                 </div>
-        </div>
+            </div>
     </>
   )
 }
