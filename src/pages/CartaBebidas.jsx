@@ -3,28 +3,15 @@ import React from 'react'
 const CartaBebidas = () => {
   return (
     <>
-    <div className='grid lg:grid-cols-3 bg-linear-to-br from-black/80 to-gray-400'>
-      <div className='relative'>
-        <h1>Imagen grande y titulo del menu</h1>
-        <h1>Imagen grande y titulo del menu</h1>
-        <h1>Imagen grande y titulo del menu</h1>
-        <h1>Imagen grande y titulo del menu</h1>
-        <h1>Imagen grande y titulo del menu</h1>
-        <h1>Imagen grande y titulo del menu</h1>
-        <h1>Imagen grande y titulo del menu</h1><h1>Imagen grande y titulo del menu</h1>
-
-        <div className=''>
-          <img src="/Carta/coctels.png" alt="" />
-        </div>
+    <div className='grid md:grid-cols-2 bg-linear-to-br from-black/80 to-gray-400 justify-center'>
+      <div className=''>
+        <img src="/Carta/cocktails.jpg" alt="" className='w-full h-full rounded-2xl'/>
       </div>
 
-      <div>
-        <h1>Bebidas con alcohol</h1>
+      <div> 
+        <img src="/Carta/drinks.jpg" alt="" className='w-full h-full rounded-2xl'/>
       </div>
       
-      <div>
-        <h1>Bebidas sin alcohol</h1>
-      </div>
     </div>
     </>
   )
