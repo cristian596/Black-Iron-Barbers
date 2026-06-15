@@ -7,7 +7,7 @@ import { RxScissors } from "react-icons/rx";
 const Cortes = () => {
   return (
     <>
-        <div className='grid justify-center items-center py-3 bg-linear-to-br from-zinc-900 via-orange-800 to-amber-700'>
+        <div className='grid justify-center items-center py-3 bg-linear-to-br from-zinc-800 to-amber-600'>
             <h1 className='flex items-center justify-center text-white py-3 font-bold font-cinzel text-3xl lg:text-6xl'>NUESTRA CARTA DE SERVICIOS</h1>
             <h1 className='flex justify-center font-bold font-cinzel tracking-wide text-3xl lg:text-5xl mx-2 text-white py-5'>Barberias</h1>
                 <div className='grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-4 items-center py-2 text-left p-2'>

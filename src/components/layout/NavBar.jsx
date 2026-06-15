@@ -66,16 +66,25 @@ const NavBar = () => {
 
           <button
           onClick={()=> navigate("/reservar-corte")}
-          className='group flex items-center gap-2 bg-black text-white rounded-full px-4 py-2 hover:cursor-pointer border border-white/10 duration-300'>
+          className='group flex items-center gap-2 bg-black text-white rounded-full px-4 py-2 hover:cursor-pointer border border-white/10 duration-300 active:scale-95'>
             
             <span>
               Agendar
             </span>
 
-            <span className='ml-0 w-0 overflow-hidden opacity-0 duration-300 group-hover:ml-1 group-hover:w-4 group-hover:opacity-100'>
+            <span className='ml-0 w-0 overflow-hidden opacity-0 duration-300 group-hover:ml-1 group-hover:w-4 group-hover:opacity-100 '>
               <FaArrowRight size={14}/>
             </span>
 
+          </button>
+
+          <button
+          onClick={()=> navigate("/login-barberos")}
+          className='group flex items-center bg-white text-black font-semibold rounded-full px-4 py-2 cursor-pointer active:scale-95 duration-300'>
+            
+            <span>
+              ✂️Barbero
+            </span>
           </button>
 
         </div>

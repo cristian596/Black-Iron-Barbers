@@ -7,6 +7,7 @@ import Ubicacion from '../pages/Ubicacion';
 import CartaBebidas from '../pages/CartaBebidas';
 import ReservaCorte from '../pages/ReservaCorte';
 import Cortes from '../pages/Cortes';
+import LoginBarberos from '../pages/LoginBarberos';
 
 const AppRouter = createBrowserRouter([
   {
@@ -36,6 +37,10 @@ const AppRouter = createBrowserRouter([
       {
         path: 'carta-bebidas',
         element: <CartaBebidas />
+      },
+      {
+        path: 'login-barberos',
+        element: <LoginBarberos/>
       },
     ]
   }
