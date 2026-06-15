@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  # Servicio de la Base de Datos para Black Iron Barbers
+  db_black_iron:
+    image: postgres:15-alpine
+    container_name: black_iron_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: barbero_admin
+      POSTGRES_PASSWORD: clave_secreta_123
+      POSTGRES_DB: black_iron_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_barber_data:/var/lib/postgresql/data
+
+  # Servicio del Backend
+  backend_black_iron:
+    build: ./backend
+    container_name: black_iron_backend
+    restart: always
+    ports:
+      - "5001:5000"
+    environment:
+      - DB_USER=barbero_admin
+      - DB_PASSWORD=clave_secreta_123
+      - DB_HOST=db_black_iron
+      - DB_PORT=5432
+      - DB_NAME=black_iron_db
+    depends_on:
+      - db_black_iron
+
+volumes:
+  postgres_barber_data:
