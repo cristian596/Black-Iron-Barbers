@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { serviciosMale } from '../data/serviciosMale'
 import { serviciosFemale } from '../data/serviciosFemale'
+import {colaboradores} from '../data/barberos'
+import { horarios } from '../data/horarios'
 
 const ReservaCorte = () => {
   const[servicio,setServicio] = useState("")
-
+  const [barbero, setBarbero] = useState("")
   return (
     <>
     <div className='flex flex-col justify-center items-center'>
@@ -17,8 +19,8 @@ const ReservaCorte = () => {
         </p>
       </div>
       
-      <div className='grid md:grid-cols-3'>
-        <div className='col-span-2'>
+      <div className='grid md:grid-cols-3 border'>
+        <div className='md:row-span-2 border p-4'>
           <div className='flex flex-col'>
             <label htmlFor="">Cliente</label>
             <input type="text" placeholder='Escribe tu nombre'/>
@@ -59,6 +61,51 @@ const ReservaCorte = () => {
               }
             </select>
           </div>
+
+          <div className='flex flex-col'>
+            <label htmlFor="">Elige tu Barbero</label>
+            <select 
+            value={barbero}
+            onChange={(e)=> setBarbero(e.target.value)}
+            >
+              <option>Escoje tu barbero preferido</option>
+              {colaboradores.map((barbero)=>{
+                return(
+                  <option value={barbero} key={barbero.id}>
+                    {barbero.nombre}
+                    {barbero.calificacion}
+                  </option>
+                )
+              })
+              }
+            </select>
+          </div>
+
+          <div className='flex flex-col'>
+            <label htmlFor="">Selecciona la fecha</label>
+            <input type="date" />
+          </div>
+
+          <div className=''>
+            <label htmlFor="">Hora de tu servicio</label>
+            <div>
+              {horarios.map((horaSe)=>{
+
+                return(
+                  <button
+                  type='button'
+                  key={horaSe}
+                  className='cursor-pointer'
+                  >
+                    {horaSe}
+                  </button>
+                )
+              })
+
+              }
+            </div>
+          </div>
+
         </div>
 
         <div>
