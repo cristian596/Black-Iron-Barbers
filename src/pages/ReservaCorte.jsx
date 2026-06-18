@@ -3,6 +3,7 @@ import { serviciosMale } from '../data/serviciosMale'
 import { serviciosFemale } from '../data/serviciosFemale'
 import {colaboradores} from '../data/barberos'
 import { horarios } from '../data/horarios'
+import { BiGame } from 'react-icons/bi'
 
 const ReservaCorte = () => {
   const[cliente,setCliente] = useState("")
@@ -25,19 +26,24 @@ const ReservaCorte = () => {
       </div>
       
       <div className='py-2'>
-        <div className='  p-4'>
-          <div className='flex flex-col'>
-            <label htmlFor="">Cliente</label>
-            <input onChange={(e)=>setCliente(e.target.value)} type="text" placeholder='Escribe tu nombre' className='w-120 p-1 border'/>
+        <div className=''>
+
+          <div className='flex flex-col items-center justify-center'>
+            <div className='flex flex-col'>
+              <label htmlFor="" className='flex items-center justify-center font-poppins font-medium text-lg text-mauve-700 '>Cliente</label>
+              <input onChange={(e)=>setCliente(e.target.value)} type="text" placeholder='Escribe tu nombre' className='w-120 rounded-lg p-1 border placeholder:text-gray-800'/>
+            </div>
+
+            <div className='flex flex-col mt-2'>
+              <label htmlFor="" className='flex items-center justify-center font-poppins font-medium text-lg text-mauve-700 '>Correo Electronico</label>
+              <input type="email" required placeholder='Example@gmail.com' className='w-120 p-1 border placeholder:text-gray-800 rounded-lg' />
+            </div>
           </div>
 
-          <div className='flex flex-col'>
-            <label htmlFor="">Correo Electronico</label>
-            <input type="email" required placeholder='Example@gmail.com' className='w-120 p-1 border'/>
-          </div>
+          {/*Servicios masculinos */}
 
-          <div className='flex flex-col'>
-            <label htmlFor="">Servicios Masculinos</label>
+          <div className='flex flex-col mt-2'>
+            <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Servicios Masculinos</label>
             <div className='flex gap-2'>
               {serviciosMale.map((serviM)=>{
                 return(
@@ -45,7 +51,11 @@ const ReservaCorte = () => {
                   type='button'
                   key={serviM}
                   onClick={(e)=>setServicio(serviM)}
-                  className={`border p-2 rounded-xl cursor-pointer active:scale-95 duration-300`}
+                  className={`border border-gray-500 p-2 rounded-xl cursor-pointer active:scale-95 duration-300 hover:bg-mauve-300 ${
+                    servicio === serviM 
+                    ? "bg-mauve-400 border-black font-semibold"
+                    : "bg-mauve-100"
+                  }`}
                   >
                     {serviM}
                   </button>
@@ -56,8 +66,9 @@ const ReservaCorte = () => {
             </div>
           </div>
 
-          <div className='flex flex-col'>
-            <label htmlFor="">Servicios Femenino</label>
+          {/*Servicios Femenino */}
+          <div className='flex flex-col mt-2'>
+            <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Servicios Femenino</label>
             <div className='grid lg:grid-cols-5 gap-2'>
               {serviciosFemale.map((serviF)=>{
                 return(
@@ -65,7 +76,11 @@ const ReservaCorte = () => {
                   type='button'
                   key={serviF}
                   onClick={(e)=>setServicio(serviF)}
-                  className={`border p-2 rounded-xl cursor-pointer active:scale-95 duration-300`}
+                  className={`border border-gray-500 p-2 rounded-xl cursor-pointer active:scale-95 duration-300 hover:bg-indigo-200 ${
+                    servicio === serviF
+                    ? "bg-indigo-400 border-indigo-900 font-semibold"
+                    : "bg-indigo-100"
+                  }`}
                   >
                     {serviF}
                   </button>
@@ -79,7 +94,7 @@ const ReservaCorte = () => {
           <div>
             {servicio && (
               <div className='flex flex-col'>
-                <label htmlFor="">Elige tu Barbero</label>
+                <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Elige tu Barbero</label>
                 <div className='grid grid-cols-6 gap-2'>
                   {colaboradores.map((barber)=>{
                     return(
@@ -104,7 +119,7 @@ const ReservaCorte = () => {
           <div>
             {barbero && (
               <div>
-                <label htmlFor="">Seleccione la fecha para agendar su servicio</label>
+                <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Seleccione la fecha para agendar su servicio</label>
                 <div>
                   <input 
                   type="date" 
@@ -120,7 +135,7 @@ const ReservaCorte = () => {
           <div>
             {fecha && (
               <div>
-                <label htmlFor="">Seleccione la hora de su servicio</label>
+                <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Seleccione la hora de su servicio</label>
                 <div>
                   {horarios.map((horaSe)=>{
                     return(
