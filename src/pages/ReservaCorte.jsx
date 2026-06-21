@@ -12,6 +12,7 @@ const ReservaCorte = () => {
   const[barbero, setBarbero] = useState("")
   const[fecha,setFecha] = useState("")
   const[hora,setHora] = useState("")
+  const fechaHoy = new Date().toISOString().split("T")[0]
   
   return (
     <>
@@ -43,7 +44,7 @@ const ReservaCorte = () => {
           {/*Servicios masculinos */}
 
           <div className='flex flex-col mt-2'>
-            <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Servicios Masculinos</label>
+            <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700 mt-2 mb-2'>Servicios Masculinos</label>
             <div className='flex gap-2'>
               {serviciosMale.map((serviM)=>{
                 return(
@@ -68,7 +69,7 @@ const ReservaCorte = () => {
 
           {/*Servicios Femenino */}
           <div className='flex flex-col mt-2'>
-            <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Servicios Femenino</label>
+            <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700 mt-2 mb-2'>Servicios Femenino</label>
             <div className='grid lg:grid-cols-5 gap-2'>
               {serviciosFemale.map((serviF)=>{
                 return(
@@ -94,7 +95,7 @@ const ReservaCorte = () => {
           <div>
             {servicio && (
               <div className='flex flex-col'>
-                <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Elige tu Barbero</label>
+                <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700 mt-2 mb-2'>Elige tu Barbero</label>
                 <div className='grid grid-cols-6 gap-2'>
                   {colaboradores.map((barber)=>{
                     return(
@@ -102,7 +103,11 @@ const ReservaCorte = () => {
                       type='button'
                       key={barber.id}
                       onClick={()=> setBarbero(barber)}
-                      className='flex flex-col border w-50'
+                      className={`flex flex-col border w-50 rounded-xl cursor-pointer hover:bg-gray-300 active:scale-95 duration-300 ${
+                        barbero === barber
+                        ? "bg-gray-400"
+                        : "bg-white"
+                      }`}
                       >  
                       <h3>{barber.nombre}</h3>
                       <p>{barber.calificacion}</p>
@@ -116,15 +121,16 @@ const ReservaCorte = () => {
           )}
           </div>
           
-          <div>
+          <div className='mt-3'>
             {barbero && (
               <div>
                 <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Seleccione la fecha para agendar su servicio</label>
-                <div>
+                <div className='mt-1'>
                   <input 
                   type="date" 
-                  className='border'
+                  className='border text-xl'
                   value={fecha}
+                  min={fechaHoy}
                   onChange={(e)=>setFecha(e.target.value)}
                   />
                 </div>
@@ -132,17 +138,22 @@ const ReservaCorte = () => {
             )}
           </div>
 
-          <div>
+          <div className='mt-3'>
             {fecha && (
               <div>
                 <label htmlFor="" className='font-poppins font-medium text-lg text-mauve-700'>Seleccione la hora de su servicio</label>
-                <div>
+                <div className='flex gap-2 mt-1'>
                   {horarios.map((horaSe)=>{
                     return(
                       <button
                       type='button'
                       value={horaSe}
                       onClick={(e)=>setHora(e.target.value)}
+                      className={`border p-1 rounded-lg font-medium font-sans cursor-pointer hover:bg-mauve-200 active:scale-95 duration-300 ${
+                        hora === horaSe
+                        ? "bg-mauve-400 border-gray-400"
+                        : "bg-white"
+                      }`}
                       >
                         {horaSe}
                       </button>
@@ -153,9 +164,11 @@ const ReservaCorte = () => {
             )}
           </div>
 
-          <div>
+          <div className='flex justify-center p-20'>
             {hora && (
-              <button>Agendar Cita!</button>
+              <button className='border border-gray-800 p-2 font-cinzel font-bold text-2xl rounded-xl text-white bg-red-500 hover:bg-red-200 hover:text-black hover:border-gray-900 cursor-pointer active:scale-95 duration-300'>
+                Agendar Cita
+              </button>
             )}
           </div>
         </div>
