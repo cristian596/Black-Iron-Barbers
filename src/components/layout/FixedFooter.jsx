@@ -1,15 +1,37 @@
-import React from 'react'
-import { useNavigate } from 'react-router'
+import { useEffect } from 'react'
+import { useState } from 'react'
+import { CgArrowLongRightR } from "react-icons/cg";
+import { PiStarFourFill } from "react-icons/pi";
+
 
 const FixedFooter = () => {
-  const navigate = useNavigate()
+const prhases = [
+  "LA CIENCIA DETRAS DE LA IMAGEN",
+  "SATIFACION GARANTIZADA O TE DEVOLVEMOS TU DINERO",
+  "UNETE AL CLUB IRON"
+]
+
+const [currentSlider,setCurrentSlider] = useState(0)
+
+    useEffect(()=>{
+      const interval = setInterval(()=>{
+        setCurrentSlider((prevIndex) => (prevIndex + 1) % prhases.length)
+      }, 3000)
+
+      return ()=> clearInterval(interval)
+    }, [])
   return (
     <>
-    <div className='flex justify-center items-center bg-[#0f0f0f] gap-2 p-1 sticky bottom-0 z-50 w-full'>
-        <h1 className='text-white font-semibold '>Vive la experiencia</h1>
-        <button 
-        onClick={()=> navigate("/reservar-corte")}
-        className='border border-white text-black font-semibold bg-[#c5a54b] p-1 rounded-xl active:scale-95 duration-300 cursor-pointer'>Reservar</button>
+    <div className='flex justify-center items-center bg-linear-to-r from-[#d2a123]  to-[#e2bc58]  gap-2 p-1 sticky z-50 w-full'>
+        <h1 className='text-black font-semibold text-xl p-1' key={currentSlider}>
+          <span className='flex items-center gap-1 border-b-3 hover:scale-105 cursor-pointer'>
+            <PiStarFourFill size={15}/>
+            {prhases[currentSlider]}
+            <CgArrowLongRightR />
+            <PiStarFourFill size={15}/>
+          </span>
+          
+        </h1>
     </div>
     </>
   )

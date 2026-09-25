@@ -10,6 +10,8 @@ import FixedHome from '../components/layout/FixedHome';
 const Landingpage = () => {
   return (
     <>
+        {/*Vive la experiencia */}
+    <FixedFooter/>
     {/*Navbar que se vera en todo momento sin importar la pagina a la que vallan los usuarios*/}
       <NavBar/>
 
@@ -23,8 +25,7 @@ const Landingpage = () => {
     <FixedHome/>
     {/*Boton de Whatsapp Fixed*/}
     <FixedWhatsapp/>
-    {/*Vive la experiencia */}
-    <FixedFooter/>
+
 
     </>
   )
