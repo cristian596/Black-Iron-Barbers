@@ -70,14 +70,14 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
 - [ ] Verificar con `curl`: un barbero **no** puede ver ni modificar citas de otro.
 
 ### Sesión 4 — Front-end público conectado a la API (~60-75 min)
-- [ ] **Quitar servicios de mujer**: borrar `serviciosFemale.js`, secciones "Uñas" y "Pedicure" (y cualquier sección femenina) de `Cortes.jsx`, el bloque femenino de `ReservaCorte.jsx` y las fotos `hair_woman_*` de `Galeria.jsx`.
-- [ ] Borrar de `public/` las carpetas `CourtWoman`, `Nails`, `NailsThematic` y `Pedicura` (ver antes que ningún otro componente las use).
-- [ ] Revisar `barberos.js`: quitar al personal que solo atiende servicios femeninos y corregir el cargo ("Barbera" en nombres masculinos). Revisar también `NuestrosServicos.jsx`, `Promos.jsx` y `Descripcion.jsx` por textos femeninos.
-- [ ] Crear `src/services/api.js` con `VITE_API_URL` y manejo de errores.
-- [ ] Crear `.env.example` del front con `VITE_API_URL`.
-- [ ] `LoginBarberos.jsx`: `useState`, `onSubmit`, llamada al login, guardar el JWT, redirigir a `/admin` o `/panel` según el rol, mensaje de error visible.
-- [ ] `ReservaCorte.jsx`: cargar servicios y barberos desde la API, pedir horas libres, conectar el correo (`onChange`), `onClick` real en "Agendar Cita", estados de carga, confirmación y error (incluido el `409`).
-- [ ] Verificar: una reserva hecha en la web aparece en la base de datos.
+- [x] **Quitar servicios de mujer**: borrar `serviciosFemale.js`, secciones "Uñas" y "Pedicure" (y cualquier sección femenina) de `Cortes.jsx`, el bloque femenino de `ReservaCorte.jsx` y las fotos `hair_woman_*` de `Galeria.jsx`.
+- [x] Borrar de `public/` las carpetas `CourtWoman`, `Nails`, `NailsThematic` y `Pedicura` (ver antes que ningún otro componente las use).
+- [x] Revisar `barberos.js`: quitar al personal que solo atiende servicios femeninos y corregir el cargo ("Barbera" en nombres masculinos). Revisar también `NuestrosServicos.jsx`, `Promos.jsx` y `Descripcion.jsx` por textos femeninos.
+- [x] Crear `src/services/api.js` con `VITE_API_URL` y manejo de errores.
+- [x] Crear `.env.example` del front con `VITE_API_URL`.
+- [x] `LoginBarberos.jsx`: `useState`, `onSubmit`, llamada al login, guardar el JWT, redirigir a `/admin` o `/panel` según el rol, mensaje de error visible.
+- [x] `ReservaCorte.jsx`: cargar servicios y barberos desde la API, pedir horas libres, conectar el correo (`onChange`), `onClick` real en "Agendar Cita", estados de carga, confirmación y error (incluido el `409`).
+- [ ] Verificar: una reserva hecha en la web aparece en la base de datos. *(pendiente: requiere levantar Postgres/Docker para probar en vivo)*
 
 ---
 

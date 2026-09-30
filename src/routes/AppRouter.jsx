@@ -8,6 +8,8 @@ import CartaBebidas from '../pages/CartaBebidas';
 import ReservaCorte from '../pages/ReservaCorte';
 import Cortes from '../pages/Cortes';
 import LoginBarberos from '../pages/LoginBarberos';
+import Panel from '../pages/Panel';
+import Admin from '../pages/Admin';
 
 const AppRouter = createBrowserRouter([
   {
@@ -41,6 +43,14 @@ const AppRouter = createBrowserRouter([
       {
         path: 'login-barberos',
         element: <LoginBarberos/>
+      },
+      {
+        path: 'panel',
+        element: <Panel/>
+      },
+      {
+        path: 'admin',
+        element: <Admin/>
       },
     ]
   }

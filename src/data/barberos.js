@@ -1,17 +1,8 @@
 export const colaboradores = [
     {
         id:1,
-        nombre:"Andrea",
-        cargo : "Barbera Senior",
-        image: "/Barberos/andrea.jpg",
-        especialidad: "Manicura y Pedicura",
-        experiencia: "8 años de experiencia",
-        calificacion: "⭐⭐⭐⭐"
-    },
-    {
-        id:2,
         nombre:"Boby",
-        cargo : "Barbera Senior",
+        cargo : "Barbero Senior",
         image: "/Barberos/boby.jpg",
         especialidad: "Fade y Barba",
         experiencia: "10 años de experiencia",
@@ -19,90 +10,72 @@ export const colaboradores = [
 
     },
     {
-        id:3,
+        id:2,
         nombre:"Dani",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/dani.jpg",
         especialidad: "Fade y Barba",
         experiencia: "8 años de experiencia",
         calificacion: "⭐⭐⭐⭐"
     },
     {
-        id:4,
+        id:3,
         nombre:"Danny",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/danny.jpg",
         especialidad: "Estilo Clasico",
         experiencia: "4 años de experiencia",
         calificacion: "⭐⭐⭐⭐"
     },
     {
-        id:5,
+        id:4,
         nombre:"Davinson",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/davinson.jpg",
         especialidad: "Estilo Urbano",
         experiencia: "3 años de experiencia",
         calificacion: "⭐⭐⭐⭐⭐"
     },
     {
-        id:6,
-        nombre:"July",
-        cargo : "Barbera Profesional",
-        image: "/Barberos/july.jpg",
-        especialidad: "Estilo Femenino",
-        experiencia: "6 años de experiencia",
-        calificacion: "⭐⭐⭐⭐"
-    },
-    {
-        id:7,
+        id:5,
         nombre:"Leo",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/leo.jpg",
         especialidad: "Barba y Estilo clasico",
         experiencia: "4 años de experiencia",
         calificacion: "⭐⭐⭐⭐"
     },
     {
-        id:8,
-        nombre:"Linda",
-        cargo : "Barbera Profesional",
-        image: "/Barberos/linda.jpg",
-        especialidad: "Manicura y Pedicura",
-        experiencia: "6 años de experiencia",
-        calificacion: "⭐⭐⭐⭐⭐"
-    },
-    {
-        id:9,
+        id:6,
         nombre:"Lizeth",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/lizeth.jpg",
         especialidad: "Estilo Urbano y Clasico",
         experiencia: "10 años de experiencia",
         calificacion: "⭐⭐⭐⭐"
     },
     {
-        id:10,
+        id:7,
         nombre:"Manuel",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/manuel.jpg",
         especialidad: "Estilista Premium",
         experiencia: "12 años de experiencia",
         calificacion: "⭐⭐⭐⭐⭐"
     },
     {
-        id:11,
+        id:8,
         nombre:"Moscu",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/moscu.jpg",
         especialidad: "Estilista de Barbas",
         experiencia: "8 años de experiencia",
         calificacion: "⭐⭐⭐⭐⭐"
     },
     {
-        id:12,
+        id:9,
         nombre:"Rafa",
-        cargo : "Barbera Profesional",
+        cargo : "Barbero Profesional",
         image: "/Barberos/rafa.jpg",
         especialidad: "Estilista Premium",
         experiencia: "10 años de experiencia",
