@@ -104,7 +104,7 @@ export const colaboradores = [
         nombre:"Rafa",
         cargo : "Barbera Profesional",
         image: "/Barberos/rafa.jpg",
-        especialidad: "Diseñador de damas",
+        especialidad: "Estilista Premium",
         experiencia: "10 años de experiencia",
         calificacion: "⭐⭐⭐⭐⭐"
     },

@@ -1,6 +1,10 @@
 import pg from 'pg';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { env } from '../config/env.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { Pool } = pg;
 
 export const pool = new Pool({
@@ -12,26 +16,8 @@ export const pool = new Pool({
 });
 
 const crearTablas = async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS barberos (
-      id SERIAL PRIMARY KEY,
-      usuario VARCHAR(50) UNIQUE NOT NULL,
-      contrasena VARCHAR(255) NOT NULL,
-      nombre VARCHAR(100) NOT NULL
-    );
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS citas (
-      id SERIAL PRIMARY KEY,
-      cliente VARCHAR(100) NOT NULL,
-      servicio VARCHAR(100) NOT NULL,
-      fecha VARCHAR(50) NOT NULL,
-      hora VARCHAR(50) NOT NULL,
-      barbero_id INT REFERENCES barberos(id) ON DELETE SET NULL
-    );
-  `);
-
+  const schema = readFileSync(path.resolve(__dirname, 'schema.sql'), 'utf-8');
+  await pool.query(schema);
   console.log('📋 Tablas de la barbería verificadas/creadas correctamente.');
 };
 
