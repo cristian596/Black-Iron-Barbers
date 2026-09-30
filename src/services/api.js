@@ -1,5 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
+let unauthorizedHandler = null;
+
+export const setUnauthorizedHandler = (fn) => {
+  unauthorizedHandler = fn;
+};
+
 const request = async (path, options = {}) => {
   let res;
   try {
@@ -22,6 +28,10 @@ const request = async (path, options = {}) => {
   }
 
   if (!res.ok) {
+    if (res.status === 401 && options.headers?.Authorization && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+
     const error = new Error(data?.error || 'Error en la solicitud');
     error.status = res.status;
     throw error;

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login } from '../services/api'
+import { login as loginRequest } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 const LoginBarberos = () => {
   const [usuario, setUsuario] = useState('')
@@ -8,6 +9,7 @@ const LoginBarberos = () => {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -20,15 +22,9 @@ const LoginBarberos = () => {
 
     setCargando(true)
     try {
-      const data = await login(usuario, contrasena)
-      localStorage.setItem('token', data.token)
-      localStorage.setItem('usuario', JSON.stringify(data.usuario))
-
-      if (data.usuario.rol === 'admin') {
-        navigate('/admin')
-      } else {
-        navigate('/panel')
-      }
+      const data = await loginRequest(usuario, contrasena)
+      login(data)
+      navigate(data.usuario.rol === 'admin' ? '/admin' : '/panel')
     } catch (err) {
       setError(err.message)
     } finally {

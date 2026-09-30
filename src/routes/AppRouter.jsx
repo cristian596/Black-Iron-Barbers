@@ -10,6 +10,9 @@ import Cortes from '../pages/Cortes';
 import LoginBarberos from '../pages/LoginBarberos';
 import Panel from '../pages/Panel';
 import Admin from '../pages/Admin';
+import NotFound from '../pages/NotFound';
+import ProtectedRoute from './ProtectedRoute';
+import RoleRoute from './RoleRoute';
 
 const AppRouter = createBrowserRouter([
   {
@@ -46,11 +49,27 @@ const AppRouter = createBrowserRouter([
       },
       {
         path: 'panel',
-        element: <Panel/>
+        element: (
+          <ProtectedRoute>
+            <RoleRoute rol="barbero">
+              <Panel/>
+            </RoleRoute>
+          </ProtectedRoute>
+        )
       },
       {
         path: 'admin',
-        element: <Admin/>
+        element: (
+          <ProtectedRoute>
+            <RoleRoute rol="admin">
+              <Admin/>
+            </RoleRoute>
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: '*',
+        element: <NotFound />
       },
     ]
   }

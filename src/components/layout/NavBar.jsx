@@ -10,11 +10,14 @@ import { GrGallery } from "react-icons/gr";
 import { GiBeard } from "react-icons/gi";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { IoIosHome } from "react-icons/io";
+import { useAuth } from '../../context/AuthContext';
 
 
 const NavBar = () => {
     const [menuMovil, setMenuMovil] = useState(false)
     const navigate = useNavigate()
+    const { usuario } = useAuth()
+    const destinoBarbero = usuario ? (usuario.rol === 'admin' ? '/admin' : '/panel') : '/login-barberos'
 
   return (
     <>
@@ -79,9 +82,9 @@ const NavBar = () => {
           </button>
 
           <button
-          onClick={()=> navigate("/login-barberos")}
+          onClick={()=> navigate(destinoBarbero)}
           className='group flex items-center bg-white text-black font-semibold rounded-full px-4 py-2 cursor-pointer active:scale-95 duration-300'>
-            
+
             <span>
               ✂️Barbero
             </span>
@@ -176,6 +179,17 @@ const NavBar = () => {
           Agendar
 
           <FaArrowRight/>
+
+        </button>
+
+        <button
+        onClick={()=>{
+          setMenuMovil(false);
+          navigate(destinoBarbero)
+        }}
+        className='flex items-center gap-2 bg-white border border-amber-500 text-black rounded-full px-7 py-3 font-bold active:scale-95 duration-200 shadow-2xl'>
+
+          ✂️Barbero
 
         </button>
 
