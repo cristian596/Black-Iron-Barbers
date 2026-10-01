@@ -81,3 +81,27 @@ export const actualizarCita = (token, id, cambios) =>
     headers: authHeader(token),
     body: JSON.stringify(cambios),
   });
+
+export const obtenerResumenAdmin = (token) =>
+  request('/admin/resumen', {
+    headers: authHeader(token),
+  });
+
+export const obtenerUsuarios = (token) =>
+  request('/admin/usuarios', {
+    headers: authHeader(token),
+  });
+
+export const crearUsuarioBarbero = (token, datos) =>
+  request('/admin/usuarios', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify(datos),
+  });
+
+export const actualizarUsuarioBarbero = (token, id, cambios) =>
+  request(`/admin/usuarios/${id}`, {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify(cambios),
+  });

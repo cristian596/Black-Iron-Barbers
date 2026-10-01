@@ -2,10 +2,17 @@ import BadgeEstado from '../ui/BadgeEstado'
 import TarjetaCita from './TarjetaCita'
 import { fechaLegible, soloHora } from '../../utils/formato'
 
-const TablaCitas = ({ citas, mostrarBarbero = false, onCompletar, onCancelar }) => {
+const TablaCitas = ({
+  citas,
+  mostrarBarbero = false,
+  onCompletar,
+  onCancelar,
+  onReasignar,
+  barberosActivos,
+}) => {
   if (citas.length === 0) return null
 
-  const hayAcciones = Boolean(onCompletar || onCancelar)
+  const hayAcciones = Boolean(onCompletar || onCancelar || onReasignar)
 
   return (
     <>
@@ -35,7 +42,7 @@ const TablaCitas = ({ citas, mostrarBarbero = false, onCompletar, onCancelar }) 
                 {hayAcciones && (
                   <td className="py-2 pr-3">
                     {cita.estado === 'pendiente' && (
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {onCompletar && (
                           <button
                             type="button"
@@ -53,6 +60,22 @@ const TablaCitas = ({ citas, mostrarBarbero = false, onCompletar, onCancelar }) 
                           >
                             Cancelar
                           </button>
+                        )}
+                        {onReasignar && barberosActivos && (
+                          <label className="flex items-center gap-1 text-xs text-gray-300">
+                            <span className="sr-only">Reasignar barbero de la cita de {cita.cliente}</span>
+                            <select
+                              value={cita.barbero_id}
+                              onChange={(e) => onReasignar(cita, e.target.value)}
+                              className="rounded-lg border border-white/20 bg-[#1a1a1a] p-1 text-xs text-white"
+                            >
+                              {barberosActivos.map((b) => (
+                                <option key={b.id} value={b.id}>
+                                  {b.nombre}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
                         )}
                       </div>
                     )}
@@ -73,6 +96,8 @@ const TablaCitas = ({ citas, mostrarBarbero = false, onCompletar, onCancelar }) 
             mostrarBarbero={mostrarBarbero}
             onCompletar={onCompletar}
             onCancelar={onCancelar}
+            onReasignar={onReasignar}
+            barberosActivos={barberosActivos}
           />
         ))}
       </div>

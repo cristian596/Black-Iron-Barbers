@@ -5,7 +5,15 @@ const ESTADOS = [
   { value: 'cancelada', label: 'Cancelada' },
 ]
 
-const FiltrosCitas = ({ estado, fecha, onCambiarEstado, onCambiarFecha }) => (
+const FiltrosCitas = ({
+  estado,
+  fecha,
+  onCambiarEstado,
+  onCambiarFecha,
+  barberos,
+  barbero,
+  onCambiarBarbero,
+}) => (
   <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
     <div className="flex flex-col gap-1">
       <label htmlFor="filtro-estado" className="text-sm font-medium text-gray-300">
@@ -25,6 +33,27 @@ const FiltrosCitas = ({ estado, fecha, onCambiarEstado, onCambiarFecha }) => (
       </select>
     </div>
 
+    {barberos && (
+      <div className="flex flex-col gap-1">
+        <label htmlFor="filtro-barbero" className="text-sm font-medium text-gray-300">
+          Barbero
+        </label>
+        <select
+          id="filtro-barbero"
+          value={barbero}
+          onChange={(e) => onCambiarBarbero(e.target.value)}
+          className="rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
+        >
+          <option value="">Todos los barberos</option>
+          {barberos.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.nombre}
+            </option>
+          ))}
+        </select>
+      </div>
+    )}
+
     <div className="flex flex-col gap-1">
       <label htmlFor="filtro-fecha" className="text-sm font-medium text-gray-300">
         Fecha
@@ -38,12 +67,13 @@ const FiltrosCitas = ({ estado, fecha, onCambiarEstado, onCambiarFecha }) => (
       />
     </div>
 
-    {(estado || fecha) && (
+    {(estado || fecha || barbero) && (
       <button
         type="button"
         onClick={() => {
           onCambiarEstado('')
           onCambiarFecha('')
+          onCambiarBarbero?.('')
         }}
         className="cursor-pointer rounded-lg border border-white/20 px-3 py-2 text-sm text-gray-300 duration-200 hover:bg-white/10 active:scale-95"
       >

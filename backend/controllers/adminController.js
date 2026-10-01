@@ -1,6 +1,22 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../db/connection.js';
 
+export const listarUsuarios = async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT usuarios.id, usuarios.usuario, usuarios.rol, usuarios.activo,
+              usuarios.barbero_id, barberos.nombre AS barbero_nombre
+       FROM usuarios
+       JOIN barberos ON barberos.id = usuarios.barbero_id
+       WHERE usuarios.rol = 'barbero' AND barberos.activo = true
+       ORDER BY barberos.nombre`
+    );
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const obtenerResumen = async (req, res, next) => {
   try {
     const [{ rows: porEstado }, { rows: porBarbero }] = await Promise.all([

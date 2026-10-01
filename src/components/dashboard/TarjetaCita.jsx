@@ -1,8 +1,16 @@
 import BadgeEstado from '../ui/BadgeEstado'
 import { fechaLegible, soloHora } from '../../utils/formato'
 
-const TarjetaCita = ({ cita, mostrarBarbero = false, onCompletar, onCancelar }) => {
-  const puedeGestionar = cita.estado === 'pendiente' && (onCompletar || onCancelar)
+const TarjetaCita = ({
+  cita,
+  mostrarBarbero = false,
+  onCompletar,
+  onCancelar,
+  onReasignar,
+  barberosActivos,
+}) => {
+  const puedeGestionar =
+    cita.estado === 'pendiente' && (onCompletar || onCancelar || onReasignar)
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a1a1a] p-4 text-white shadow">
@@ -21,7 +29,7 @@ const TarjetaCita = ({ cita, mostrarBarbero = false, onCompletar, onCancelar }) 
       </div>
 
       {puedeGestionar && (
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {onCompletar && (
             <button
               type="button"
@@ -39,6 +47,22 @@ const TarjetaCita = ({ cita, mostrarBarbero = false, onCompletar, onCancelar }) 
             >
               Cancelar
             </button>
+          )}
+          {onReasignar && barberosActivos && (
+            <label className="flex items-center gap-1 text-sm text-gray-300">
+              <span className="sr-only">Reasignar barbero de la cita de {cita.cliente}</span>
+              <select
+                value={cita.barbero_id}
+                onChange={(e) => onReasignar(cita, e.target.value)}
+                className="rounded-lg border border-white/20 bg-[#1a1a1a] p-1.5 text-sm text-white"
+              >
+                {barberosActivos.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
         </div>
       )}
