@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import logo from '../../assets/img/logo.png'
+import logo from '../../assets/img/logo.webp'
 import { FaWhatsapp } from "react-icons/fa";
 import { IoCloseOutline } from "react-icons/io5";
 
