@@ -6,7 +6,7 @@ const NuestrosServicos = () => {
     <>
     <div className='flex flex-col justify-center items-center p-20 gap-10 bg-cover bg-no-repeat bg-center'
     style={{
-        backgroundImage:"url('https://images.unsplash.com/photo-1599351431613-18ef1fdd27e1?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"
+        backgroundImage:"url('/CourtMan/court_11.jpg')"
     }}>
         <div className='flex flex-col justify-center items-center'>
             <p className='text-4xl text-white lg:text-9xl'>Conoce Todos Nuestros</p>

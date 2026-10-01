@@ -9,7 +9,7 @@ const Descripcion = () => {
     <>
     <div className='relative bg-cover bg-center bg-no-repeat'
     style={{
-        backgroundImage:"url('https://images.unsplash.com/photo-1597299407241-638aa26e56c6?q=80&w=1157&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"
+        backgroundImage:"url('/CourtMan/court_8.jpg')"
     }}>
         <div className='absolute inset-0 bg-black/70 backdrop-blur-[1px]'/>
             <div className='grid md:grid-cols-2 px-6 py-2'>

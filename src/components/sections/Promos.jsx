@@ -11,7 +11,7 @@ const Promos = () => {
     <div className='grid lg:grid-cols-2 border-gray-600 border-b'>
       <div className='realtive w-full h-full bg-cover bg-center border-gray-600 border-r'
       style={{
-        backgroundImage:"url('https://images.unsplash.com/photo-1621605815971-fbc98d665033?q=80&w=1200')"
+        backgroundImage:"url('/CourtMan/court_14.jpg')"
       }}>
         <div className='relative z-10 text-white p-10 flex flex-col justify-center h-full'>
           <p className='text-[#d4af37] font-bold text-xl mb-6 lg:text-white'>
@@ -29,7 +29,7 @@ const Promos = () => {
 
         <div className='relative bg-cover bg-no-repeat bg-center py-15 backdrop-blur-md border-gray-800 border-t'
         style={{
-          backgroundImage: "url('https://images.unsplash.com/photo-1622286342621-4bd786c2447c?q=80&w=1200')"
+          backgroundImage: "url('/CourtMan/court_17.jpg')"
         }}>
 
         <div className='absolute inset-0 bg-black/70 backdrop-blur-[2px]'/>
