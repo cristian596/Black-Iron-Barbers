@@ -4,10 +4,13 @@ import { readFileSync } from 'node:fs';
 import dotenv from 'dotenv';
 import pg from 'pg';
 import bcrypt from 'bcryptjs';
+import { asegurarBaseDePrueba } from './guardBaseDePrueba.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 dotenv.config({ path: path.resolve(__dirname, '../.env.test'), override: true, quiet: true });
+
+asegurarBaseDePrueba();
 
 const { Pool } = pg;
 
