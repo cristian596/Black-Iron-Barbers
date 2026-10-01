@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import ButtonReserva from '../ui/ButtonReserva'
 import { GiBeard } from "react-icons/gi";
 import { FaGlassMartiniAlt } from "react-icons/fa";

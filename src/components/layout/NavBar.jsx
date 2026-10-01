@@ -1,5 +1,4 @@
-import React from 'react'
-import { NavLink, useNavigate, useNavigation } from 'react-router'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { RiScissorsCutFill } from "react-icons/ri";
 import { FaArrowRight } from "react-icons/fa";
 import { IoCloseOutline } from "react-icons/io5";
@@ -7,7 +6,6 @@ import { IoMdMenu } from "react-icons/io";
 import { useState } from 'react';
 import { ImScissors } from "react-icons/im";
 import { GrGallery } from "react-icons/gr";
-import { GiBeard } from "react-icons/gi";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { IoIosHome } from "react-icons/io";
 import { useAuth } from '../../context/AuthContext';
@@ -31,9 +29,9 @@ const NavBar = () => {
             size={28}
           />
 
-          <a href='/' className='group-hover:cursor-pointer'>
+          <Link to='/' className='group-hover:cursor-pointer'>
             Black Iron Barbers
-          </a>
+          </Link>
 
         </div>
 
@@ -53,7 +51,7 @@ const NavBar = () => {
           </NavLink>
 
           <NavLink
-            to="/galery"
+            to="/galeria"
             className="text-gray-400 hover:text-white  lg:text-xl flex items-center gap-2 active:scale-90 duration-200"
           >
             <GrGallery /> Galeria
@@ -61,7 +59,7 @@ const NavBar = () => {
 
 
           <NavLink
-            to="/ubication"
+            to="/ubicacion"
             className="text-gray-400 hover:text-white  lg:text-xl flex items-center gap-2 active:scale-90 duration-200"
           >
             <FaMapMarkedAlt />Ubicaciones
@@ -134,7 +132,7 @@ const NavBar = () => {
           }
         `}
         style={{
-          backgroundImage:"url('https://images.unsplash.com/photo-1621645582931-d1d3e6564943?q=80&w=1064&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"
+          backgroundImage:"url('/CourtMan/court_1.jpg')"
         }}
       >
         <NavLink
@@ -153,7 +151,7 @@ const NavBar = () => {
         </NavLink>
 
         <NavLink
-          to="/galery"
+          to="/galeria"
           onClick={() => setMenuMovil(false)}
           className="text-3xl font-bold text-white active:scale-95 duration-200 flex  items-center gap-2"
         >
@@ -162,7 +160,7 @@ const NavBar = () => {
 
 
         <NavLink
-          to="/ubication"
+          to="/ubicacion"
           onClick={() => setMenuMovil(false)}
           className="text-3xl font-bold text-white active:scale-95 duration-200 flex  items-center gap-2"
         >

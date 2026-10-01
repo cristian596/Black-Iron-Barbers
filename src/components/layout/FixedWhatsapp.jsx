@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import logo from '../../assets/img/logo.png'
 import { FaWhatsapp } from "react-icons/fa";
 import { IoCloseOutline } from "react-icons/io5";
@@ -30,12 +30,12 @@ const FixedWhatsapp = () => {
             <div className='p-3 flex justify-center flex-col gap-3'>
               <p className='text-xl font-semibold'>Si quieres una accesoria personalizada...</p>
               <form action="">
-                <label htmlFor=""> Nombres</label><br />
-                <input type="text" placeholder='Javier Myllei' required className='border border-gray-600 rounded-xl p-1 w-xs'/><br />
-                <label htmlFor=""> Correo Electronico</label><br />
-                <input type="email" placeholder='Example@gmail.com' required className='border border-gray-600 rounded-xl p-1 w-xs'/><br />
-                <label htmlFor=""> Telefono</label><br />
-                <input type="tel" placeholder='Numero telefonico' className='border border-gray-600 rounded-xl p-1'/><br />
+                <label htmlFor="whatsapp-nombres"> Nombres</label><br />
+                <input id="whatsapp-nombres" type="text" placeholder='Javier Myllei' required className='border border-gray-600 rounded-xl p-1 w-xs'/><br />
+                <label htmlFor="whatsapp-correo"> Correo Electronico</label><br />
+                <input id="whatsapp-correo" type="email" placeholder='Example@gmail.com' required className='border border-gray-600 rounded-xl p-1 w-xs'/><br />
+                <label htmlFor="whatsapp-telefono"> Telefono</label><br />
+                <input id="whatsapp-telefono" type="tel" placeholder='Numero telefonico' className='border border-gray-600 rounded-xl p-1'/><br />
                 <label htmlFor="Condiciones" className='flex gap-2 items-center'>
                   <input type="checkbox" name="terminos" id="Condiciones"/>
                 Acepto llamadas y/o mensajes por whatsapp.

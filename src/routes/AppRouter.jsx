@@ -28,11 +28,11 @@ const AppRouter = createBrowserRouter([
         element: <Cortes/>
       },
       {
-        path: 'galery',
+        path: 'galeria',
         element: <Galeria />
       },
       {
-        path: 'ubication',
+        path: 'ubicacion',
         element: <Ubicacion />
       },
       {

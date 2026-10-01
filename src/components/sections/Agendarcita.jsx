@@ -1,5 +1,4 @@
-import React from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate } from 'react-router-dom'
 
 const Agendarcita = () => {
   const navigate = useNavigate()

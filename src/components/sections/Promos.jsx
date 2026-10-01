@@ -1,4 +1,3 @@
-import React from 'react'
 import ButtonReserva from '../ui/ButtonReserva'
 import { IoCut } from "react-icons/io5";
 import { IoIosStarOutline } from "react-icons/io";
@@ -77,7 +76,7 @@ const Promos = () => {
               <div className='border border-gray-500 shadow-xl flex items-center m-3 rounded-xl w-90 h-14 gap-2 bg-[#f7f4ef] hover:cursor-pointer backdrop-blur-md hover:scale-105 duration-300 '>
                 <FaFaceGrinStars className='ml-4 ' size={25} />
                 <div>
-                  <h1 className='text-black font-semibold'>Exfoliación facil</h1>
+                  <h1 className='text-black font-semibold'>Exfoliación fácil</h1>
                   <p className='text-gray-500'>Desde $20.000</p>
                 </div>
                 <div className='absolute'>

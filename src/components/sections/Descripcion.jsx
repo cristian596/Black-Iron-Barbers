@@ -1,8 +1,7 @@
-import React from 'react'
 import { TbCup } from "react-icons/tb";
 import { GiStarFormation } from "react-icons/gi";
 import { FaArrowRight } from "react-icons/fa6";
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 
 const Descripcion = () => {
     const navigate = useNavigate()
@@ -38,7 +37,7 @@ const Descripcion = () => {
                         </div>
                         <div className='py-4 group cursor-pointer'>
                             <GiStarFormation size={120} className='text-[#D4AF37]'/>
-                            <p className='text-xl py-2'>Atencion especializada profesional.</p>
+                            <p className='text-xl py-2'>Atención especializada profesional.</p>
                             <button
                             
                             className='hidden md:flex items-center justify-center gap-1 group border border-white cursor-pointer duration-300 rounded-xl px-2 py-1 font-bold active:scale-95 hover:text-[#D4AF37] hover:border-[#D4AF37]'>

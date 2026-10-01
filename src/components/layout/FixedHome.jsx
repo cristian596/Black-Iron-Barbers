@@ -1,6 +1,5 @@
-import React from 'react'
 import { IoHomeOutline } from "react-icons/io5";
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 
 const FixedHome = () => {
     const navigate = useNavigate()

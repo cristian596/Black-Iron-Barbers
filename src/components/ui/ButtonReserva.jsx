@@ -1,6 +1,5 @@
-import React from 'react'
 import { FaArrowRight } from "react-icons/fa";
-import { Navigate, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 
 const ButtonReserva = () => {
   const navigate = useNavigate()
