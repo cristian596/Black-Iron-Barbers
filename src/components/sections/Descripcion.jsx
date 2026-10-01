@@ -1,8 +1,7 @@
-import React from 'react'
 import { TbCup } from "react-icons/tb";
 import { GiStarFormation } from "react-icons/gi";
 import { FaArrowRight } from "react-icons/fa6";
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 
 const Descripcion = () => {
     const navigate = useNavigate()
@@ -10,7 +9,7 @@ const Descripcion = () => {
     <>
     <div className='relative bg-cover bg-center bg-no-repeat'
     style={{
-        backgroundImage:"url('https://images.unsplash.com/photo-1597299407241-638aa26e56c6?q=80&w=1157&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')"
+        backgroundImage:"url('/CourtMan/court_8.jpg')"
     }}>
         <div className='absolute inset-0 bg-black/70 backdrop-blur-[1px]'/>
             <div className='grid md:grid-cols-2 px-6 py-2'>
@@ -38,7 +37,7 @@ const Descripcion = () => {
                         </div>
                         <div className='py-4 group cursor-pointer'>
                             <GiStarFormation size={120} className='text-[#D4AF37]'/>
-                            <p className='text-xl py-2'>Atencion especializada profesional.</p>
+                            <p className='text-xl py-2'>Atención especializada profesional.</p>
                             <button
                             
                             className='hidden md:flex items-center justify-center gap-1 group border border-white cursor-pointer duration-300 rounded-xl px-2 py-1 font-bold active:scale-95 hover:text-[#D4AF37] hover:border-[#D4AF37]'>

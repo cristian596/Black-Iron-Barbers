@@ -4,13 +4,13 @@ import { CgArrowLongRightR } from "react-icons/cg";
 import { PiStarFourFill } from "react-icons/pi";
 
 
-const FixedFooter = () => {
 const prhases = [
   "LA CIENCIA DETRAS DE LA IMAGEN",
-  "SATIFACION GARANTIZADA O TE DEVOLVEMOS TU DINERO",
+  "SATISFACCIÓN GARANTIZADA O TE DEVOLVEMOS TU DINERO",
   "UNETE AL CLUB IRON"
 ]
 
+const FixedFooter = () => {
 const [currentSlider,setCurrentSlider] = useState(0)
 
     useEffect(()=>{

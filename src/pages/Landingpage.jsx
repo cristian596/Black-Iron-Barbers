@@ -1,10 +1,16 @@
-import React from 'react'
+import { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import NavBar from '../components/layout/NavBar';
 import Footer from '../components/layout/Footer';
 import FixedFooter from '../components/layout/FixedFooter';
 import FixedWhatsapp from '../components/layout/FixedWhatsapp';
 import FixedHome from '../components/layout/FixedHome';
+
+const CargandoPagina = () => (
+  <div className='flex justify-center items-center py-20'>
+    <div className='h-10 w-10 rounded-full border-4 border-gray-600 border-t-white animate-spin' />
+  </div>
+)
 
 
 const Landingpage = () => {
@@ -16,7 +22,9 @@ const Landingpage = () => {
       <NavBar/>
 
       <main>
-        <Outlet/>
+        <Suspense fallback={<CargandoPagina/>}>
+          <Outlet/>
+        </Suspense>
       </main>
 
     {/*Footer */}

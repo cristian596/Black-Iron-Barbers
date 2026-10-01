@@ -1,4 +1,3 @@
-import React from 'react'
 import { FaMapMarkerAlt, FaPhoneAlt, FaClock } from "react-icons/fa";
 
 const Ubicacion = () => {

@@ -1,4 +1,3 @@
-import React from 'react'
 import { Swiper,SwiperSlide } from 'swiper/react'
 import {Pagination,Autoplay } from 'swiper/modules'
 import { useRef } from "react";
@@ -54,6 +53,7 @@ const NuestrosColaboradores = () => {
               src={persona.image}
               alt={persona.nombre}
               className="w-full h-72 object-cover"
+              loading="lazy"
             />
 
             <div className="p-8 text-center">

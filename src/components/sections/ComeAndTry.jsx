@@ -1,4 +1,3 @@
-import React, { useState } from 'react'
 import ButtonReserva from '../ui/ButtonReserva'
 import { GiBeard } from "react-icons/gi";
 import { FaGlassMartiniAlt } from "react-icons/fa";
@@ -11,10 +10,10 @@ const ComeAndTry = () => {
         <div className='grid md:grid-cols-2 justify-center items-star p-10  text-black z-10 bg-linear-to-br from-[#111111] via-[#1a1a1a] to-black md:h-150'>
             <div className='flex items-center justify-center gap-3 md:pb-12'>
                 <div className='md:mx-12 '>
-                    <img className='size-100 rounded-xl' src="https://images.unsplash.com/photo-1635273051937-a0ddef9573b6?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Manue" />
+                    <img className='size-100 rounded-xl object-cover' src="/CourtMan/court_3.jpg" alt="Barbero realizando un corte de cabello en el local" loading="lazy" />
                 </div>
                 <div className='md:mx-12'>
-                    <img className='size-100  lg:relative top-25 right-40 rounded-xl' src="https://images.unsplash.com/photo-1598524374912-6b0b0bab43dd?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" alt="Alan" />
+                    <img className='size-100  lg:relative top-25 right-40 rounded-xl object-cover' src="/CourtMan/court_5.jpg" alt="Cliente recibiendo un servicio de barbería" loading="lazy" />
                 </div>
             </div>
 

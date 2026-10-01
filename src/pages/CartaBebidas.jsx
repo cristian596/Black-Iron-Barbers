@@ -1,15 +1,13 @@
-import React from 'react'
-
 const CartaBebidas = () => {
   return (
     <>
     <div className='grid md:grid-cols-2 bg-linear-to-br from-black/80 to-gray-400 justify-center'>
       <div className=''>
-        <img src="/Carta/cocktails.jpg" alt="" className='w-full h-full rounded-2xl'/>
+        <img src="/Carta/cocktails.jpg" alt="Selección de cócteles de la carta de bebidas" className='w-full h-full rounded-2xl' loading='lazy'/>
       </div>
 
-      <div> 
-        <img src="/Carta/drinks.jpg" alt="" className='w-full h-full rounded-2xl'/>
+      <div>
+        <img src="/Carta/drinks.jpg" alt="Selección de bebidas sin alcohol de la carta" className='w-full h-full rounded-2xl' loading='lazy'/>
       </div>
       
     </div>
