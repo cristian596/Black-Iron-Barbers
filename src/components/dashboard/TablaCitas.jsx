@@ -18,7 +18,7 @@ const TablaCitas = ({
     <>
       {/* Vista de tabla en escritorio */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full min-w-[640px] text-left text-sm text-white">
+        <table className="w-full min-w-160 text-left text-sm text-white">
           <thead>
             <tr className="border-b border-white/10 text-gray-400">
               <th className="py-2 pr-3 font-medium">Cliente</th>
@@ -96,8 +96,6 @@ const TablaCitas = ({
             mostrarBarbero={mostrarBarbero}
             onCompletar={onCompletar}
             onCancelar={onCancelar}
-            onReasignar={onReasignar}
-            barberosActivos={barberosActivos}
           />
         ))}
       </div>
