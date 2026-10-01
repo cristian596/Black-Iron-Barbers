@@ -106,6 +106,8 @@ src/
 - No reescribir el historial de git (`filter-repo`, `rebase` sobre commits ya pusheados) sin confirmación explícita.
 - No hacer commit de `.env` reales; solo `.env.example` con placeholders.
 - La contraseña de Postgres que estuvo en el repo público se considera comprometida: no reutilizarla.
+- No reescribas el historial de git ni hacer commits.
+- Si no tienes claro algun cambio, preguntame no inventes ni empiezes a divagar.
 
 ## Estado actual
 
@@ -125,3 +127,5 @@ src/
 - Verifica los permisos con pruebas reales (por ejemplo, que un barbero no pueda ver ni modificar citas de otro).
 - Si algo es ambiguo y no afecta seguridad ni arquitectura, elige la opción más estándar y continúa.
 - Si la decisión afecta seguridad, permisos, datos de la base o borra archivos, pregunta antes.
+- Siempre usar tailwind, nunca usar ccs puro ni crear archivos innecesarios.
+- Siempre trabajar pensando en que la pagina debe ser responsive, SIEMPRE.
