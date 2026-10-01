@@ -1,18 +1,20 @@
-import {createBrowserRouter} from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
+import { lazy } from 'react'
 
-import Home from '../pages/Home';
 import Landingpage from '../pages/Landingpage'
-import Galeria from '../pages/Galeria';
-import Ubicacion from '../pages/Ubicacion';
-import CartaBebidas from '../pages/CartaBebidas';
-import ReservaCorte from '../pages/ReservaCorte';
-import Cortes from '../pages/Cortes';
-import LoginBarberos from '../pages/LoginBarberos';
-import Panel from '../pages/Panel';
-import Admin from '../pages/Admin';
-import NotFound from '../pages/NotFound';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
+
+const Home = lazy(() => import('../pages/Home'));
+const Cortes = lazy(() => import('../pages/Cortes'));
+const Galeria = lazy(() => import('../pages/Galeria'));
+const Ubicacion = lazy(() => import('../pages/Ubicacion'));
+const CartaBebidas = lazy(() => import('../pages/CartaBebidas'));
+const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
+const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
+const Panel = lazy(() => import('../pages/Panel'));
+const Admin = lazy(() => import('../pages/Admin'));
+const NotFound = lazy(() => import('../pages/NotFound'));
 
 const AppRouter = createBrowserRouter([
   {
