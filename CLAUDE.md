@@ -15,6 +15,8 @@ Ya **no** se ofrecen servicios de mujer (uñas, pedicura, cortes de dama). Si ap
 
 - **Frontend:** React 19 + Vite + Tailwind CSS 4 + React Router 7 + Swiper + React Icons
 - **Backend:** Node.js + Express 5 + PostgreSQL 15 (`pg`) + `bcryptjs` + `jsonwebtoken`
+- **Tests:** Vitest + React Testing Library (front) · Vitest + Supertest (back, contra una base de pruebas aislada)
+- **CI:** GitHub Actions (`.github/workflows/ci.yml`) — lint, build y tests en cada push/PR
 - **Infra:** Docker Compose (backend + Postgres)
 
 ## Estructura
@@ -22,20 +24,22 @@ Ya **no** se ofrecen servicios de mujer (uñas, pedicura, cortes de dama). Si ap
 ```
 backend/
 ├── index.js            solo arranque del servidor
-├── app.js              express, cors, rutas, manejo de errores
+├── app.js              express, cors, rutas, manejo de errores (exporta crearApp() para tests)
 ├── config/env.js       valida variables de entorno al arrancar
 ├── db/                 connection.js, schema.sql, seed.js
 ├── routes/             auth, barberos, servicios, citas, admin
 ├── controllers/        lógica de cada ruta
-└── middlewares/        verificarToken, requiereRol, errorHandler, validate
+├── middlewares/        verificarToken, requiereRol, errorHandler, validate
+└── tests/              Vitest + Supertest; globalSetup crea/siembra black_iron_test
 public/                 imágenes estáticas
 src/
 ├── components/{layout,sections,ui}
 ├── context/            AuthContext
 ├── data/               datos estáticos (siempre arrays + .map())
 ├── pages/              una página por ruta (incluye Panel y Admin)
-├── routes/             AppRouter, ProtectedRoute, RoleRoute
-└── services/api.js     único lugar con llamadas HTTP
+├── routes/             AppRouter (con React.lazy + Suspense), ProtectedRoute, RoleRoute
+├── services/api.js     único lugar con llamadas HTTP
+└── tests/              Vitest + React Testing Library (mockean src/services/api.js)
 ```
 
 ## Comandos
@@ -45,7 +49,9 @@ src/
 | `npm run dev` | Frontend en desarrollo (puerto 5173) |
 | `npm run build` | Build de producción |
 | `npm run lint` | ESLint — correr SIEMPRE antes de dar una tarea por terminada |
+| `npm test` | Tests del front (Vitest + React Testing Library) |
 | `cd backend && npm start` | Levanta el backend (necesita Postgres) |
+| `cd backend && npm test` | Tests del back (Vitest + Supertest, usa `backend/.env.test`, nunca la base de desarrollo) |
 | `docker compose up --build` | Backend + Postgres juntos |
 
 ## Modelo de datos
@@ -103,10 +109,13 @@ src/
 
 ## Estado actual
 
-- Front-end visualmente avanzado pero **sin ninguna llamada a la API**; login y reserva sin lógica.
-- Back-end con solo `GET /` y creación de tablas en `index.js`.
-- Pendiente eliminar todo lo relacionado con servicios de mujer (datos, secciones, fotos y carpetas `CourtWoman`, `Nails`, `NailsThematic`, `Pedicura`).
-- Pendiente: 36 errores de ESLint, `Cortes.jsx` y `Galeria.jsx` con JSX repetido, `App.jsx` sin uso, rutas `galery`/`ubication`, `logo.png` de 1.2 MB, sin tests ni CI.
+- Front-end conectado a la API (login, reserva, paneles de barbero y admin) y back-end completo (auth, citas, admin).
+- Rutas renombradas: `/galeria` y `/ubicacion` (ya no existen `/galery` ni `/ubication`).
+- `Cortes.jsx` y `Galeria.jsx` sin JSX repetido: `Cortes.jsx` lee de `GET /api/servicios`, `Galeria.jsx` usa `src/data/galeria.js` + `.map()`.
+- ESLint en 0 errores/warnings; `App.jsx` eliminado; todo unificado en `react-router-dom`.
+- Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.
+- Tests (front y back) y CI en GitHub Actions ya configurados.
+- Pendiente: desplegar a producción (ver sección "Después: despliegue" en `checklist-sesiones.md`); revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
 - El plan completo por sesiones está en `checklist-sesiones.md`.
 
 ## Cómo trabajar en este repo

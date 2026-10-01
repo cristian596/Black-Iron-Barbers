@@ -1,16 +1,66 @@
-# React + Vite
+# Black Iron Barbers
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sitio web de una barbería: catálogo de servicios, galería, carta de bebidas,
+ubicación, reserva de citas online y dos paneles privados (barbero y
+administrador).
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** React 19 + Vite + Tailwind CSS 4 + React Router 7 + Swiper + React Icons
+- **Backend:** Node.js + Express 5 + PostgreSQL 15 (`pg`) + `bcryptjs` + `jsonwebtoken`
+- **Tests:** Vitest + React Testing Library (front) · Vitest + Supertest (back)
+- **CI:** GitHub Actions (lint, build y tests en cada push/PR)
+- **Infra:** Docker Compose (backend + Postgres)
 
-## React Compiler
+## Requisitos
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Node.js 20+
+- Docker (para levantar Postgres y el backend con `docker compose`)
 
-## Expanding the ESLint configuration
+## Puesta en marcha
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+# Variables de entorno (nunca commitear el .env real)
+cp .env.example .env
+
+# Frontend
+npm install
+npm run dev          # http://localhost:5173
+
+# Backend + Postgres
+docker compose up --build
+```
+
+## Scripts del frontend
+
+| Comando | Qué hace |
+|---|---|
+| `npm run dev` | Servidor de desarrollo (puerto 5173) |
+| `npm run build` | Build de producción |
+| `npm run lint` | ESLint — debe dar 0 errores |
+| `npm test` | Tests con Vitest + React Testing Library |
+
+## Scripts del backend (`cd backend`)
+
+| Comando | Qué hace |
+|---|---|
+| `npm start` | Levanta el servidor (necesita Postgres) |
+| `npm run seed` | Siembra barberos, servicios y el admin inicial |
+| `npm test` | Tests con Vitest + Supertest contra una base de pruebas aislada |
+
+Para correr `npm test` en local, copia `backend/.env.test.example` a
+`backend/.env.test` y pon ahí tus credenciales locales de Postgres. El
+`DB_NAME` de ese archivo **debe ser distinto** al de desarrollo (por
+ejemplo `black_iron_test`): los tests crean esa base, le aplican el
+esquema y la limpian antes de cada corrida, sin tocar la base real.
+
+## Rutas principales
+
+`/`, `/cortes`, `/galeria`, `/ubicacion`, `/reservar-corte`,
+`/carta-bebidas`, `/login-barberos`, `/panel` (barbero) y `/admin`
+(administrador).
+
+## Más contexto
+
+Ver [CLAUDE.md](./CLAUDE.md) para el modelo de datos, la API, las
+convenciones de código y las reglas de seguridad del proyecto.
