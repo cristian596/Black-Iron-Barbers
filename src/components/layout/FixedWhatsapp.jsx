@@ -24,7 +24,7 @@ const FixedWhatsapp = () => {
       }`}>
           <div className='flex flex-col'>
             <div className='bg-green-400 flex justify-between gap-2 p-3 items-center'>
-              <img src={logo} alt="logo" className='w-11 h-14 rounded-2xl'/>
+              <img src={logo} alt="Logo de Black Iron Barbers" className='w-11 h-14 rounded-2xl'/>
               <p>¡Hola bienvenid@ a Black Iron Barbers!</p>
             </div>
             <div className='p-3 flex justify-center flex-col gap-3'>
