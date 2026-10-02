@@ -5,7 +5,6 @@ import { IoCloseOutline } from "react-icons/io5";
 import { IoMdMenu } from "react-icons/io";
 import { useState } from 'react';
 import { ImScissors } from "react-icons/im";
-import { GrGallery } from "react-icons/gr";
 import { FaMapMarkedAlt } from "react-icons/fa";
 import { IoIosHome } from "react-icons/io";
 
@@ -45,14 +44,6 @@ const NavBar = () => {
           >
           <ImScissors />  Servicios
           </NavLink>
-
-          <NavLink
-            to="/galeria"
-            className="text-gray-400 hover:text-white  lg:text-xl flex items-center gap-2 active:scale-90 duration-200"
-          >
-            <GrGallery /> Galeria
-          </NavLink>
-
 
           <NavLink
             to="/ubicacion"
@@ -136,15 +127,6 @@ const NavBar = () => {
         >
          <ImScissors />  Servicios
         </NavLink>
-
-        <NavLink
-          to="/galeria"
-          onClick={() => setMenuMovil(false)}
-          className="text-3xl font-bold text-white active:scale-95 duration-200 flex  items-center gap-2"
-        >
-         <GrGallery /> Galeria
-        </NavLink>
-
 
         <NavLink
           to="/ubicacion"

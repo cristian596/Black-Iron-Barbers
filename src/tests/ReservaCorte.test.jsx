@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
@@ -35,7 +36,7 @@ describe('ReservaCorte', () => {
   it('envia la reserva con los datos correctos y muestra la confirmacion', async () => {
     crearCita.mockResolvedValueOnce({ id: 1, estado: 'pendiente' })
     const user = userEvent.setup()
-    render(<ReservaCorte />)
+    render(<ReservaCorte />, { wrapper: MemoryRouter })
 
     await screen.findByRole('button', { name: /corte clasico/i })
     await completarFormulario(user)
@@ -57,7 +58,7 @@ describe('ReservaCorte', () => {
     errorConflicto.status = 409
     crearCita.mockRejectedValueOnce(errorConflicto)
     const user = userEvent.setup()
-    render(<ReservaCorte />)
+    render(<ReservaCorte />, { wrapper: MemoryRouter })
 
     await screen.findByRole('button', { name: /corte clasico/i })
     await completarFormulario(user)

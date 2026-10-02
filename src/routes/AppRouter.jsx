@@ -8,7 +8,6 @@ import CargandoPagina from '../components/ui/CargandoPagina';
 
 const Home = lazy(() => import('../pages/Home'));
 const Cortes = lazy(() => import('../pages/Cortes'));
-const Galeria = lazy(() => import('../pages/Galeria'));
 const Ubicacion = lazy(() => import('../pages/Ubicacion'));
 const CartaBebidas = lazy(() => import('../pages/CartaBebidas'));
 const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
@@ -29,10 +28,6 @@ const AppRouter = createBrowserRouter([
       {
         path: 'cortes',
         element: <Cortes/>
-      },
-      {
-        path: 'galeria',
-        element: <Galeria />
       },
       {
         path: 'ubicacion',

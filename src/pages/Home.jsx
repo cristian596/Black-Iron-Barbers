@@ -1,19 +1,23 @@
-import Promos from '../components/sections/Promos';
+import Hero from '../components/sections/Hero';
+import ReservaATuManera from '../components/sections/ReservaATuManera';
 import Descripcion from '../components/sections/Descripcion';
+import CatalogoServicios from '../components/sections/CatalogoServicios';
+import NuestrosColaboradores from '../components/sections/NuestrosColaboradores';
 import Agendarcita from '../components/sections/Agendarcita';
 import ComeAndTry from '../components/sections/ComeAndTry';
 import NuestrosServicos from '../components/sections/NuestrosServicos';
-import NuestrosColaboradores from '../components/sections/NuestrosColaboradores';
 
 const Home = () => {
   return (
     <>
-      <Promos />
+      <Hero />
+      <ReservaATuManera />
       <Descripcion />
+      <CatalogoServicios />
+      <NuestrosColaboradores />
       <Agendarcita />
       <ComeAndTry />
-      <NuestrosServicos/>
-      <NuestrosColaboradores/>
+      <NuestrosServicos />
     </>
   );
 };

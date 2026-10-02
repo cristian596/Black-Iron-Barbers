@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const ReservaCorte = () => {
+  const [searchParams] = useSearchParams()
+  const servicioPreseleccionado = searchParams.get('servicio')
+  const barberoPreseleccionado = searchParams.get('barbero')
+
   const [cliente, setCliente] = useState('')
   const [correo, setCorreo] = useState('')
-  const [servicioId, setServicioId] = useState('')
-  const [barberoId, setBarberoId] = useState('')
+  const [servicioId, setServicioId] = useState(servicioPreseleccionado ? Number(servicioPreseleccionado) : '')
+  const [barberoId, setBarberoId] = useState(barberoPreseleccionado ? Number(barberoPreseleccionado) : '')
   const [fecha, setFecha] = useState('')
   const [hora, setHora] = useState('')
   const fechaHoy = new Date().toISOString().split('T')[0]
