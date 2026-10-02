@@ -18,7 +18,7 @@ const ComeAndTry = () => {
             </div>
 
             <div className='z-10 gap-3 flex flex-col text-white justify-center'>
-                <h1 className='font-semibold tracking-wide text-xl'>COME AND TRY</h1>
+                <h2 className='font-semibold tracking-wide text-xl'>COME AND TRY</h2>
                 <h2 className='text-4xl md:text-6xl font-semibold tracking-wide'>Somos expertos en el cuidado del hombre</h2>
                 <p className='text-xl tracking-wide'>Ven y sorprendente de cada detalle que tenemos preparado para ti, cada momento junto a nosotros es único.</p>
                 <ul className='flex flex-col'>

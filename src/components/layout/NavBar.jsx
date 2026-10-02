@@ -1,156 +1,195 @@
-import { Link, NavLink, useNavigate } from 'react-router-dom'
-import { RiScissorsCutFill } from "react-icons/ri";
-import { FaArrowRight } from "react-icons/fa";
-import { IoCloseOutline } from "react-icons/io5";
-import { IoMdMenu } from "react-icons/io";
-import { useState } from 'react';
-import { ImScissors } from "react-icons/im";
-import { FaMapMarkedAlt } from "react-icons/fa";
-import { IoIosHome } from "react-icons/io";
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink } from 'react-router-dom'
+import { RiScissorsCutFill } from 'react-icons/ri'
+import { FaArrowRight, FaMapMarkedAlt } from 'react-icons/fa'
+import { IoCloseOutline } from 'react-icons/io5'
+import { IoMdMenu } from 'react-icons/io'
+import { ImScissors } from 'react-icons/im'
+import { IoIosHome } from 'react-icons/io'
+
+const UMBRAL_SCROLL = 24
+
+const enlaces = [
+  { to: '/', texto: 'Inicio', Icono: IoIosHome, end: true },
+  { to: '/cortes', texto: 'Servicios', Icono: ImScissors },
+  { to: '/ubicacion', texto: 'Ubicaciones', Icono: FaMapMarkedAlt },
+]
+
+const foco =
+  'focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-oro'
 
 const NavBar = () => {
-    const [menuMovil, setMenuMovil] = useState(false)
-    const navigate = useNavigate()
+  const [menuMovil, setMenuMovil] = useState(false)
+  const [conScroll, setConScroll] = useState(false)
+  const botonRef = useRef(null)
+
+  useEffect(() => {
+    const actualizar = () => setConScroll(window.scrollY > UMBRAL_SCROLL)
+    actualizar()
+    window.addEventListener('scroll', actualizar, { passive: true })
+    return () => window.removeEventListener('scroll', actualizar)
+  }, [])
+
+  useEffect(() => {
+    if (!menuMovil) return
+
+    const alTeclear = (e) => {
+      if (e.key === 'Escape') {
+        setMenuMovil(false)
+        botonRef.current?.focus()
+      }
+    }
+    const alRedimensionar = () => {
+      if (window.innerWidth >= 768) setMenuMovil(false)
+    }
+
+    const overflowPrevio = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', alTeclear)
+    window.addEventListener('resize', alRedimensionar)
+
+    return () => {
+      document.body.style.overflow = overflowPrevio
+      document.removeEventListener('keydown', alTeclear)
+      window.removeEventListener('resize', alRedimensionar)
+    }
+  }, [menuMovil])
+
+  const cerrarMenu = () => setMenuMovil(false)
+
+  const claseEnlace = (activo, base) =>
+    `${base} ${foco} ${activo ? 'text-oro' : 'text-zinc-300 hover:text-white'}`
 
   return (
     <>
-      <nav className='flex justify-between items-center py-3 px-5 bg-[#1a1a1a] text-white relative z-100 border-gray-600 border-b '>
-
-        {/* Logo */}
-        <div className='group flex items-center gap-2 font-semibold'>
-          
-          <RiScissorsCutFill
-            className='bg-[#f7f4ef] text-black rounded-full p-1 group-hover:cursor-pointer'
-            size={28}
-          />
-
-          <Link to='/' className='group-hover:cursor-pointer'>
+      <header
+        data-scrolled={conScroll}
+        className={`${
+          menuMovil ? 'fixed inset-x-0' : 'sticky'
+        } top-0 ${menuMovil ? 'z-70' : 'z-50'} border-b transition-colors duration-300 text-white ${
+          conScroll
+            ? 'bg-black/70 backdrop-blur-md border-oro/30'
+            : 'bg-black/90 border-white/10'
+        }`}
+      >
+        <nav
+          aria-label='Principal'
+          className='flex justify-between items-center py-3 px-5 max-w-7xl mx-auto'
+        >
+          <Link
+            to='/'
+            onClick={cerrarMenu}
+            className={`flex items-center gap-2 font-semibold rounded ${foco}`}
+          >
+            <RiScissorsCutFill
+              aria-hidden='true'
+              className='bg-[#f7f4ef] text-black rounded-full p-1'
+              size={28}
+            />
             Black Iron Barbers
           </Link>
 
-        </div>
+          {/* Escritorio y tablet */}
+          <div className='hidden md:flex md:gap-8 lg:gap-10 items-center'>
+            {enlaces.map(({ to, texto, Icono, end }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={end}
+                className={({ isActive }) =>
+                  `${claseEnlace(isActive, 'relative py-1 lg:text-lg flex items-center gap-2 duration-200 active:scale-95')} ${
+                    isActive
+                      ? 'after:absolute after:left-0 after:right-0 after:-bottom-0.5 after:h-0.5 after:bg-oro'
+                      : ''
+                  }`
+                }
+              >
+                <Icono aria-hidden='true' />
+                {texto}
+              </NavLink>
+            ))}
 
-        {/* Desktop */}
-        <div className='hidden md:flex md:gap-8 lg:gap-10 items-center'>
-          <NavLink
-            to="/"
-            className="text-gray-400 hover:text-white lg:text-xl flex items-center gap-2 active:scale-90 duration-200" 
-          >
-          <IoIosHome />  Inicio
-          </NavLink>
-          <NavLink
-            to="/cortes"
-            className="text-gray-400 hover:text-white  lg:text-xl flex items-center gap-2 active:scale-90 duration-200" 
-          >
-          <ImScissors />  Servicios
-          </NavLink>
-
-          <NavLink
-            to="/ubicacion"
-            className="text-gray-400 hover:text-white  lg:text-xl flex items-center gap-2 active:scale-90 duration-200"
-          >
-            <FaMapMarkedAlt />Ubicaciones
-          </NavLink>
-
-          <button
-          onClick={()=> navigate("/reservar-corte")}
-          className='group flex items-center gap-2 bg-black text-white rounded-full px-4 py-2 hover:cursor-pointer border border-white/10 duration-300 active:scale-95'>
-            
-            <span>
+            <Link
+              to='/reservar-corte'
+              className={`group flex items-center gap-2 bg-oro text-black font-semibold rounded-full px-5 py-2 hover:bg-[#e2bc58] duration-300 active:scale-95 ${foco}`}
+            >
               Agendar
-            </span>
-
-            <span className='ml-0 w-0 overflow-hidden opacity-0 duration-300 group-hover:ml-1 group-hover:w-4 group-hover:opacity-100 '>
-              <FaArrowRight size={14}/>
-            </span>
-
-          </button>
-
-        </div>
-
-        {/* Botón móvil */}
-        <div
-          className='md:hidden cursor-pointer z-50'
-          onClick={() => setMenuMovil(!menuMovil)}
-        >
-
-          <div
-            className={`transition-all duration-500 ease-in-out ${
-              menuMovil
-                ? 'rotate-180 scale-110'
-                : 'rotate-0 scale-100'
-            }`}
-          >
-
-            {
-              menuMovil
-                ? <IoCloseOutline size={32}/>
-                : <IoMdMenu size={32}/>
-            }
-
+              <span
+                aria-hidden='true'
+                className='w-0 ml-0 overflow-hidden opacity-0 duration-300 group-hover:ml-1 group-hover:w-4 group-hover:opacity-100 group-focus-visible:ml-1 group-focus-visible:w-4 group-focus-visible:opacity-100'
+              >
+                <FaArrowRight size={14} />
+              </span>
+            </Link>
           </div>
 
-        </div>
+          {/* Botón móvil */}
+          <button
+            ref={botonRef}
+            type='button'
+            aria-label={menuMovil ? 'Cerrar menú' : 'Abrir menú'}
+            aria-expanded={menuMovil}
+            aria-controls='menu-movil'
+            onClick={() => setMenuMovil((abierto) => !abierto)}
+            className={`md:hidden p-1 rounded cursor-pointer ${foco}`}
+          >
+            <span
+              className={`block transition-transform duration-300 motion-reduce:transition-none ${
+                menuMovil ? 'rotate-90' : 'rotate-0'
+              }`}
+            >
+              {menuMovil ? (
+                <IoCloseOutline size={32} aria-hidden='true' />
+              ) : (
+                <IoMdMenu size={32} aria-hidden='true' />
+              )}
+            </span>
+          </button>
+        </nav>
+      </header>
 
-      </nav>
-
-      {/* MENU MOVIL */}
-      <div
-        className={`
-          fixed top-0 left-0 w-full min-h-dvh
-          bg-[#1a1a1a]/95 backdrop-blur-md
-          flex flex-col items-center justify-center gap-10 overflow-hidden
-          md:hidden 
-          transition-all duration-500 ease-in-out
-          z-90 bg-cover bg-center bg-no-repeat
-          ${
-            menuMovil
-              ? 'translate-y-0 opacity-100'
-              : '-translate-y-full opacity-0 pointer-events-none'
-          }
-        `}
+      {/* Menú móvil: hermano del header para que el blur no altere su posición fija */}
+      <nav
+        id='menu-movil'
+        aria-label='Menú móvil'
+        inert={!menuMovil}
+        className={`fixed inset-0 z-60 md:hidden flex flex-col items-center justify-center gap-10 bg-cover bg-center transition-all duration-300 motion-reduce:transition-none ${
+          menuMovil
+            ? 'translate-y-0 opacity-100 visible'
+            : '-translate-y-full opacity-0 invisible'
+        }`}
         style={{
-          backgroundImage:"url('/CourtMan/court_1.jpg')"
+          backgroundImage:
+            'linear-gradient(rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.85)), url(/CourtMan/court_1.jpg)',
         }}
       >
-        <NavLink
-            to="/"
-            onClick={()=> setMenuMovil(false)}
-            className="text-3xl font-bold text-white active:scale-95 duration-200 flex  items-center gap-2" 
+        {enlaces.map(({ to, texto, Icono, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            onClick={cerrarMenu}
+            className={({ isActive }) =>
+              claseEnlace(
+                isActive,
+                'text-3xl font-bold flex items-center gap-2 active:scale-95 duration-200'
+              )
+            }
           >
-          <IoIosHome />  Inicio
+            <Icono aria-hidden='true' />
+            {texto}
           </NavLink>
-        <NavLink
-          to="/cortes"
-          onClick={() => setMenuMovil(false)}
-          className="text-3xl font-bold text-white active:scale-95 duration-200 flex  items-center gap-2"
-        >
-         <ImScissors />  Servicios
-        </NavLink>
+        ))}
 
-        <NavLink
-          to="/ubicacion"
-          onClick={() => setMenuMovil(false)}
-          className="text-3xl font-bold text-white active:scale-95 duration-200 flex  items-center gap-2"
+        <Link
+          to='/reservar-corte'
+          onClick={cerrarMenu}
+          className={`flex items-center gap-2 bg-oro text-black rounded-full px-8 py-3 font-bold active:scale-95 duration-200 shadow-2xl ${foco}`}
         >
-          <FaMapMarkedAlt />Ubicaciones
-        </NavLink>
-
-        <button  
-        onClick={()=>{
-          setMenuMovil(false);
-          navigate("/reservar-corte")
-        }}
-        className='flex items-center gap-2 bg-white border border-amber-500 text-black rounded-full px-7 py-3 font-bold active:scale-95 duration-200 shadow-2xl'>
-          
           Agendar
-
-          <FaArrowRight/>
-
-        </button>
-
-      </div>
-
+          <FaArrowRight aria-hidden='true' />
+        </Link>
+      </nav>
     </>
   )
 }

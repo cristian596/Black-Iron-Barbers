@@ -14,7 +14,7 @@ const Descripcion = () => {
         <div className='absolute inset-0 bg-black/70 backdrop-blur-[1px]'/>
             <div className='grid md:grid-cols-2 px-6 py-2'>
                 <div className='z-10 flex flex-col justify-center items-center'>
-                    <h1 className='text-white text-3xl font-semibold md:text-5xl md: justify-between'>Black Iron Barber</h1>
+                    <h2 className='text-white text-3xl font-semibold md:text-5xl md: justify-between'>Black Iron Barber</h2>
                     <div className='text-white grid grid-cols-2 gap-6'>
                         <div className='py-4 group cursor-pointer'>
                             <TbCup size={120} className='text-[#D4AF37]'/>

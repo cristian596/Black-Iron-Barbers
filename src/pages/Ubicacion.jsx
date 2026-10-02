@@ -5,9 +5,9 @@ const Ubicacion = () => {
     <>
     <div>
       <section className="bg-gray-200 py-10">
-        <h2 className="font-bebas text-6xl text-center  lg:text-9xl ">
+        <h1 className="font-bebas text-6xl text-center  lg:text-9xl ">
           Nuestra Ubicacion
-        </h2>
+        </h1>
 
         <div className="grid grid-cols-1  md:grid-cols-3 lg:grid-cols-3 mx-10">
           <div className='col-span-2 flex justify-center items-center'>

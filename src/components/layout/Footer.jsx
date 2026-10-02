@@ -7,7 +7,7 @@ const Footer = () => {
     <>
     <div className='bg-[#141414] text-white'>
       <div className='flex gap-2 p-2 flex-col'>
-        <h1 className='flex justify-center text-3xl text-[#c5a54b]'>"No es solo un corte. Es tu firma."</h1>
+        <p className='flex justify-center text-3xl text-[#c5a54b]'>"No es solo un corte. Es tu firma."</p>
         <div className='flex  justify-center items-center gap-10 cursor-pointer'>
           <FaFacebookF size={34} className='border p-1 rounded-xl border-gray-600 cursor-pointer active:scale-95 duration-200 active:text-white hover:text-blue-600 md:size-12'/>
           <FaInstagram size={34} className='border p-1 rounded-xl border-gray-600 cursor-pointer active:scale-95 duration-200 active:text-white hover:text-violet-600 md:size-12'/>
