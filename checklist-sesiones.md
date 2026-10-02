@@ -8,7 +8,7 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
 - **Cada barbero tiene su propio login** y existe un **login de administrador** aparte.
 - El **administrador crea el usuario y la contraseña** de cada barbero. No hay registro público.
 - **Dos dashboards**: `/panel` para el barbero (solo sus citas) y `/admin` para el administrador (todas las citas, pendientes y realizadas, con el barbero a cargo).
-- Un solo login (`/login-barberos`); el frontend redirige según el rol del JWT.
+- Un solo login (`/acceso`); el frontend redirige según el rol del JWT. La ruta no tiene enlaces públicos (no aparece en el menú), lleva `noindex, nofollow` y está bloqueada en `robots.txt` junto con `/panel` y `/admin`.
 
 ## Lo que se corrige (resumen)
 

@@ -5,13 +5,7 @@ import Footer from '../components/layout/Footer';
 import FixedFooter from '../components/layout/FixedFooter';
 import FixedWhatsapp from '../components/layout/FixedWhatsapp';
 import FixedHome from '../components/layout/FixedHome';
-
-const CargandoPagina = () => (
-  <div className='flex justify-center items-center py-20'>
-    <div className='h-10 w-10 rounded-full border-4 border-gray-600 border-t-white animate-spin' />
-  </div>
-)
-
+import CargandoPagina from '../components/ui/CargandoPagina';
 
 const Landingpage = () => {
   return (

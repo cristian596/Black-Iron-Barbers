@@ -10,7 +10,7 @@ const RoleRoute = ({ rol, children }) => {
   const { usuario } = useAuth()
 
   if (usuario?.rol !== rol) {
-    return <Navigate to={DASHBOARD_POR_ROL[usuario?.rol] ?? '/login-barberos'} replace />
+    return <Navigate to={DASHBOARD_POR_ROL[usuario?.rol] ?? '/acceso'} replace />
   }
 
   return children

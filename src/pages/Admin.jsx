@@ -14,6 +14,7 @@ import {
 import TablaCitas from '../components/dashboard/TablaCitas'
 import FiltrosCitas from '../components/dashboard/FiltrosCitas'
 import CambiarContrasena from '../components/dashboard/CambiarContrasena'
+import NoIndex from '../components/ui/NoIndex'
 
 const PESTANAS = [
   { id: 'citas', label: 'Citas' },
@@ -43,10 +44,12 @@ const Admin = () => {
 
   const cerrarSesion = () => {
     logout()
-    navigate('/login-barberos')
+    navigate('/acceso')
   }
 
   return (
+    <>
+    <NoIndex />
     <div className="min-h-screen bg-black px-4 py-10 text-white sm:px-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-10">
         <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -92,6 +95,7 @@ const Admin = () => {
         <CambiarContrasena token={token} />
       </div>
     </div>
+    </>
   )
 }
 

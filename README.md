@@ -57,7 +57,8 @@ esquema y la limpian antes de cada corrida, sin tocar la base real.
 ## Rutas principales
 
 `/`, `/cortes`, `/galeria`, `/ubicacion`, `/reservar-corte`,
-`/carta-bebidas`, `/login-barberos`, `/panel` (barbero) y `/admin`
+`/carta-bebidas`, `/acceso` (login de barberos/admin, sin enlaces
+públicos y con `noindex`), `/panel` (barbero) y `/admin`
 (administrador).
 
 ## Más contexto

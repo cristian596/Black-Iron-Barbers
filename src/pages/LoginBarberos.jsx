@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { login as loginRequest } from '../services/api'
 import { useAuth } from '../context/AuthContext'
+import NoIndex from '../components/ui/NoIndex'
 
 const LoginBarberos = () => {
   const [usuario, setUsuario] = useState('')
@@ -9,7 +10,13 @@ const LoginBarberos = () => {
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState('')
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { usuario: usuarioActivo, login } = useAuth()
+
+  useEffect(() => {
+    if (usuarioActivo) {
+      navigate(usuarioActivo.rol === 'admin' ? '/admin' : '/panel', { replace: true })
+    }
+  }, [usuarioActivo, navigate])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -34,6 +41,7 @@ const LoginBarberos = () => {
 
   return (
     <>
+    <NoIndex />
     <div className='flex flex-col justify-center items-center  bg-[#000000]'>
         <img src="/Login/logo.jpg" alt="Logo de Black Iron Barbers" className='flex justify-center items-center w-80 md:w-100'/>
         <div>

@@ -5,6 +5,7 @@ import { obtenerCitas, actualizarCita } from '../services/api'
 import TablaCitas from '../components/dashboard/TablaCitas'
 import FiltrosCitas from '../components/dashboard/FiltrosCitas'
 import CambiarContrasena from '../components/dashboard/CambiarContrasena'
+import NoIndex from '../components/ui/NoIndex'
 import { hoyISO } from '../utils/formato'
 
 const Panel = () => {
@@ -88,7 +89,7 @@ const Panel = () => {
 
   const cerrarSesion = () => {
     logout()
-    navigate('/login-barberos')
+    navigate('/acceso')
   }
 
   const pendientes = citas.filter((c) => c.estado === 'pendiente')
@@ -96,6 +97,8 @@ const Panel = () => {
   const canceladas = citas.filter((c) => c.estado === 'cancelada')
 
   return (
+    <>
+    <NoIndex />
     <div className="min-h-screen bg-black px-4 py-10 text-white sm:px-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-10">
         <header className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -197,6 +200,7 @@ const Panel = () => {
         <CambiarContrasena token={token} />
       </div>
     </div>
+    </>
   )
 }
 

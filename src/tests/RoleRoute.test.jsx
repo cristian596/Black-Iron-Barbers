@@ -21,7 +21,7 @@ const renderConRol = (rolUsuario, rolRequerido) =>
           }
         />
         <Route path="/panel" element={<p>Panel de barbero</p>} />
-        <Route path="/login-barberos" element={<p>Login</p>} />
+        <Route path="/acceso" element={<p>Login</p>} />
       </Routes>
     </MemoryRouter>
   )

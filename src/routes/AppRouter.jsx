@@ -1,9 +1,10 @@
 import { createBrowserRouter } from 'react-router-dom'
-import { lazy } from 'react'
+import { Suspense, lazy } from 'react'
 
 import Landingpage from '../pages/Landingpage'
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
+import CargandoPagina from '../components/ui/CargandoPagina';
 
 const Home = lazy(() => import('../pages/Home'));
 const Cortes = lazy(() => import('../pages/Cortes'));
@@ -46,34 +47,38 @@ const AppRouter = createBrowserRouter([
         element: <CartaBebidas />
       },
       {
-        path: 'login-barberos',
+        path: 'acceso',
         element: <LoginBarberos/>
-      },
-      {
-        path: 'panel',
-        element: (
-          <ProtectedRoute>
-            <RoleRoute rol="barbero">
-              <Panel/>
-            </RoleRoute>
-          </ProtectedRoute>
-        )
-      },
-      {
-        path: 'admin',
-        element: (
-          <ProtectedRoute>
-            <RoleRoute rol="admin">
-              <Admin/>
-            </RoleRoute>
-          </ProtectedRoute>
-        )
       },
       {
         path: '*',
         element: <NotFound />
       },
     ]
+  },
+  {
+    path: 'panel',
+    element: (
+      <Suspense fallback={<CargandoPagina/>}>
+        <ProtectedRoute>
+          <RoleRoute rol="barbero">
+            <Panel/>
+          </RoleRoute>
+        </ProtectedRoute>
+      </Suspense>
+    )
+  },
+  {
+    path: 'admin',
+    element: (
+      <Suspense fallback={<CargandoPagina/>}>
+        <ProtectedRoute>
+          <RoleRoute rol="admin">
+            <Admin/>
+          </RoleRoute>
+        </ProtectedRoute>
+      </Suspense>
+    )
   }
 ]);
 

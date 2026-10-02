@@ -14,9 +14,9 @@ vi.mock('../services/api', () => ({
 const renderLogin = () =>
   render(
     <AuthProvider>
-      <MemoryRouter initialEntries={['/login-barberos']}>
+      <MemoryRouter initialEntries={['/acceso']}>
         <Routes>
-          <Route path="/login-barberos" element={<LoginBarberos />} />
+          <Route path="/acceso" element={<LoginBarberos />} />
           <Route path="/admin" element={<p>Panel de administrador</p>} />
           <Route path="/panel" element={<p>Panel de barbero</p>} />
         </Routes>

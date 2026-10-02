@@ -13,7 +13,7 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!usuario) {
-    return <Navigate to="/login-barberos" replace />
+    return <Navigate to="/acceso" replace />
   }
 
   return children
