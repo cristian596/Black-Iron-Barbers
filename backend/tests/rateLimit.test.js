@@ -36,7 +36,6 @@ describe('Rate limiting en POST /api/citas', () => {
     const respuestas = [];
     for (let i = 0; i < 5; i += 1) {
       // Horas distintas para que lo que limite sea el rate limit y no un 409 de negocio.
-      // eslint-disable-next-line no-await-in-loop
       const hora = String(9 + i).padStart(2, '0') + ':00';
       const res = await request(app).post('/api/citas').send(citaDePrueba({ hora }));
       respuestas.push(res.status);

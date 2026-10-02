@@ -59,8 +59,13 @@ export const obtenerBarberos = () => request('/barberos');
 
 export const obtenerServicios = () => request('/servicios');
 
-export const obtenerDisponibilidad = (barberoId, fecha) =>
-  request(`/disponibilidad?barbero=${barberoId}&fecha=${fecha}`);
+export const obtenerDisponibilidad = (servicioId, fecha, barberoId) => {
+  const params = new URLSearchParams({ servicio: servicioId, fecha });
+  if (barberoId !== null && barberoId !== undefined && barberoId !== '') {
+    params.set('barbero', barberoId);
+  }
+  return request(`/disponibilidad?${params.toString()}`);
+};
 
 export const crearCita = (cita) =>
   request('/citas', {

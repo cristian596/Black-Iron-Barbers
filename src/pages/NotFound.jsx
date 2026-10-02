@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 const NotFound = () => {
   return (
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-5 text-center">
-      <h1 className="font-cinzel text-6xl font-bold text-mauve-800">404</h1>
-      <p className="font-poppins text-xl text-mauve-700">
+      <h1 className="font-cinzel text-6xl font-bold text-black">404</h1>
+      <p className="font-poppins text-xl text-zinc-700">
         La página que buscas no existe.
       </p>
       <Link

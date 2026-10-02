@@ -1,43 +1,55 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useReducer, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
+import { obtenerServicios, obtenerBarberos, crearCita } from '../services/api'
+import IndicadorProgreso from '../components/sections/reserva/IndicadorProgreso'
+import PasoServicio from '../components/sections/reserva/PasoServicio'
+import PasoBarbero from '../components/sections/reserva/PasoBarbero'
+import PasoFechaHora from '../components/sections/reserva/PasoFechaHora'
+import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
+import PantallaExito from '../components/sections/reserva/PantallaExito'
+import ResumenReserva from '../components/sections/reserva/ResumenReserva'
+import { PASOS_RESERVA } from '../components/sections/reserva/pasos'
+import { reservaReducer, estadoInicialReserva } from '../components/sections/reserva/reservaReducer'
 
-const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const pasoCompleto = (estado) => {
+  switch (estado.paso) {
+    case 'servicio':
+      return Boolean(estado.servicioId)
+    case 'barbero':
+      return true // "Cualquier barbero" (null) ya es una elección válida
+    case 'fecha-hora':
+      return Boolean(estado.fecha && estado.hora)
+    default:
+      return false
+  }
+}
 
 const ReservaCorte = () => {
   const [searchParams] = useSearchParams()
-  const servicioPreseleccionado = searchParams.get('servicio')
-  const barberoPreseleccionado = searchParams.get('barbero')
+  const servicioInicial = searchParams.get('servicio')
+  const barberoInicial = searchParams.get('barbero')
 
-  const [cliente, setCliente] = useState('')
-  const [correo, setCorreo] = useState('')
-  const [servicioId, setServicioId] = useState(servicioPreseleccionado ? Number(servicioPreseleccionado) : '')
-  const [barberoId, setBarberoId] = useState(barberoPreseleccionado ? Number(barberoPreseleccionado) : '')
-  const [fecha, setFecha] = useState('')
-  const [hora, setHora] = useState('')
-  const fechaHoy = new Date().toISOString().split('T')[0]
+  const [estado, dispatch] = useReducer(
+    reservaReducer,
+    estadoInicialReserva(
+      servicioInicial ? Number(servicioInicial) : '',
+      barberoInicial ? Number(barberoInicial) : null
+    )
+  )
 
   const [servicios, setServicios] = useState([])
   const [barberos, setBarberos] = useState([])
-  const [horas, setHoras] = useState([])
-
   const [cargandoDatos, setCargandoDatos] = useState(true)
-  const [cargandoHoras, setCargandoHoras] = useState(false)
-  const [enviando, setEnviando] = useState(false)
-  const [error, setError] = useState('')
-  const [confirmacion, setConfirmacion] = useState('')
+  const [errorCarga, setErrorCarga] = useState('')
 
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const [serviciosData, barberosData] = await Promise.all([
-          obtenerServicios(),
-          obtenerBarberos(),
-        ])
+        const [serviciosData, barberosData] = await Promise.all([obtenerServicios(), obtenerBarberos()])
         setServicios(serviciosData)
         setBarberos(barberosData)
       } catch (err) {
-        setError(err.message)
+        setErrorCarga(err.message)
       } finally {
         setCargandoDatos(false)
       }
@@ -45,246 +57,155 @@ const ReservaCorte = () => {
     cargarDatos()
   }, [])
 
-  useEffect(() => {
-    const cargarHoras = async () => {
-      if (!barberoId || !fecha) {
-        setHoras([])
-        return
-      }
+  const indiceActual = PASOS_RESERVA.findIndex((paso) => paso.key === estado.paso)
+  const esPrimerPaso = indiceActual === 0
+  const esUltimoPaso = indiceActual === PASOS_RESERVA.length - 1
 
-      setCargandoHoras(true)
-      setHora('')
-      try {
-        const data = await obtenerDisponibilidad(barberoId, fecha)
-        setHoras(data.horas)
-      } catch (err) {
-        setError(err.message)
-      } finally {
-        setCargandoHoras(false)
-      }
-    }
-    cargarHoras()
-  }, [barberoId, fecha])
-
-  const handleAgendar = async () => {
-    setError('')
-    setConfirmacion('')
-
-    if (!cliente.trim()) {
-      setError('El nombre del cliente es obligatorio')
-      return
-    }
-    if (!REGEX_CORREO.test(correo)) {
-      setError('El correo no es válido')
-      return
-    }
-    if (!servicioId || !barberoId || !fecha || !hora) {
-      setError('Selecciona servicio, barbero, fecha y hora')
-      return
-    }
-
-    setEnviando(true)
-    try {
-      await crearCita({
-        cliente: cliente.trim(),
-        correo,
-        servicio_id: Number(servicioId),
-        barbero_id: Number(barberoId),
-        fecha,
-        hora,
-      })
-      setConfirmacion('¡Cita agendada con éxito! Te esperamos.')
-      setHora('')
-      setFecha('')
-    } catch (err) {
-      if (err.status === 409) {
-        setError('Ese horario ya fue tomado, elige otra hora')
-        try {
-          const data = await obtenerDisponibilidad(barberoId, fecha)
-          setHoras(data.horas)
-        } catch {
-          setHoras([])
-        }
-      } else {
-        setError(err.message)
-      }
-    } finally {
-      setEnviando(false)
+  const irAPasoAnterior = () => {
+    if (!esPrimerPaso) {
+      dispatch({ type: 'IR_A_PASO', paso: PASOS_RESERVA[indiceActual - 1].key })
     }
   }
 
+  const irAPasoSiguiente = () => {
+    if (!esUltimoPaso && pasoCompleto(estado)) {
+      dispatch({ type: 'IR_A_PASO', paso: PASOS_RESERVA[indiceActual + 1].key })
+    }
+  }
+
+  const confirmarReserva = async (datosContacto) => {
+    try {
+      const resumen = await crearCita({
+        cliente: datosContacto.cliente,
+        correo: datosContacto.correo,
+        telefono: datosContacto.telefono,
+        consentimiento: datosContacto.consentimiento,
+        servicio_id: estado.servicioId,
+        barbero_id: estado.barberoId === null ? undefined : estado.barberoId,
+        fecha: estado.fecha,
+        hora: estado.hora,
+      })
+      dispatch({ type: 'RESERVA_CONFIRMADA', resumen })
+    } catch (err) {
+      if (err.status === 409) {
+        // La hora ya no es válida: se vuelve al paso de fecha/hora con disponibilidad
+        // recargada, en vez de dejar el modal mostrando un error sobre algo que ya cambió.
+        dispatch({ type: 'HORA_OCUPADA' })
+        return
+      }
+      throw err
+    }
+  }
+
+  if (estado.paso === 'exito') {
+    return <PantallaExito resumen={estado.resumen} onNuevaReserva={() => dispatch({ type: 'REINICIAR' })} />
+  }
+
+  const servicioSeleccionado = servicios.find((servicio) => servicio.id === estado.servicioId)
+  const barberoSeleccionado =
+    estado.barberoId === null ? null : barberos.find((barbero) => barbero.id === estado.barberoId)
+
+  const mostrarResumen = estado.paso !== 'confirmar'
+
   return (
-    <>
-    <div className='flex flex-col justify-center items-center'>
-      <div className='flex flex-col justify-center items-center py-4'>
-        <h1 className='text-5xl text-mauve-800 font-cinzel font-semibold'>
+    <div className={`flex flex-col items-center px-4 py-8 ${mostrarResumen ? 'pb-28 lg:pb-8' : ''}`}>
+      <h1 className="text-center font-cinzel text-4xl font-semibold text-black sm:text-5xl">
         Reserva tu Experiencia
-        </h1>
-        <p className='text-xl mt-4 text-mauve-600 font-cinzel font-semibold'>
-          "Selecciona la hora, define tu estilo y permítenos encargarnos del resto."
-        </p>
-      </div>
+      </h1>
+      <p className="mt-3 text-center font-poppins text-base text-zinc-600 sm:text-xl">
+        Selecciona la hora, define tu estilo y permítenos encargarnos del resto.
+      </p>
 
-      <div className='py-2'>
-        <div className=''>
-
-          <div className='flex flex-col items-center justify-center'>
-            <div className='flex flex-col'>
-              <label htmlFor="cliente" className='flex items-center justify-center font-poppins font-medium text-lg text-mauve-700 '>Cliente</label>
-              <input
-                id="cliente"
-                name="cliente"
-                onChange={(e)=>setCliente(e.target.value)}
-                value={cliente}
-                type="text"
-                placeholder='Escribe tu nombre'
-                className='w-120 rounded-lg p-1 border placeholder:text-gray-800'
-              />
-            </div>
-
-            <div className='flex flex-col mt-2'>
-              <label htmlFor="correo" className='flex items-center justify-center font-poppins font-medium text-lg text-mauve-700 '>Correo Electronico</label>
-              <input
-                id="correo"
-                name="correo"
-                type="email"
-                required
-                value={correo}
-                onChange={(e)=>setCorreo(e.target.value)}
-                placeholder='Example@gmail.com'
-                className='w-120 p-1 border placeholder:text-gray-800 rounded-lg'
-              />
-            </div>
+      <div className="mt-8 flex w-full max-w-5xl flex-col items-start gap-8 lg:flex-row lg:justify-center">
+        <div className="flex w-full flex-col items-center lg:max-w-2xl">
+          <div className="w-full">
+            <IndicadorProgreso pasoActual={estado.paso} />
           </div>
 
-          {cargandoDatos ? (
-            <p className='text-center mt-4 font-poppins'>Cargando servicios...</p>
-          ) : (
-            <div className='flex flex-col mt-2'>
-              <label htmlFor="servicio" className='font-poppins font-medium text-lg text-mauve-700 mt-2 mb-2'>Servicios</label>
-              <div id="servicio" className='flex gap-2 flex-wrap'>
-                {servicios.map((serv)=>{
-                  return(
-                    <button
-                    type='button'
-                    key={serv.id}
-                    onClick={()=>setServicioId(serv.id)}
-                    className={`border border-gray-500 p-2 rounded-xl cursor-pointer active:scale-95 duration-300 hover:bg-mauve-300 ${
-                      servicioId === serv.id
-                      ? "bg-mauve-400 border-black font-semibold"
-                      : "bg-mauve-100"
-                    }`}
-                    >
-                      {serv.nombre} - {serv.duracion_min} min - ${serv.precio}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+          {errorCarga && (
+            <p role="alert" className="mt-6 font-poppins font-semibold text-red-600">
+              {errorCarga}
+            </p>
           )}
 
-          <div>
-            {servicioId && (
-              <div className='flex flex-col'>
-                <label htmlFor="barbero" className='font-poppins font-medium text-lg text-mauve-700 mt-2 mb-2'>Elige tu Barbero</label>
-                <div id="barbero" className='grid grid-cols-6 gap-2'>
-                  {barberos.map((barber)=>{
-                    return(
-                      <button
-                      type='button'
-                      key={barber.id}
-                      onClick={()=> setBarberoId(barber.id)}
-                      className={`flex flex-col border w-50 rounded-xl cursor-pointer hover:bg-gray-300 active:scale-95 duration-300 ${
-                        barberoId === barber.id
-                        ? "bg-gray-400"
-                        : "bg-white"
-                      }`}
-                      >
-                      <h3>{barber.nombre}</h3>
-                      <p>{barber.especialidad}</p>
-                      </button>
-                    )
-                    })
-                  }
-                </div>
-              </div>
+          {estado.errorGlobal && (
+            <p role="alert" className="mt-6 font-poppins font-semibold text-red-600">
+              {estado.errorGlobal}
+            </p>
           )}
-          </div>
 
-          <div className='mt-3'>
-            {barberoId && (
-              <div>
-                <label htmlFor="fecha" className='font-poppins font-medium text-lg text-mauve-700'>Seleccione la fecha para agendar su servicio</label>
-                <div className='mt-1'>
-                  <input
-                  id="fecha"
-                  name="fecha"
-                  type="date"
-                  className='border text-xl'
-                  value={fecha}
-                  min={fechaHoy}
-                  onChange={(e)=>setFecha(e.target.value)}
+          <div className="mt-8 w-full">
+            {cargandoDatos ? (
+              <p className="text-center font-poppins text-zinc-600">Cargando información...</p>
+            ) : (
+              <>
+                {estado.paso === 'servicio' && (
+                  <PasoServicio
+                    servicios={servicios}
+                    servicioIdSeleccionado={estado.servicioId}
+                    onSeleccionar={(servicioId) => dispatch({ type: 'SELECCIONAR_SERVICIO', servicioId })}
                   />
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className='mt-3'>
-            {fecha && (
-              <div>
-                <label htmlFor="hora" className='font-poppins font-medium text-lg text-mauve-700'>Seleccione la hora de su servicio</label>
-                {cargandoHoras ? (
-                  <p className='mt-1 font-poppins'>Cargando horas disponibles...</p>
-                ) : horas.length === 0 ? (
-                  <p className='mt-1 font-poppins'>No hay horas disponibles para esa fecha</p>
-                ) : (
-                  <div id="hora" className='flex gap-2 mt-1 flex-wrap'>
-                    {horas.map((horaSe)=>{
-                      return(
-                        <button
-                        type='button'
-                        key={horaSe}
-                        onClick={()=>setHora(horaSe)}
-                        className={`border p-1 rounded-lg font-medium font-sans cursor-pointer hover:bg-mauve-200 active:scale-95 duration-300 ${
-                          hora === horaSe
-                          ? "bg-mauve-400 border-gray-400"
-                          : "bg-white"
-                        }`}
-                        >
-                          {horaSe}
-                        </button>
-                      )
-                    })}
-                  </div>
                 )}
-              </div>
+                {estado.paso === 'barbero' && (
+                  <PasoBarbero
+                    barberos={barberos}
+                    barberoIdSeleccionado={estado.barberoId}
+                    onSeleccionar={(barberoId) => dispatch({ type: 'SELECCIONAR_BARBERO', barberoId })}
+                  />
+                )}
+                {estado.paso === 'fecha-hora' && (
+                  <PasoFechaHora
+                    servicioId={estado.servicioId}
+                    barberoId={estado.barberoId}
+                    fecha={estado.fecha}
+                    hora={estado.hora}
+                    recargaHoras={estado.recargaHoras}
+                    onSeleccionarFecha={(fecha) => dispatch({ type: 'SELECCIONAR_FECHA', fecha })}
+                    onSeleccionarHora={(hora) => dispatch({ type: 'SELECCIONAR_HORA', hora })}
+                  />
+                )}
+              </>
             )}
           </div>
 
-          {error && (
-            <p className='text-red-600 font-semibold text-center mt-3'>{error}</p>
-          )}
-          {confirmacion && (
-            <p className='text-green-600 font-semibold text-center mt-3'>{confirmacion}</p>
-          )}
-
-          <div className='flex justify-center p-20'>
-            {hora && (
+          {estado.paso !== 'confirmar' && (
+            <div className="mt-10 flex w-full items-center">
               <button
-                type='button'
-                onClick={handleAgendar}
-                disabled={enviando}
-                className='border border-gray-800 p-2 font-cinzel font-bold text-2xl rounded-xl text-white bg-red-500 hover:bg-red-200 hover:text-black hover:border-gray-900 cursor-pointer active:scale-95 duration-300 disabled:opacity-50 disabled:cursor-not-allowed'
+                type="button"
+                onClick={irAPasoAnterior}
+                disabled={esPrimerPaso}
+                className="rounded-xl border border-black px-5 py-2 font-poppins font-semibold text-black duration-200 hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-black"
               >
-                {enviando ? 'Agendando...' : 'Agendar Cita'}
+                Atrás
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+
+        {mostrarResumen && !cargandoDatos && (
+          <ResumenReserva
+            servicio={servicioSeleccionado}
+            barbero={barberoSeleccionado}
+            mostrarBarbero={indiceActual >= 1}
+            fecha={estado.fecha}
+            hora={estado.hora}
+            onContinuar={irAPasoSiguiente}
+            puedeContinuar={!esUltimoPaso && pasoCompleto(estado)}
+          />
+        )}
       </div>
+
+      {estado.paso === 'confirmar' && (
+        <ModalConfirmacion
+          servicio={servicioSeleccionado}
+          barbero={barberoSeleccionado}
+          fecha={estado.fecha}
+          hora={estado.hora}
+          onClose={() => dispatch({ type: 'IR_A_PASO', paso: 'fecha-hora' })}
+          onConfirmar={confirmarReserva}
+        />
+      )}
     </div>
-    </>
   )
 }
 
