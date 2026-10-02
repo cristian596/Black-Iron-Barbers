@@ -53,7 +53,8 @@ export default async function setup() {
 
   await testPool.query(
     `INSERT INTO servicios (id, nombre, duracion_min, precio) VALUES
-      (1, 'Corte de prueba', 30, 50000)`
+      (1, 'Corte de prueba', 30, 50000),
+      (2, 'Combo de prueba', 90, 100000)`
   );
 
   const hashAdmin = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);

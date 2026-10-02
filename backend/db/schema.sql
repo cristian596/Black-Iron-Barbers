@@ -37,3 +37,52 @@ CREATE TABLE IF NOT EXISTS citas (
   creada_en TIMESTAMP NOT NULL DEFAULT NOW(),
   UNIQUE (barbero_id, fecha, hora)
 );
+
+-- Snapshot de duración y precio del servicio al momento de reservar: una
+-- cita ya creada no debe cambiar si luego se edita el servicio en el catálogo.
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS duracion_min INT;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS precio INT;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS telefono VARCHAR(10);
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS consentimiento_en TIMESTAMP;
+
+UPDATE citas AS c SET
+  duracion_min = s.duracion_min,
+  precio = s.precio
+FROM servicios AS s
+WHERE c.servicio_id = s.id AND c.duracion_min IS NULL;
+
+ALTER TABLE citas ALTER COLUMN duracion_min SET NOT NULL;
+ALTER TABLE citas ALTER COLUMN precio SET NOT NULL;
+
+-- Protección contra solapamiento de horario por barbero (una cita de más de
+-- 30 min puede chocar con otra que empiece en medio, cosa que el UNIQUE no
+-- detecta). Requiere btree_gist para poder indexar barbero_id junto al rango.
+CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS rango TSRANGE
+  GENERATED ALWAYS AS (
+    TSRANGE(
+      (fecha + hora),
+      (fecha + hora) + MAKE_INTERVAL(mins => duracion_min),
+      '[)'
+    )
+  ) STORED;
+
+-- Una cita cancelada libera el hueco: la restricción solo mira citas activas.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'citas_sin_solapamiento'
+  ) THEN
+    ALTER TABLE citas
+      ADD CONSTRAINT citas_sin_solapamiento
+      EXCLUDE USING gist (barbero_id WITH =, rango WITH &&)
+      WHERE (estado <> 'cancelada');
+  END IF;
+END $$;
+
+-- El UNIQUE original (barbero_id, fecha, hora) queda redundante y además NO
+-- ignora citas canceladas (bloquearía reutilizar el mismo slot exacto tras
+-- cancelar). citas_sin_solapamiento ya cubre ese caso (hora igual = rango que
+-- se solapa consigo mismo) y sí libera el hueco al cancelar, así que se retira.
+ALTER TABLE citas DROP CONSTRAINT IF EXISTS citas_barbero_id_fecha_hora_key;

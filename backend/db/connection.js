@@ -28,8 +28,7 @@ export const conectarConReintentos = async (intentos = 5, esperaMs = 5000) => {
     try {
       await pool.query('SELECT NOW()');
       console.log('✅ Conectado exitosamente a PostgreSQL (Black Iron DB)');
-      await crearTablas();
-      return;
+      break;
     } catch {
       reintentos -= 1;
       if (reintentos > 0) {
@@ -37,9 +36,14 @@ export const conectarConReintentos = async (intentos = 5, esperaMs = 5000) => {
           `⏳ Esperando que la base de datos esté lista... (${reintentos} intentos restantes)`
         );
         await new Promise((resolve) => setTimeout(resolve, esperaMs));
+      } else {
+        throw new Error('No se pudo conectar a la base de datos tras varios intentos.');
       }
     }
   }
 
-  throw new Error('No se pudo conectar a la base de datos tras varios intentos.');
+  // Una vez conectados, el esquema/migración se ejecuta una sola vez: si falla (por
+  // ejemplo, citas solapadas que bloquean la restricción nueva) es un problema de datos,
+  // no de conectividad, así que se deja fallar con su mensaje real en vez de reintentar.
+  await crearTablas();
 };

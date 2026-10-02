@@ -1,50 +1,96 @@
 import { pool } from '../db/connection.js';
-import { esFechaValida, esFechaHoy, generarHorasDisponibles } from '../utils/fechas.js';
+import {
+  esFechaValida,
+  esFechaHoy,
+  generarHorasDisponibles,
+  horaActualBogota,
+  intervaloDentroDeHorario,
+  minutosDesdeMedianoche,
+} from '../utils/fechas.js';
+
+const obtenerBarberosActivos = async () => {
+  const { rows } = await pool.query('SELECT id FROM barberos WHERE activo = true ORDER BY id');
+  return rows.map((row) => row.id);
+};
+
+const obtenerCitasOcupadas = async (barberoIds, fecha) => {
+  if (barberoIds.length === 0) return [];
+  const { rows } = await pool.query(
+    `SELECT barbero_id, TO_CHAR(hora, 'HH24:MI') AS hora, duracion_min
+     FROM citas
+     WHERE barbero_id = ANY($1) AND fecha = $2 AND estado <> 'cancelada'`,
+    [barberoIds, fecha]
+  );
+  return rows;
+};
+
+const seSolapan = (inicioA, finA, inicioB, finB) => inicioA < finB && inicioB < finA;
+
+const estaLibre = (barberoId, hora, duracionMin, ocupadas) => {
+  const inicio = minutosDesdeMedianoche(hora);
+  const fin = inicio + duracionMin;
+  return !ocupadas.some(
+    (cita) =>
+      cita.barbero_id === barberoId &&
+      seSolapan(inicio, fin, minutosDesdeMedianoche(cita.hora), minutosDesdeMedianoche(cita.hora) + cita.duracion_min)
+  );
+};
 
 export const obtenerDisponibilidad = async (req, res, next) => {
   try {
-    const { barbero, fecha } = req.query;
+    const { barbero, fecha, servicio } = req.query;
 
-    if (!barbero || !fecha) {
-      return res.status(400).json({ error: 'Los parámetros barbero y fecha son obligatorios' });
-    }
-
-    const barberoId = Number(barbero);
-    if (!Number.isInteger(barberoId)) {
-      return res.status(400).json({ error: 'El barbero debe ser un id numérico' });
+    if (!fecha || !servicio) {
+      return res.status(400).json({ error: 'Los parámetros servicio y fecha son obligatorios' });
     }
 
     if (!esFechaValida(fecha)) {
       return res.status(400).json({ error: 'La fecha debe tener el formato AAAA-MM-DD' });
     }
 
-    const { rows: barberos } = await pool.query(
-      'SELECT id FROM barberos WHERE id = $1 AND activo = true',
-      [barberoId]
-    );
-    if (barberos.length === 0) {
-      return res.status(404).json({ error: 'Barbero no encontrado o inactivo' });
+    const servicioId = Number(servicio);
+    if (!Number.isInteger(servicioId)) {
+      return res.status(400).json({ error: 'El servicio debe ser un id numérico' });
     }
 
-    const { rows: ocupadas } = await pool.query(
-      `SELECT TO_CHAR(hora, 'HH24:MI') AS hora FROM citas
-       WHERE barbero_id = $1 AND fecha = $2 AND estado != 'cancelada'`,
-      [barberoId, fecha]
-    );
-    const horasOcupadas = new Set(ocupadas.map((cita) => cita.hora));
+    const { rows: servicios } = await pool.query('SELECT duracion_min FROM servicios WHERE id = $1', [servicioId]);
+    if (servicios.length === 0) {
+      return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    const duracionMin = servicios[0].duracion_min;
 
-    let horas = generarHorasDisponibles().filter((hora) => !horasOcupadas.has(hora));
+    let grid = generarHorasDisponibles().filter((hora) => intervaloDentroDeHorario(hora, duracionMin));
 
     if (esFechaHoy(fecha)) {
-      const ahora = new Date();
-      const minutosActuales = ahora.getHours() * 60 + ahora.getMinutes();
-      horas = horas.filter((hora) => {
-        const [h, m] = hora.split(':').map(Number);
-        return h * 60 + m > minutosActuales;
-      });
+      const minutosActuales = horaActualBogota();
+      grid = grid.filter((hora) => minutosDesdeMedianoche(hora) > minutosActuales);
     }
 
-    res.json({ barbero_id: barberoId, fecha, horas });
+    if (barbero) {
+      const barberoId = Number(barbero);
+      if (!Number.isInteger(barberoId)) {
+        return res.status(400).json({ error: 'El barbero debe ser un id numérico' });
+      }
+
+      const { rows: barberos } = await pool.query(
+        'SELECT id FROM barberos WHERE id = $1 AND activo = true',
+        [barberoId]
+      );
+      if (barberos.length === 0) {
+        return res.status(404).json({ error: 'Barbero no encontrado o inactivo' });
+      }
+
+      const ocupadas = await obtenerCitasOcupadas([barberoId], fecha);
+      const horas = grid.filter((hora) => estaLibre(barberoId, hora, duracionMin, ocupadas));
+
+      return res.json({ barbero_id: barberoId, fecha, horas });
+    }
+
+    const barberoIds = await obtenerBarberosActivos();
+    const ocupadas = await obtenerCitasOcupadas(barberoIds, fecha);
+    const horas = grid.filter((hora) => barberoIds.some((id) => estaLibre(id, hora, duracionMin, ocupadas)));
+
+    res.json({ barbero_id: null, fecha, horas });
   } catch (err) {
     next(err);
   }

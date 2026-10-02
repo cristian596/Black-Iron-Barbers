@@ -27,6 +27,7 @@ services:
       DB_PORT: 5432
       DB_NAME: ${POSTGRES_DB}
       PORT: 5000
+      TZ: America/Bogota
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_USER: ${ADMIN_USER}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}

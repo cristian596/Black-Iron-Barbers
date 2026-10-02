@@ -2,7 +2,7 @@
 export const errorHandler = (err, req, res, next) => {
   console.error(err.message);
 
-  if (err.code === '23505') {
+  if (err.code === '23505' || err.code === '23P01' || err.code === '40P01') {
     return res.status(409).json({ error: 'El recurso ya existe o entra en conflicto' });
   }
 
