@@ -67,8 +67,8 @@ const CatalogoServicios = () => {
                 onClick={() => setCategoriaActiva(categoria)}
                 className={`rounded-full px-4 py-2 font-poppins font-semibold cursor-pointer active:scale-95 duration-300 ${
                   categoriaActiva === categoria
-                    ? 'bg-black text-[#D4AF37]'
-                    : 'bg-white text-black hover:bg-[#D4AF37]'
+                    ? 'bg-black text-oro'
+                    : 'bg-white text-black hover:bg-oro'
                 }`}
               >
                 {categoria}

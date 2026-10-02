@@ -1,11 +1,11 @@
-// Reseñas de ejemplo (contenido provisional de marketing, no datos reales
+// Testimonios de ejemplo (contenido provisional de marketing, no datos reales
 // de clientes). Reemplazar cuando se tengan reseñas verificadas.
-export const RESENAS = [
+export const TESTIMONIOS = [
   {
     id: 1,
     nombre: 'Juan Pablo R.',
     calificacion: 5,
-    comentario: 'El mejor fade que me han hecho en Bogotá. Ambiente increíble y atención puntual.',
+    comentario: 'El mejor fade que me han hecho en Facatativá. Ambiente increíble y atención puntual.',
   },
   {
     id: 2,

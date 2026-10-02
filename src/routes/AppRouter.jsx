@@ -8,8 +8,6 @@ import CargandoPagina from '../components/ui/CargandoPagina';
 
 const Home = lazy(() => import('../pages/Home'));
 const Cortes = lazy(() => import('../pages/Cortes'));
-const Ubicacion = lazy(() => import('../pages/Ubicacion'));
-const CartaBebidas = lazy(() => import('../pages/CartaBebidas'));
 const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
 const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
 const Panel = lazy(() => import('../pages/Panel'));
@@ -30,16 +28,8 @@ const AppRouter = createBrowserRouter([
         element: <Cortes/>
       },
       {
-        path: 'ubicacion',
-        element: <Ubicacion />
-      },
-      {
         path: 'reservar-corte',
         element: <ReservaCorte />
-      },
-      {
-        path: 'carta-bebidas',
-        element: <CartaBebidas />
       },
       {
         path: 'acceso',

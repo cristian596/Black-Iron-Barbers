@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { RiScissorsCutFill } from 'react-icons/ri'
-import { FaArrowRight, FaMapMarkedAlt } from 'react-icons/fa'
+import { FaArrowRight } from 'react-icons/fa'
 import { IoCloseOutline } from 'react-icons/io5'
 import { IoMdMenu } from 'react-icons/io'
 import { ImScissors } from 'react-icons/im'
@@ -12,7 +12,6 @@ const UMBRAL_SCROLL = 24
 const enlaces = [
   { to: '/', texto: 'Inicio', Icono: IoIosHome, end: true },
   { to: '/cortes', texto: 'Servicios', Icono: ImScissors },
-  { to: '/ubicacion', texto: 'Ubicaciones', Icono: FaMapMarkedAlt },
 ]
 
 const foco =

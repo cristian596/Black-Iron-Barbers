@@ -1,28 +1,14 @@
-import { useEffect, useState } from 'react'
 import { FaUserTie } from 'react-icons/fa6'
 import { FaClock, FaMapMarkerAlt } from 'react-icons/fa'
-import { obtenerBarberos } from '../../services/api'
+import useCantidadBarberos from '../../hooks/useCantidadBarberos'
 import { negocio } from '../../data/negocio'
 
 const textoBarberos = (cantidad) =>
   `${cantidad} ${cantidad === 1 ? 'barbero' : 'barberos'}`
 
 const HeroDatos = ({ className = '' }) => {
-  const [cantidad, setCantidad] = useState(0)
-
-  useEffect(() => {
-    let activo = true
-    obtenerBarberos()
-      .then((barberos) => {
-        if (activo && Array.isArray(barberos)) setCantidad(barberos.length)
-      })
-      .catch(() => {
-        // Sin datos de la API no se muestra la cifra: nunca se inventa
-      })
-    return () => {
-      activo = false
-    }
-  }, [])
+  // Sin datos de la API no se muestra la cifra: nunca se inventa
+  const cantidad = useCantidadBarberos()
 
   const datos = [
     ...(cantidad > 0 ? [{ Icono: FaUserTie, texto: textoBarberos(cantidad) }] : []),

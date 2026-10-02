@@ -72,7 +72,7 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
 ### Sesión 4 — Front-end público conectado a la API (~60-75 min)
 - [x] **Quitar servicios de mujer**: borrar `serviciosFemale.js`, secciones "Uñas" y "Pedicure" (y cualquier sección femenina) de `Cortes.jsx`, el bloque femenino de `ReservaCorte.jsx` y las fotos `hair_woman_*` de `Galeria.jsx`.
 - [x] Borrar de `public/` las carpetas `CourtWoman`, `Nails`, `NailsThematic` y `Pedicura` (ver antes que ningún otro componente las use).
-- [x] Revisar `barberos.js`: quitar al personal que solo atiende servicios femeninos y corregir el cargo ("Barbera" en nombres masculinos). Revisar también `NuestrosServicos.jsx`, `Promos.jsx` y `Descripcion.jsx` por textos femeninos.
+- [x] Revisar `barberos.js`: quitar al personal que solo atiende servicios femeninos y corregir el cargo ("Barbera" en nombres masculinos). Revisar también `NuestrosServicos.jsx` y `Promos.jsx` por textos femeninos (`Descripcion.jsx` se eliminó después).
 - [x] Crear `src/services/api.js` con `VITE_API_URL` y manejo de errores.
 - [x] Crear `.env.example` del front con `VITE_API_URL`.
 - [x] `LoginBarberos.jsx`: `useState`, `onSubmit`, llamada al login, guardar el JWT, redirigir a `/admin` o `/panel` según el rol, mensaje de error visible.
@@ -110,7 +110,7 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
 - [ ] Corregir el typo "TINTURA BARABA BIGEN".
 - [ ] Borrar `App.jsx` (código muerto).
 - [ ] Unificar en `react-router-dom`.
-- [ ] Renombrar rutas `galery` → `galeria` y `ubication` → `ubicacion` (y actualizar los enlaces).
+- [x] Renombrar rutas `galery` → `galeria` y `ubication` → `ubicacion` (después se eliminó `/ubicacion`, junto con `/carta-bebidas` y `Descripcion`).
 - [ ] Cambiar `<a href='/'>` de `NavBar` por `<Link to='/'>`.
 - [ ] Reemplazar el fondo externo de Unsplash del menú móvil por una imagen local.
 - [ ] Limpiar los 36 errores de ESLint (`import React`, íconos y variables sin usar).

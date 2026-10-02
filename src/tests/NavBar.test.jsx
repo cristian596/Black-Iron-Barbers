@@ -27,7 +27,6 @@ describe('NavBar', () => {
 
     expect(nav.getByRole('link', { name: 'Servicios' })).toHaveAttribute('aria-current', 'page')
     expect(nav.getByRole('link', { name: 'Inicio' })).not.toHaveAttribute('aria-current')
-    expect(nav.getByRole('link', { name: 'Ubicaciones' })).not.toHaveAttribute('aria-current')
   })
 
   it('"Inicio" solo está activo en la raíz', () => {

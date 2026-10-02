@@ -1,7 +1,8 @@
 # Black Iron Barbers
 
-Sitio web de una barbería: catálogo de servicios, galería, carta de bebidas,
-ubicación, reserva de citas online y dos paneles privados (barbero y
+> Proyecto de portafolio con datos ficticios.
+
+Sitio web de una barbería: catálogo de servicios, galería, reserva de citas online y dos paneles privados (barbero y
 administrador).
 
 ## Stack
@@ -56,8 +57,7 @@ esquema y la limpian antes de cada corrida, sin tocar la base real.
 
 ## Rutas principales
 
-`/`, `/cortes`, `/galeria`, `/ubicacion`, `/reservar-corte`,
-`/carta-bebidas`, `/acceso` (login de barberos/admin, sin enlaces
+`/`, `/cortes`, `/reservar-corte`, `/acceso` (login de barberos/admin, sin enlaces
 públicos y con `noindex`), `/panel` (barbero) y `/admin`
 (administrador).
 

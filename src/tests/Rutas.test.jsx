@@ -22,11 +22,11 @@ const montar = (ruta) => {
 const rutasPublicas = [
   ['inicio', '/'],
   ['servicios', '/cortes'],
-  ['ubicación', '/ubicacion'],
   ['reserva', '/reservar-corte'],
-  ['carta', '/carta-bebidas'],
   ['acceso', '/acceso'],
   ['404', '/una-ruta-que-no-existe'],
+  ['404 (ubicación eliminada)', '/ubicacion'],
+  ['404 (carta eliminada)', '/carta-bebidas'],
 ]
 
 describe('NavBar en todas las rutas', () => {

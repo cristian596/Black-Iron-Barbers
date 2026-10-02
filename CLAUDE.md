@@ -4,7 +4,9 @@ Contexto para Claude Code sobre el proyecto **Black Iron Barbers**. Léelo antes
 
 ## Qué es este proyecto
 
-Sitio web de una **barbería** (solo servicios de barbería): catálogo de servicios, galería, carta de bebidas, ubicación, reserva de citas online y dos paneles privados:
+> Proyecto de portafolio con datos ficticios.
+
+Sitio web de una **barbería** (solo servicios de barbería): catálogo de servicios, reserva de citas online y dos paneles privados:
 
 - **Barbero** (`/panel`): ve y gestiona solo sus propias citas.
 - **Administrador** (`/admin`): ve todas las citas (pendientes y realizadas), el barbero a cargo de cada una, y gestiona los usuarios de los barberos.
@@ -114,7 +116,7 @@ src/
 ## Estado actual
 
 - Front-end conectado a la API (login, reserva, paneles de barbero y admin) y back-end completo (auth, citas, admin).
-- Rutas renombradas: `/galeria` y `/ubicacion` (ya no existen `/galery` ni `/ubication`).
+- Rutas públicas: `/`, `/cortes`, `/reservar-corte` y `/acceso`. Se eliminaron las páginas de carta de bebidas, ubicación y la sección `Descripcion` del inicio (`/ubicacion` y `/carta-bebidas` muestran la 404); la dirección y el horario salen de `src/data/negocio.js`.
 - `Cortes.jsx` y `Galeria.jsx` sin JSX repetido: `Cortes.jsx` lee de `GET /api/servicios`, `Galeria.jsx` usa `src/data/galeria.js` + `.map()`.
 - ESLint en 0 errores/warnings; `App.jsx` eliminado; todo unificado en `react-router-dom`.
 - Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.
@@ -131,3 +133,4 @@ src/
 - Si la decisión afecta seguridad, permisos, datos de la base o borra archivos, pregunta antes.
 - Siempre usar tailwind, nunca usar ccs puro ni crear archivos innecesarios.
 - Siempre trabajar pensando en que la pagina debe ser responsive, SIEMPRE.
+- No hagas commits ni push, ni locales ni remotos. El desarrollador los hace manualmente. Al terminar cada bloque, indica qué archivos cambiaron y detente para que lo revise.

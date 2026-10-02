@@ -3,8 +3,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Hero from '../components/sections/Hero'
 import * as api from '../services/api'
+import { reiniciarCacheBarberos } from '../hooks/useCantidadBarberos'
 
 vi.mock('../services/api')
+
+beforeEach(() => {
+  reiniciarCacheBarberos()
+})
 
 const renderHero = () =>
   render(
