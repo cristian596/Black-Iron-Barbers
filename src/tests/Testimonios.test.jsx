@@ -8,9 +8,15 @@ class IntersectionObserverFalso {
   constructor(callback, opciones) {
     this.callback = callback
     this.opciones = opciones
-    this.observe = vi.fn()
+    this.elementos = []
+    this.observe = vi.fn((elemento) => this.elementos.push(elemento))
+    this.unobserve = vi.fn()
     this.disconnect = vi.fn()
     observers.push(this)
+  }
+  // Como el real: cada entrada lleva su target (el observer es compartido)
+  disparar(isIntersecting) {
+    this.callback(this.elementos.map((target) => ({ target, isIntersecting })))
   }
 }
 
@@ -63,7 +69,7 @@ describe('Testimonios: animación de entrada', () => {
     const tarjetas = screen.getAllByRole('figure')
     tarjetas.forEach((t) => expect(t).toHaveClass('opacity-0'))
 
-    act(() => observers.at(-1).callback([{ isIntersecting: true }]))
+    act(() => observers.at(-1).disparar(true))
     tarjetas.forEach((t) => {
       expect(t).toHaveClass('opacity-100')
       expect(t).not.toHaveClass('opacity-0')

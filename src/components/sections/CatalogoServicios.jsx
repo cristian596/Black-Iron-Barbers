@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { obtenerServicios } from '../../services/api'
 import { obtenerCategoria } from '../../data/categoriasServicios'
 import TarjetaServicio from '../ui/TarjetaServicio'
+import Revelar from '../ui/Revelar'
+import { retrasoEscalonado } from '../../utils/escalonado'
+
+// Columnas de la rejilla en pantallas grandes (xl:grid-cols-4)
+const COLUMNAS_MAX = 4
 
 const CatalogoServicios = () => {
   const [servicios, setServicios] = useState([])
@@ -43,9 +48,12 @@ const CatalogoServicios = () => {
 
   return (
     <div className='grid justify-center items-center py-3 bg-linear-to-br from-zinc-800 to-amber-600'>
-      <h2 className='flex items-center justify-center text-white py-3 font-bold font-cinzel text-3xl lg:text-6xl text-center px-4'>
+      <Revelar
+        como='h2'
+        className='flex items-center justify-center text-white py-3 font-bold font-cinzel text-3xl lg:text-6xl text-center px-4'
+      >
         NUESTRA CARTA DE SERVICIOS
-      </h2>
+      </Revelar>
 
       {cargando && (
         <p className='text-center text-white font-cinzel text-xl py-5'>Cargando servicios...</p>
@@ -57,7 +65,12 @@ const CatalogoServicios = () => {
 
       {!cargando && !error && (
         <>
-          <div className='flex flex-wrap justify-center gap-2 px-5 pb-5' role='tablist' aria-label='Categorías de servicios'>
+          <Revelar
+            retraso={80}
+            className='flex flex-wrap justify-center gap-2 px-5 pb-5'
+            role='tablist'
+            aria-label='Categorías de servicios'
+          >
             {categorias.map((categoria) => (
               <button
                 key={categoria}
@@ -74,11 +87,19 @@ const CatalogoServicios = () => {
                 {categoria}
               </button>
             ))}
-          </div>
+          </Revelar>
 
           <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 p-5'>
-            {serviciosFiltrados.map((servicio) => (
-              <TarjetaServicio key={servicio.id} servicio={servicio} categoria={servicio.categoria} />
+            {serviciosFiltrados.map((servicio, indice) => (
+              // El retardo se reinicia cada COLUMNAS_MAX tarjetas: cada una entra al
+              // llegar a pantalla, así que una fila lejana no debe esperar por las anteriores
+              <Revelar
+                key={servicio.id}
+                retraso={retrasoEscalonado(indice % COLUMNAS_MAX)}
+                className='grid'
+              >
+                <TarjetaServicio servicio={servicio} categoria={servicio.categoria} />
+              </Revelar>
             ))}
           </div>
         </>

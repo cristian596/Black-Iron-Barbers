@@ -9,6 +9,7 @@ import "swiper/css/pagination";
 
 import { obtenerBarberos } from '../../services/api'
 import TarjetaBarbero from '../ui/TarjetaBarbero'
+import Revelar from '../ui/Revelar'
 
 const NuestrosColaboradores = () => {
   const swiperRef = useRef(null);
@@ -33,9 +34,9 @@ const NuestrosColaboradores = () => {
   return (
     <>
     <section id='equipo' className="py-20 bg-linear-to-tl from-gray-500 to-gray-900">
-        <h2 className="text-5xl lg:text-7xl font-bold text-center text-white mb-12">
+        <Revelar como='h2' className="text-5xl lg:text-7xl font-bold text-center text-white mb-12">
             Nuestro Equipo
-        </h2>
+        </Revelar>
 
         {cargando && (
           <p className='text-center text-white font-poppins text-xl'>Cargando barberos...</p>
@@ -46,7 +47,7 @@ const NuestrosColaboradores = () => {
         )}
 
         {!cargando && !error && (
-  <div className="max-w-6xl mx-auto px-2 relative">
+  <Revelar retraso={80} className="max-w-6xl mx-auto px-2 relative">
 
     <IoIosArrowBack size={50}
       className='hidden md:block absolute left-8 top-1/2 -translate-y-1/2 z-50 bg-white rounded-full p-2 text-gray-700 cursor-pointer active:scale-95 transition duration-300'
@@ -78,7 +79,7 @@ const NuestrosColaboradores = () => {
         </SwiperSlide>
       ))}
     </Swiper>
-  </div>
+  </Revelar>
         )}
 </section>
     </>
