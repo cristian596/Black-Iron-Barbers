@@ -8,8 +8,8 @@ export const listarUsuarios = async (req, res, next) => {
               usuarios.barbero_id, barberos.nombre AS barbero_nombre
        FROM usuarios
        JOIN barberos ON barberos.id = usuarios.barbero_id
-       WHERE usuarios.rol = 'barbero' AND barberos.activo = true
-       ORDER BY barberos.nombre`
+       WHERE usuarios.rol = 'barbero'
+       ORDER BY barberos.nombre, usuarios.id`
     );
     res.json(rows);
   } catch (err) {
@@ -33,9 +33,12 @@ export const crearUsuario = async (req, res, next) => {
       return res.status(400).json({ error: 'El barbero_id es obligatorio' });
     }
 
-    const { rows: barberos } = await pool.query('SELECT id FROM barberos WHERE id = $1', [barberoId]);
+    const { rows: barberos } = await pool.query('SELECT id, activo FROM barberos WHERE id = $1', [barberoId]);
     if (barberos.length === 0) {
       return res.status(400).json({ error: 'El barbero seleccionado no existe' });
+    }
+    if (!barberos[0].activo) {
+      return res.status(409).json({ error: 'El barbero está inactivo: reactívalo en Empleados antes de crearle acceso', codigo: 'BARBERO_INACTIVO' });
     }
 
     const hash = await bcrypt.hash(contrasena, 10);
@@ -74,6 +77,17 @@ export const actualizarUsuario = async (req, res, next) => {
     }
     if (activo !== undefined && typeof activo !== 'boolean') {
       return res.status(400).json({ error: 'El campo activo debe ser booleano' });
+    }
+
+    if (activo === true) {
+      // Un usuario activo con su barbero inactivo sería un estado inconsistente: se reactiva desde Empleados.
+      const { rows: ligado } = await pool.query(
+        `SELECT 1 FROM usuarios JOIN barberos ON barberos.id = usuarios.barbero_id WHERE usuarios.id = $1 AND barberos.activo = false`,
+        [usuarioId]
+      );
+      if (ligado.length > 0) {
+        return res.status(409).json({ error: 'El barbero está inactivo: reactívalo en Empleados', codigo: 'BARBERO_INACTIVO' });
+      }
     }
 
     const hash = contrasena !== undefined ? await bcrypt.hash(contrasena, 10) : null;

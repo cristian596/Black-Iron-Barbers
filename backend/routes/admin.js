@@ -3,6 +3,7 @@ import { verificarToken } from '../middlewares/verificarToken.js';
 import { requiereRol } from '../middlewares/requiereRol.js';
 import { listarUsuarios, crearUsuario, actualizarUsuario } from '../controllers/adminController.js';
 import { obtenerEstadisticas, obtenerIngresos, obtenerServiciosTop } from '../controllers/estadisticasController.js';
+import { listarEmpleados, crearEmpleado, actualizarEmpleado } from '../controllers/adminEmpleadosController.js';
 import { listarCitasAdmin } from '../controllers/adminCitasController.js';
 import {
   listarServiciosAdmin,
@@ -28,6 +29,10 @@ router.patch('/servicios/:id', actualizarServicio);
 router.get('/categorias', listarCategoriasAdmin);
 router.post('/categorias', crearCategoria);
 router.patch('/categorias/:id', actualizarCategoria);
+// Empleados: sin DELETE a propósito (se desactivan, y con ellos su usuario, para conservar el historial de citas).
+router.get('/empleados', listarEmpleados);
+router.post('/empleados', crearEmpleado);
+router.patch('/empleados/:id', actualizarEmpleado);
 router.get('/usuarios', listarUsuarios);
 router.post('/usuarios', crearUsuario);
 router.patch('/usuarios/:id', actualizarUsuario);

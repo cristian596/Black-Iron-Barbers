@@ -39,6 +39,14 @@ export const horaActualBogota = () => {
   return horas * 60 + minutos;
 };
 
+// "Ahora" en Bogotá como timestamp sin zona (AAAA-MM-DD HH:MM), comparable con citas.fecha + citas.hora.
+export const ahoraBogota = () => {
+  const minutos = horaActualBogota();
+  const hh = String(Math.floor(minutos / 60)).padStart(2, '0');
+  const mm = String(minutos % 60).padStart(2, '0');
+  return `${hoyISO()} ${hh}:${mm}`;
+};
+
 export const esFechaAnterior = (fecha) => fecha < hoyISO();
 
 export const esFechaHoy = (fecha) => fecha === hoyISO();

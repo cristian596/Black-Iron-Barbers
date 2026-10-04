@@ -1,5 +1,5 @@
 import { pool } from '../db/connection.js';
-import { hoyISO, horaActualBogota } from '../utils/fechas.js';
+import { ahoraBogota } from '../utils/fechas.js';
 import { esFechaCalendario } from '../utils/periodos.js';
 import { validarParametros, leerEntero, escaparLike } from '../utils/parametrosQuery.js';
 
@@ -9,14 +9,6 @@ const LIMITE_POR_DEFECTO = 10;
 const LIMITE_MAXIMO = 50;
 const PAGINA_MAXIMA = 1_000_000;
 const MAX_LONGITUD_Q = 100;
-
-// "Ahora" en Bogotá como timestamp sin zona (AAAA-MM-DD HH:MM), comparable con citas.fecha + citas.hora.
-const ahoraBogota = () => {
-  const minutos = horaActualBogota();
-  const hh = String(Math.floor(minutos / 60)).padStart(2, '0');
-  const mm = String(minutos % 60).padStart(2, '0');
-  return `${hoyISO()} ${hh}:${mm}`;
-};
 
 const DESDE = `
   FROM citas c
