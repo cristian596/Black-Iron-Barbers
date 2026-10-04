@@ -159,4 +159,41 @@ describe('Migración de esquema (backend/db/schema.sql)', () => {
       await bd.end();
     }
   });
+
+  it('amplía servicios sobre una base previa sin perder ids ni citas: filas viejas activas, sin categoría, y repetible', async () => {
+    await recrearBasePrueba();
+    const bd = conectarseABasePrueba();
+
+    try {
+      await bd.query(ESQUEMA_PREVIO);
+      await bd.query(`INSERT INTO barberos (id, nombre, activo) VALUES (1, 'Barbero Prueba', true)`);
+      await bd.query(
+        `INSERT INTO servicios (id, nombre, duracion_min, precio) VALUES (1, 'Corte viejo', 30, 50000), (2, 'Combo viejo', 90, 100000)`
+      );
+      await bd.query(
+        `INSERT INTO citas (cliente, correo, servicio_id, barbero_id, fecha, hora)
+         VALUES ('Cliente 1', 'c1@c.com', 2, 1, '2030-01-10', '10:00')`
+      );
+
+      await bd.query(schemaCompleto);
+      await expect(bd.query(schemaCompleto)).resolves.toBeDefined();
+
+      const { rows } = await bd.query('SELECT id, nombre, activo, categoria_id, tipo, descripcion FROM servicios ORDER BY id');
+      expect(rows).toEqual([
+        { id: 1, nombre: 'Corte viejo', activo: true, categoria_id: null, tipo: null, descripcion: null },
+        { id: 2, nombre: 'Combo viejo', activo: true, categoria_id: null, tipo: null, descripcion: null },
+      ]);
+
+      const { rows: citas } = await bd.query('SELECT servicio_id, duracion_min, precio FROM citas');
+      expect(citas).toEqual([{ servicio_id: 2, duracion_min: 90, precio: 100000 }]);
+
+      const { rows: restricciones } = await bd.query(
+        `SELECT conname FROM pg_constraint
+         WHERE conname IN ('servicios_tipo_check', 'servicios_precio_check', 'servicios_duracion_min_check', 'servicios_nombre_key')`
+      );
+      expect(restricciones).toHaveLength(4);
+    } finally {
+      await bd.end();
+    }
+  });
 });

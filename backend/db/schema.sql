@@ -25,6 +25,44 @@ CREATE TABLE IF NOT EXISTS servicios (
   precio INT NOT NULL
 );
 
+-- Catálogo ampliado: categorías, tipo (original/elite/vip), descripción y baja lógica.
+-- Todo es aditivo y repetible; los servicios previos conservan su id y quedan activos
+-- (el seed es quien desactiva el catálogo viejo). categoria_id, tipo y descripcion son
+-- NULL en filas anteriores a este cambio, por eso no llevan NOT NULL.
+CREATE TABLE IF NOT EXISTS categorias (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(100) NOT NULL UNIQUE,
+  slug VARCHAR(100) NOT NULL UNIQUE,
+  orden INT NOT NULL
+);
+
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS categoria_id INT REFERENCES categorias(id);
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS tipo VARCHAR(10);
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS descripcion TEXT;
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT true;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'servicios_tipo_check') THEN
+    ALTER TABLE servicios ADD CONSTRAINT servicios_tipo_check
+      CHECK (tipo IN ('original', 'elite', 'vip'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'servicios_precio_check') THEN
+    ALTER TABLE servicios ADD CONSTRAINT servicios_precio_check CHECK (precio >= 0);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'servicios_duracion_min_check') THEN
+    ALTER TABLE servicios ADD CONSTRAINT servicios_duracion_min_check CHECK (duracion_min > 0);
+  END IF;
+  -- Necesario para el upsert por nombre del seed. Distingue mayúsculas: "Exfoliación Facial"
+  -- y "Exfoliación facial" son nombres distintos.
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'servicios_nombre_key') THEN
+    ALTER TABLE servicios ADD CONSTRAINT servicios_nombre_key UNIQUE (nombre);
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_servicios_categoria ON servicios (categoria_id);
+CREATE INDEX IF NOT EXISTS idx_servicios_activo ON servicios (activo);
+
 CREATE TABLE IF NOT EXISTS citas (
   id SERIAL PRIMARY KEY,
   cliente VARCHAR(100) NOT NULL,
