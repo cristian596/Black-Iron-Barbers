@@ -34,6 +34,8 @@ const request = async (path, options = {}) => {
 
     const error = new Error(data?.error || 'Error en la solicitud');
     error.status = res.status;
+    // Código estable del back-end (p. ej. SERVICIO_NO_DISPONIBLE): evita depender del texto del mensaje.
+    if (data?.codigo) error.codigo = data.codigo;
     throw error;
   }
 
@@ -57,7 +59,19 @@ export const cambiarContrasena = (token, actual, nueva) =>
 
 export const obtenerBarberos = () => request('/barberos');
 
-export const obtenerServicios = () => request('/servicios');
+// Arma "?a=1&b=2" ignorando valores vacíos; URLSearchParams se encarga de codificar tildes, % y espacios.
+export const construirQuery = (filtros = {}) => {
+  const params = new URLSearchParams();
+  Object.entries(filtros).forEach(([clave, valor]) => {
+    if (valor !== undefined && valor !== null && String(valor).trim() !== '') params.set(clave, valor);
+  });
+  const texto = params.toString();
+  return texto ? `?${texto}` : '';
+};
+
+// Sin argumentos devuelve todos los servicios activos; los filtros (categoria, tipo, q, ordenar,
+// direccion) los resuelve el back-end.
+export const obtenerServicios = (filtros) => request(`/servicios${construirQuery(filtros)}`);
 
 export const obtenerDisponibilidad = (servicioId, fecha, barberoId) => {
   const params = new URLSearchParams({ servicio: servicioId, fecha });

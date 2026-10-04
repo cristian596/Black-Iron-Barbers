@@ -10,3 +10,7 @@ export const fechaLegible = (fecha) => {
   const [anio, mes, dia] = iso.split('-')
   return `${dia}/${mes}/${anio}`
 }
+
+// Un servicio de precio 0 se muestra como "Gratis" en vez de "$0" (preparado para asesorías).
+export const formatearPrecio = (precio) =>
+  Number(precio) === 0 ? 'Gratis' : `$${Number(precio).toLocaleString('es-CO')}`
