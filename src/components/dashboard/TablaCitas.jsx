@@ -38,7 +38,7 @@ const TablaCitas = ({
                 {mostrarBarbero && <td className="py-2 pr-3">{cita.barbero_nombre}</td>}
                 <td className="py-2 pr-3">{fechaLegible(cita.fecha)}</td>
                 <td className="py-2 pr-3">{soloHora(cita.hora)}</td>
-                <td className="py-2 pr-3"><BadgeEstado estado={cita.estado} /></td>
+                <td className="py-2 pr-3"><BadgeEstado estado={cita.estado} vencida={cita.vencida} /></td>
                 {hayAcciones && (
                   <td className="py-2 pr-3">
                     {cita.estado === 'pendiente' && (
@@ -96,6 +96,8 @@ const TablaCitas = ({
             mostrarBarbero={mostrarBarbero}
             onCompletar={onCompletar}
             onCancelar={onCancelar}
+            onReasignar={onReasignar}
+            barberosActivos={barberosActivos}
           />
         ))}
       </div>

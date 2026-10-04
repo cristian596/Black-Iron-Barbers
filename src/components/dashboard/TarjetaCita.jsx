@@ -19,7 +19,7 @@ const TarjetaCita = ({
           <p className="text-lg font-semibold">{cita.cliente}</p>
           <p className="text-sm text-gray-400">{cita.servicio_nombre}</p>
         </div>
-        <BadgeEstado estado={cita.estado} />
+        <BadgeEstado estado={cita.estado} vencida={cita.vencida} />
       </div>
 
       <div className="mt-2 space-y-0.5 text-sm text-gray-300">

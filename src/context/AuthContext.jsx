@@ -30,7 +30,7 @@ const restaurarSesion = () => {
 
   return {
     token: tokenGuardado,
-    usuario: { id: payload.id, rol: payload.rol, barbero_id: payload.barbero_id },
+    usuario: { id: payload.id, usuario: payload.usuario, rol: payload.rol, barbero_id: payload.barbero_id },
   }
 }
 

@@ -124,3 +124,32 @@ END $$;
 -- cancelar). citas_sin_solapamiento ya cubre ese caso (hora igual = rango que
 -- se solapa consigo mismo) y sí libera el hueco al cancelar, así que se retira.
 ALTER TABLE citas DROP CONSTRAINT IF EXISTS citas_barbero_id_fecha_hora_key;
+
+-- Las estadísticas y el listado del admin filtran por rango de fechas y estado.
+CREATE INDEX IF NOT EXISTS idx_citas_fecha_estado ON citas (fecha, estado);
+
+-- Gestión del catálogo desde el panel del admin (aditivo e idempotente).
+--  - clave_seed: identificador estable de las filas que vienen del catálogo del seed (backend/db/data). El seed y
+--    la migración casan por él, no por el nombre, así un servicio renombrado por el admin no se vuelve a crear.
+--    NULL = fila creada por el admin (el seed nunca la toca). UNIQUE permite varios NULL.
+--  - categorias.activo: una categoría inactiva no aparece en la web pública.
+--  - migraciones_aplicadas: pasos de datos que se ejecutan una sola vez (backfill de claves, apagado del catálogo
+--    anterior). Las ejecuta backend/db/migracionesCatalogo.js y deja aquí su registro.
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS clave_seed VARCHAR(100);
+ALTER TABLE categorias ADD COLUMN IF NOT EXISTS clave_seed VARCHAR(100);
+ALTER TABLE categorias ADD COLUMN IF NOT EXISTS activo BOOLEAN NOT NULL DEFAULT true;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'servicios_clave_seed_key') THEN
+    ALTER TABLE servicios ADD CONSTRAINT servicios_clave_seed_key UNIQUE (clave_seed);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categorias_clave_seed_key') THEN
+    ALTER TABLE categorias ADD CONSTRAINT categorias_clave_seed_key UNIQUE (clave_seed);
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS migraciones_aplicadas (
+  clave VARCHAR(100) PRIMARY KEY,
+  aplicada_en TIMESTAMP NOT NULL DEFAULT NOW()
+);

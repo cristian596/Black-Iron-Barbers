@@ -33,6 +33,25 @@ export const formatearFechaLegible = (valor) => {
   })
 }
 
+// Fecha de calendario real en formato AAAA-MM-DD ('2026-02-31' no existe).
+export const esFechaISO = (valor) => {
+  if (typeof valor !== 'string' || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(valor)) return false
+  const [anio, mes, dia] = valor.split('-').map(Number)
+  return new Date(Date.UTC(anio, mes - 1, dia)).toISOString().slice(0, 10) === valor
+}
+
+// "4 oct" para un día; "28 sep – 4 oct" para un rango (fechas AAAA-MM-DD).
+export const formatearRango = ({ desde, hasta }) => {
+  const corta = (iso) => {
+    const [anio, mes, dia] = iso.split('-').map(Number)
+    const abreviatura = new Date(Date.UTC(anio, mes - 1, dia))
+      .toLocaleDateString('es-CO', { month: 'short', timeZone: 'UTC' })
+      .replace('.', '')
+    return `${dia} ${abreviatura}`
+  }
+  return desde === hasta ? corta(desde) : `${corta(desde)} – ${corta(hasta)}`
+}
+
 export const formatearFechaChip = (fechaISO) => {
   const [anio, mes, dia] = fechaISO.split('-').map(Number)
   const fecha = new Date(Date.UTC(anio, mes - 1, dia))

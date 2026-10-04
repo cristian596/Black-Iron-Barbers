@@ -1,0 +1,73 @@
+// Consultas de las estadísticas del admin. Reciben el ejecutor `db` (pool o cliente) para poder probarlas
+// con distintas zonas horarias de sesión.
+//
+// Reglas comunes:
+//  - citas.fecha es DATE en hora local de Bogotá: no se convierte nada. "Hoy" lo decide Node y llega como
+//    parámetro; nunca CURRENT_DATE ni NOW(), que dependen de la zona del servidor Postgres.
+//  - Ingresos = SUM(citas.precio) de las completadas (precio guardado en la cita, no el del catálogo).
+//  - Las fechas se devuelven como texto AAAA-MM-DD (pg convertiría un DATE a Date según la zona del proceso).
+//  - Las series usan generate_series(0, n) sumado a una fecha: así no dependen de la zona de la sesión.
+
+const COMPLETADA = "c.estado = 'completada'";
+
+export const resumenPeriodo = async (db, { desde, hasta }) => {
+  const { rows } = await db.query(
+    `SELECT
+       COUNT(*) FILTER (WHERE c.estado <> 'cancelada')::int AS citas,
+       COUNT(*) FILTER (WHERE ${COMPLETADA})::int AS completadas,
+       COUNT(*) FILTER (WHERE c.estado = 'cancelada')::int AS canceladas,
+       COALESCE(SUM(c.precio) FILTER (WHERE ${COMPLETADA}), 0)::int AS ingresos,
+       COALESCE(ROUND(AVG(c.precio) FILTER (WHERE ${COMPLETADA} AND c.precio > 0)), 0)::int AS ticket_promedio
+     FROM citas c
+     WHERE c.fecha BETWEEN $1::date AND $2::date`,
+    [desde, hasta]
+  );
+  return rows[0];
+};
+
+export const ingresosPorDia = async (db, desde, dias) => {
+  const { rows } = await db.query(
+    `SELECT to_char($1::date + n, 'YYYY-MM-DD') AS fecha,
+            COALESCE(SUM(c.precio) FILTER (WHERE ${COMPLETADA}), 0)::int AS ingresos,
+            COUNT(c.id) FILTER (WHERE ${COMPLETADA})::int AS cortes
+     FROM generate_series(0, $2::int - 1) AS n
+     LEFT JOIN citas c ON c.fecha = $1::date + n
+     GROUP BY n
+     ORDER BY n`,
+    [desde, dias]
+  );
+  return rows;
+};
+
+// `primerMes` es el día 1 del primer mes de la serie.
+export const ingresosPorMes = async (db, primerMes, meses) => {
+  const { rows } = await db.query(
+    `SELECT to_char(m.inicio, 'YYYY-MM') AS mes,
+            COALESCE(SUM(c.precio) FILTER (WHERE ${COMPLETADA}), 0)::int AS ingresos,
+            COUNT(c.id) FILTER (WHERE ${COMPLETADA})::int AS cortes
+     FROM (
+       SELECT ($1::date + make_interval(months => n))::date AS inicio
+       FROM generate_series(0, $2::int - 1) AS n
+     ) m
+     LEFT JOIN citas c
+       ON c.fecha >= m.inicio AND c.fecha < (m.inicio + interval '1 month')::date
+     GROUP BY m.inicio
+     ORDER BY m.inicio`,
+    [primerMes, meses]
+  );
+  return rows;
+};
+
+export const serviciosTop = async (db, { desde, hasta }, limite) => {
+  const { rows } = await db.query(
+    `SELECT s.id, s.nombre, COUNT(*)::int AS cantidad, SUM(c.precio)::int AS ingresos
+     FROM citas c
+     JOIN servicios s ON s.id = c.servicio_id
+     WHERE c.fecha BETWEEN $1::date AND $2::date AND ${COMPLETADA}
+     GROUP BY s.id, s.nombre
+     ORDER BY cantidad DESC, ingresos DESC, s.nombre ASC
+     LIMIT $3`,
+    [desde, hasta, limite]
+  );
+  return rows;
+};

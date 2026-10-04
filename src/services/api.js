@@ -36,6 +36,9 @@ const request = async (path, options = {}) => {
     error.status = res.status;
     // Código estable del back-end (p. ej. SERVICIO_NO_DISPONIBLE): evita depender del texto del mensaje.
     if (data?.codigo) error.codigo = data.codigo;
+    // Campo del formulario al que se refiere el error y datos de apoyo (p. ej. cuántos servicios activos tiene una categoría).
+    if (data?.campo) error.campo = data.campo;
+    if (data?.total_servicios !== undefined) error.total_servicios = data.total_servicios;
     throw error;
   }
 
@@ -101,10 +104,37 @@ export const actualizarCita = (token, id, cambios) =>
     body: JSON.stringify(cambios),
   });
 
-export const obtenerResumenAdmin = (token) =>
-  request('/admin/resumen', {
-    headers: authHeader(token),
-  });
+// Estadísticas del dashboard (solo admin). `periodo`: hoy | 7d | 30d | mes · `agrupar`: dia | mes.
+export const obtenerEstadisticas = (token, periodo) =>
+  request(`/admin/estadisticas${construirQuery({ periodo })}`, { headers: authHeader(token) });
+
+export const obtenerIngresos = (token, agrupar) =>
+  request(`/admin/estadisticas/ingresos${construirQuery({ agrupar })}`, { headers: authHeader(token) });
+
+export const obtenerServiciosTop = (token, periodo, limite) =>
+  request(`/admin/estadisticas/servicios-top${construirQuery({ periodo, limite })}`, { headers: authHeader(token) });
+
+// Lista paginada del admin: { pestana, q, desde, hasta, barbero, pagina, limite } → { items, total, pagina, limite }.
+export const obtenerCitasAdmin = (token, filtros) =>
+  request(`/admin/citas${construirQuery(filtros)}`, { headers: authHeader(token) });
+
+// Catálogo del admin (incluye inactivos). Sin DELETE: los servicios y categorías se activan o desactivan.
+export const obtenerServiciosAdmin = (token, filtros) =>
+  request(`/admin/servicios${construirQuery(filtros)}`, { headers: authHeader(token) });
+
+export const crearServicioAdmin = (token, datos) =>
+  request('/admin/servicios', { method: 'POST', headers: authHeader(token), body: JSON.stringify(datos) });
+
+export const actualizarServicioAdmin = (token, id, cambios) =>
+  request(`/admin/servicios/${id}`, { method: 'PATCH', headers: authHeader(token), body: JSON.stringify(cambios) });
+
+export const obtenerCategoriasAdmin = (token) => request('/admin/categorias', { headers: authHeader(token) });
+
+export const crearCategoriaAdmin = (token, datos) =>
+  request('/admin/categorias', { method: 'POST', headers: authHeader(token), body: JSON.stringify(datos) });
+
+export const actualizarCategoriaAdmin = (token, id, cambios) =>
+  request(`/admin/categorias/${id}`, { method: 'PATCH', headers: authHeader(token), body: JSON.stringify(cambios) });
 
 export const obtenerUsuarios = (token) =>
   request('/admin/usuarios', {

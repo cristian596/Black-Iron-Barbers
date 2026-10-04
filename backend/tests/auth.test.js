@@ -1,10 +1,32 @@
 import { describe, it, expect } from 'vitest';
+import jwt from 'jsonwebtoken';
 import request from 'supertest';
 import { crearApp } from '../app.js';
 
 const app = crearApp();
 
 describe('POST /api/auth/login', () => {
+  it('incluye el nombre de usuario en el token y en la respuesta (el panel lo muestra)', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ usuario: process.env.ADMIN_USER, contrasena: process.env.ADMIN_PASSWORD });
+
+    expect(res.body.usuario.usuario).toBe(process.env.ADMIN_USER);
+    const payload = jwt.verify(res.body.token, process.env.JWT_SECRET);
+    expect(payload).toMatchObject({ usuario: process.env.ADMIN_USER, rol: 'admin', barbero_id: null });
+    expect(payload.contrasena).toBeUndefined();
+  });
+
+  it('el token de un barbero lleva su usuario y su barbero_id', async () => {
+    const res = await request(app).post('/api/auth/login').send({ usuario: 'barbero1_test', contrasena: 'barbero12345' });
+
+    expect(jwt.verify(res.body.token, process.env.JWT_SECRET)).toMatchObject({
+      usuario: 'barbero1_test',
+      rol: 'barbero',
+      barbero_id: 1,
+    });
+  });
+
   it('devuelve un token con un usuario y contraseña correctos', async () => {
     const res = await request(app)
       .post('/api/auth/login')
