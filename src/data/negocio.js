@@ -14,3 +14,9 @@ export const ESTADISTICAS = [
   { id: 'anios', etiqueta: 'Años', valor: 6 },
   { id: 'locales', etiqueta: 'Locales', valor: 2 },
 ]
+
+// Destino del botón de asesoría gratuita (Home → "Reserva a tu manera").
+// PROVISIONAL: la página de asesoría se creará después y aún no existe esta ruta.
+// Mientras tanto el botón hace preventDefault y no navega; al crear la página,
+// quitar el preventDefault en ReservaATuManera.jsx.
+export const RUTA_ASESORIA = '/asesoria'
