@@ -17,25 +17,6 @@ export const listarUsuarios = async (req, res, next) => {
   }
 };
 
-export const obtenerResumen = async (req, res, next) => {
-  try {
-    const [{ rows: porEstado }, { rows: porBarbero }] = await Promise.all([
-      pool.query('SELECT estado, COUNT(*)::int AS total FROM citas GROUP BY estado'),
-      pool.query(
-        `SELECT barberos.id AS barbero_id, barberos.nombre AS barbero_nombre, COUNT(citas.id)::int AS total
-         FROM barberos
-         LEFT JOIN citas ON citas.barbero_id = barberos.id
-         GROUP BY barberos.id, barberos.nombre
-         ORDER BY barberos.nombre`
-      ),
-    ]);
-
-    res.json({ porEstado, porBarbero });
-  } catch (err) {
-    next(err);
-  }
-};
-
 export const crearUsuario = async (req, res, next) => {
   try {
     const { usuario, contrasena, barbero_id } = req.body;

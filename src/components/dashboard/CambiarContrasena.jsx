@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { cambiarContrasena } from '../../services/api'
 
-const CambiarContrasena = ({ token }) => {
+// `variante`: "panel" (por defecto, panel del barbero: botón crema) o "admin" (dashboard del admin: botón dorado).
+const BOTON = {
+  panel: 'bg-amber-50 hover:bg-amber-200',
+  admin: 'bg-oro hover:bg-oro/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro',
+}
+
+const CambiarContrasena = ({ token, variante = 'panel' }) => {
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
   const [confirmar, setConfirmar] = useState('')
@@ -100,7 +106,7 @@ const CambiarContrasena = ({ token }) => {
         <button
           type="submit"
           disabled={cargando}
-          className="mt-2 w-fit cursor-pointer rounded-xl bg-amber-50 p-2 px-4 font-medium text-black duration-500 hover:bg-amber-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+          className={`mt-2 w-fit cursor-pointer rounded-xl p-2 px-4 font-medium text-black duration-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${BOTON[variante]}`}
         >
           {cargando ? 'Guardando...' : 'Guardar contraseña'}
         </button>

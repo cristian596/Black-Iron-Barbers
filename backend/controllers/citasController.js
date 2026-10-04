@@ -1,5 +1,5 @@
 import { pool } from '../db/connection.js';
-import { esFechaValida, esHoraValida, esFechaAnterior, intervaloDentroDeHorario } from '../utils/fechas.js';
+import { esFechaValida, esHoraValida, esFechaAnterior, intervaloDentroDeHorario, hoyISO } from '../utils/fechas.js';
 import { normalizarTelefono, esTelefonoValido } from '../utils/telefono.js';
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -248,7 +248,7 @@ export const actualizarCita = async (req, res, next) => {
       return res.status(403).json({ error: 'Solo un administrador puede reasignar el barbero' });
     }
 
-    const { rows: citas } = await pool.query('SELECT id, barbero_id FROM citas WHERE id = $1', [citaId]);
+    const { rows: citas } = await pool.query('SELECT id, barbero_id, fecha::text AS fecha FROM citas WHERE id = $1', [citaId]);
     const cita = citas[0];
 
     if (!cita) {
@@ -257,6 +257,15 @@ export const actualizarCita = async (req, res, next) => {
 
     if (rol === 'barbero' && cita.barbero_id !== barberoToken) {
       return res.status(404).json({ error: 'Cita no encontrada' });
+    }
+
+    // Una cita solo se puede completar el día en que ocurre o después (hora de Bogotá), para admin y barbero.
+    // Completar citas futuras inflaría los ingresos del dashboard.
+    if (estado === 'completada' && cita.fecha > hoyISO()) {
+      return res.status(400).json({
+        error: 'No se puede completar una cita de una fecha futura',
+        codigo: 'CITA_FUTURA',
+      });
     }
 
     let nuevoBarberoId = cita.barbero_id;

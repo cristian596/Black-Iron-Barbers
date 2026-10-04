@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import { crearApp } from '../app.js';
 import { pool } from '../db/connection.js';
+import { hoyISO } from '../utils/fechas.js';
 
 const app = crearApp();
 
@@ -97,7 +98,8 @@ describe('PATCH /api/citas/:id (permisos por rol)', () => {
   });
 
   it('un barbero si puede modificar su propia cita', async () => {
-    const creada = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1 }));
+    // La cita es de hoy: una cita futura ya no se puede completar (ver completarCitas.test.js)
+    const creada = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, fecha: hoyISO() }));
 
     const res = await request(app)
       .patch(`/api/citas/${creada.body.id}`)
@@ -258,17 +260,25 @@ describe('POST /api/citas — validaciones nuevas', () => {
 describe('Acceso de barbero a /api/admin/*', () => {
   it('un barbero recibe 403 al intentar acceder a una ruta de admin', async () => {
     const res = await request(app)
-      .get('/api/admin/resumen')
+      .get('/api/admin/estadisticas')
       .set('Authorization', `Bearer ${tokenBarbero1}`);
 
     expect(res.status).toBe(403);
   });
 
-  it('el admin si puede acceder a /api/admin/resumen', async () => {
+  it('el admin si puede acceder a /api/admin/estadisticas', async () => {
     const res = await request(app)
-      .get('/api/admin/resumen')
+      .get('/api/admin/estadisticas')
       .set('Authorization', `Bearer ${tokenAdmin}`);
 
     expect(res.status).toBe(200);
+  });
+
+  it('el endpoint viejo /api/admin/resumen ya no existe (404 para el admin, 403 para un barbero)', async () => {
+    const comoAdmin = await request(app).get('/api/admin/resumen').set('Authorization', `Bearer ${tokenAdmin}`);
+    const comoBarbero = await request(app).get('/api/admin/resumen').set('Authorization', `Bearer ${tokenBarbero1}`);
+
+    expect(comoAdmin.status).toBe(404);
+    expect(comoBarbero.status).toBe(403);
   });
 });
