@@ -5,6 +5,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import barberosRoutes from './routes/barberos.js';
 import serviciosRoutes from './routes/servicios.js';
+import categoriasRoutes from './routes/categorias.js';
 import disponibilidadRoutes from './routes/disponibilidad.js';
 import citasRoutes from './routes/citas.js';
 import { errorHandler } from './middlewares/errorHandler.js';
@@ -23,6 +24,7 @@ export const crearApp = () => {
   app.use('/api/admin', adminRoutes);
   app.use('/api/barberos', barberosRoutes);
   app.use('/api/servicios', serviciosRoutes);
+  app.use('/api/categorias', categoriasRoutes);
   app.use('/api/disponibilidad', disponibilidadRoutes);
   app.use('/api/citas', citasRoutes);
 

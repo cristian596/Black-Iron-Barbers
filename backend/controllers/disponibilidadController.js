@@ -53,9 +53,12 @@ export const obtenerDisponibilidad = async (req, res, next) => {
       return res.status(400).json({ error: 'El servicio debe ser un id numérico' });
     }
 
-    const { rows: servicios } = await pool.query('SELECT duracion_min FROM servicios WHERE id = $1', [servicioId]);
+    const { rows: servicios } = await pool.query('SELECT duracion_min, activo FROM servicios WHERE id = $1', [servicioId]);
     if (servicios.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado' });
+    }
+    if (!servicios[0].activo) {
+      return res.status(400).json({ error: 'El servicio seleccionado no existe o no está disponible', codigo: 'SERVICIO_NO_DISPONIBLE' });
     }
     const duracionMin = servicios[0].duracion_min;
 

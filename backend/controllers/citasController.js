@@ -106,9 +106,12 @@ export const crearCita = async (req, res, next) => {
       return res.status(400).json({ error: 'La hora no es válida' });
     }
 
-    const { rows: servicios } = await pool.query('SELECT duracion_min, precio FROM servicios WHERE id = $1', [servicioId]);
+    const { rows: servicios } = await pool.query(
+      'SELECT duracion_min, precio FROM servicios WHERE id = $1 AND activo = true',
+      [servicioId]
+    );
     if (servicios.length === 0) {
-      return res.status(400).json({ error: 'El servicio seleccionado no existe' });
+      return res.status(400).json({ error: 'El servicio seleccionado no existe o no está disponible', codigo: 'SERVICIO_NO_DISPONIBLE' });
     }
     const { duracion_min: duracionMin, precio } = servicios[0];
 
