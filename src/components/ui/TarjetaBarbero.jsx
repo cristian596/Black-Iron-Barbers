@@ -1,16 +1,12 @@
 import { useNavigate } from 'react-router-dom'
+import AvatarBarbero from './AvatarBarbero'
 
 const TarjetaBarbero = ({ barbero }) => {
   const navigate = useNavigate()
 
   return (
     <div className='bg-zinc-800 rounded-xl overflow-hidden shadow-lg'>
-      <img
-        src={barbero.foto}
-        alt={`Foto de ${barbero.nombre}, barbero en Black Iron Barbers`}
-        className='w-full h-72 object-cover'
-        loading='lazy'
-      />
+      <AvatarBarbero barbero={barbero} className='w-full h-72' textoClase='text-6xl' />
 
       <div className='p-8 text-center'>
         <h3 className='text-2xl text-white font-semibold'>{barbero.nombre}</h3>

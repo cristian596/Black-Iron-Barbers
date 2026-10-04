@@ -1,9 +1,8 @@
 import { useRef, useState } from 'react'
 import { TIPOS_SERVICIO } from '../../data/tiposServicio'
 import { interpretarError, validarFormularioServicio } from '../../utils/erroresCatalogo'
+import Campo, { ESTILO_CAMPO as CAMPO } from './CampoFormulario'
 
-const CAMPO =
-  'min-h-11 w-full min-w-0 rounded-lg border bg-black px-3 text-sm text-white placeholder:text-zinc-500 focus-visible:outline-2 focus-visible:outline-oro'
 const MAX_DESCRIPCION = 500
 
 const valoresIniciales = (servicio) => ({
@@ -14,15 +13,6 @@ const valoresIniciales = (servicio) => ({
   duracion_min: servicio ? String(servicio.duracion_min) : '',
   descripcion: servicio?.descripcion ?? '',
 })
-
-const Campo = ({ id, etiqueta, error, ayuda, children }) => (
-  <div className="flex min-w-0 flex-col gap-1">
-    <label htmlFor={id} className="text-sm font-medium text-zinc-300">{etiqueta}</label>
-    {children}
-    {ayuda && !error && <p id={`${id}-ayuda`} className="text-xs text-zinc-500">{ayuda}</p>}
-    {error && <p id={`${id}-error`} role="alert" className="text-sm text-red-400">{error}</p>}
-  </div>
-)
 
 // Alta y edición de un servicio. `servicio` null = alta. `alGuardar(datos)` devuelve una promesa; si falla con un
 // error de la API, el mensaje se muestra en el campo que indica su código (o arriba si no es de un campo).

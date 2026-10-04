@@ -9,7 +9,7 @@ Contexto para Claude Code sobre el proyecto **Black Iron Barbers**. Léelo antes
 Sitio web de una **barbería** (solo servicios de barbería): catálogo de servicios, reserva de citas online y dos paneles privados:
 
 - **Barbero** (`/panel`): ve y gestiona solo sus propias citas.
-- **Administrador** (`/admin`): ve todas las citas (pendientes y realizadas), el barbero a cargo de cada una, y gestiona los usuarios de los barberos.
+- **Administrador** (`/admin`): ve todas las citas (pendientes y realizadas), el barbero a cargo de cada una, y gestiona servicios, categorías y empleados (barberos con su usuario).
 
 El acceso a estos paneles es solo para barberos y admin, no para clientes: el login vive en `/acceso` (antes `/login-barberos`), sin ningún enlace visible en la navegación pública, con `<meta name="robots" content="noindex, nofollow">` (igual que `/panel` y `/admin`) y bloqueado en `public/robots.txt`. La ruta vieja `/login-barberos` ya no existe (muestra 404). Esto es solo para que el sitio no "invite" a clientes a buscar el login; la seguridad real sigue estando en el back-end (JWT + roles).
 
@@ -61,7 +61,7 @@ src/
 
 ## Modelo de datos
 
-- `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto`, `activo` (el personal que se muestra en la web)
+- `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto` (nula en los creados desde el admin: la web muestra un avatar con iniciales), `activo` (el personal que se muestra en la web)
 - `usuarios`: `id`, `usuario` (único), `contrasena` (hash bcrypt), `rol` (`admin` | `barbero`), `barbero_id` (nulo para el admin), `activo`
 - `categorias`: `id`, `nombre` (único), `slug` (único; se genera del nombre al crear y no se edita), `orden` (orden de aparición), `activo` (una categoría inactiva no aparece en la web), `clave_seed` (nulo = creada por el admin)
 - `servicios`: `id`, `nombre` (único; distingue mayúsculas), `descripcion`, `duracion_min` (> 0), `precio` (>= 0; 0 se muestra como "Gratis"), `tipo` (`original` | `elite` | `vip`), `categoria_id` (→ `categorias`), `activo`, `clave_seed` (solo barbería)
@@ -77,6 +77,8 @@ src/
 - El **administrador crea el usuario y la contraseña de cada barbero** (`POST /api/admin/usuarios`). No existe registro público.
 - El admin inicial se crea con el seed usando `ADMIN_USER` y `ADMIN_PASSWORD` del `.env`.
 - Los usuarios se **desactivan** (`activo = false`), nunca se borran, para conservar el historial de citas.
+- `verificarToken` no se fía solo del JWT: en cada petición consulta `usuarios` (y `barberos` si es barbero) y responde 401 `SESION_INVALIDA` si el usuario o su barbero están inactivos o ya no existen. Así, desactivar a un empleado invalida su token al instante (si no, seguiría valiendo hasta 8 h). El `rol` y el `barbero_id` de `req.usuario` salen de la base, no del token. Costo: una consulta por clave primaria por petición.
+- Un empleado es un barbero más su usuario, y **siempre en el mismo estado**: crear, desactivar y reactivar tocan ambos en una transacción. Puede haber varios usuarios ligados al mismo barbero (datos de prueba antiguos); el listado muestra uno (el activo, o el más reciente) y `usuarios_total`.
 - El barbero puede cambiar su propia contraseña (`PATCH /api/auth/contrasena`).
 
 ## API
@@ -98,9 +100,12 @@ src/
 | PATCH | `/api/admin/servicios/:id` | solo admin (campos y `activo`; sin DELETE) |
 | GET, POST | `/api/admin/categorias` | solo admin |
 | PATCH | `/api/admin/categorias/:id` | solo admin (`nombre`, `orden`, `activo`; el slug no se edita; sin DELETE) |
-| GET | `/api/admin/usuarios` | solo admin |
-| POST | `/api/admin/usuarios` | solo admin |
-| PATCH | `/api/admin/usuarios/:id` | solo admin |
+| GET | `/api/admin/empleados` | solo admin (todos, activos e inactivos; sin parámetros) |
+| POST | `/api/admin/empleados` | solo admin (crea barbero y usuario en una transacción; sin DELETE) |
+| PATCH | `/api/admin/empleados/:id` | solo admin (`nombre`, `cargo`, `especialidad`, `activo`) |
+| GET | `/api/admin/usuarios` | solo admin (incluye los de barberos inactivos) |
+| POST | `/api/admin/usuarios` | solo admin (acceso para un barbero que no tiene; 409 `BARBERO_INACTIVO` si el barbero está inactivo) |
+| PATCH | `/api/admin/usuarios/:id` | solo admin (restablecer contraseña; no se puede activar el usuario de un barbero inactivo) |
 
 ### Catálogo de servicios
 
@@ -115,10 +120,11 @@ src/
 
 ### Dashboard del administrador
 
-- **Rutas** (`AppRouter`: `/admin` es un layout con rutas hijas lazy; el guard `ProtectedRoute` + `RoleRoute rol="admin"` está una sola vez en el padre): `/admin` (Resumen), `/admin/citas`, `/admin/servicios` (catálogo y categorías), `/admin/reportes` (aún provisional), `/admin/empleados` (provisional: usuarios de barberos). Cualquier otra ruta bajo `/admin` vuelve a `/admin`. El buscador de la barra superior lleva a `/admin/citas?q=`.
+- **Rutas** (`AppRouter`: `/admin` es un layout con rutas hijas lazy; el guard `ProtectedRoute` + `RoleRoute rol="admin"` está una sola vez en el padre): `/admin` (Resumen), `/admin/citas`, `/admin/servicios` (catálogo y categorías), `/admin/empleados` (barberos y su acceso) y `/admin/reportes` (aún provisional). Cualquier otra ruta bajo `/admin` vuelve a `/admin`. El buscador de la barra superior lleva a `/admin/citas?q=`.
 - **Estadísticas** (todo bajo `/api/admin`, parámetros desconocidos/repetidos/inválidos → 400): "hoy" lo decide Node con `hoyISO()` de `backend/utils/fechas.js` (Bogotá), nunca `CURRENT_DATE`/`NOW()`. Ingresos = `SUM(citas.precio)` de las completadas (precio guardado en la cita). Las canceladas no suman y se cuentan aparte. El ticket promedio excluye las completadas de precio 0. Las series usan `generate_series(0, n)` sumado a una fecha (no dependen de la zona de la sesión de Postgres). `/estadisticas/ingresos` devuelve 30 días (o 12 meses) y los 30 (12) anteriores. Las consultas SQL viven en `backend/db/estadisticas.js`.
 - **Lista de citas del admin** (`GET /api/admin/citas`): pestañas `proximas` (pendientes que aún no empiezan, las más cercanas primero), `todas` y `canceladas` (más recientes primero). Las pendientes de un día/hora pasados llevan `vencida: true` y no entran en `proximas`. Paginada: `limite` por defecto 10, máximo 50 (la pantalla pide 15). `q` busca en cliente, servicio y barbero (escapa `%`, `_` y `\`). `fecha`/`hora` salen como texto.
 - **Catálogo del admin** (`adminCatalogoController.js`): sin DELETE (se activa o desactiva). Servicio: `nombre` 1–150 y único sin distinguir mayúsculas (solo se valida al crear o al cambiar el nombre, para no afectar filas ya existentes como "Exfoliación Facial"/"Exfoliación facial"), `precio` entero ≥ 0, `duracion_min` entero 1–600, `tipo` original/elite/vip, `categoria_id` existente y **activa**, `descripcion` obligatoria (máx. 500); campos desconocidos → 400; PATCH exige al menos un campo. Activar un servicio exige categoría activa, tipo y descripción (`SERVICIO_INCOMPLETO`). Categoría: slug generado del nombre (con sufijo `-2`, `-3`… si choca); desactivar una con servicios activos → 409 `CATEGORIA_CON_SERVICIOS`. Todos los errores llevan `codigo` estable (`DATOS_INVALIDOS` con `campo`, `NOMBRE_DUPLICADO`, `CATEGORIA_NO_DISPONIBLE`, `SERVICIO_INCOMPLETO`, `CATEGORIA_CON_SERVICIOS`, `SLUG_NO_EDITABLE`, `*_NO_ENCONTRADO`, `ID_INVALIDO`). Editar precio o duración no altera las citas ya creadas (guardan su propio precio y duración). `/api/servicios` y `/api/categorias` (públicas) solo muestran lo activo y nada de una categoría inactiva.
+- **Empleados** (`adminEmpleadosController.js`): sin DELETE. `GET` devuelve, por barbero, `usuario` (`{ id, usuario, activo }` o `null`), `usuarios_total`, `cortes_mes` (completadas del mes en curso en Bogotá, con los límites calculados en Node) y `citas_pendientes` (pendientes que aún no empiezan). `POST` valida (`nombre` 1–100, `cargo` ≤ 100 y `especialidad` ≤ 150 opcionales, `usuario` 1–50, contraseña 8–72), hashea con bcrypt y crea barbero y usuario en una transacción: un usuario repetido responde 409 `USUARIO_DUPLICADO` y no deja un barbero huérfano. `PATCH` con `activo: false` apaga barbero y todos sus usuarios en una transacción, lo saca de `/api/barberos`, de la asignación automática y de la reserva, y responde `citas_pendientes_conservadas`; esas citas siguen asignadas y se reasignan desde `/admin/citas`. `activo: true` reactiva el barbero y su usuario más reciente. Campos desconocidos → 400 `DATOS_INVALIDOS`; códigos: `USUARIO_DUPLICADO`, `EMPLEADO_NO_ENCONTRADO`, `ID_INVALIDO`, `PARAMETRO_INVALIDO`.
 - **Completar citas**: solo si `fecha` ≤ hoy en Bogotá (admin y barbero); una cita futura se puede cancelar o reasignar, no completar.
 - **`/admin/citas`**: todo el estado vive en la URL (`?pestana=&q=&desde=&hasta=&barbero=&pagina=`); un valor inválido se ignora. Cualquier filtro reinicia la página; una página inexistente lleva a la última válida; 15 citas por página; tras completar, cancelar o reasignar la lista se recarga conservando página y filtros.
 - **Datos de demostración**: `seed:demo` marca a los clientes con `[demo] `, se niega con `NODE_ENV=production` o contra una base con "test" en el nombre, y solo escribe con `--confirmar`.
@@ -147,6 +153,8 @@ src/
 - Gráficos del dashboard: SVG propio, sin librerías, con colores y trazos en clases de Tailwind (`fill-oro`, `stroke-zinc-600`). Cada gráfico lleva `role="img"` + `aria-label` y una tabla de datos dentro de un `div` `sr-only` (una `<table>` suelta con `sr-only` ensancha la página).
 - Listados del admin: el estado (pestaña, búsqueda, fechas, página) va en la URL con `useSearchParams`; los datos se piden con `useCarga` (conserva los datos mientras llegan los nuevos y descarta respuestas viejas).
 - Toda imagen lleva `alt` descriptivo, nunca `alt=""`.
+- La foto de un barbero se muestra siempre con `AvatarBarbero` (`src/components/ui`): si no hay foto o no carga, usa un avatar con iniciales hecho con clases de Tailwind. Los barberos creados desde el admin no tienen foto.
+- Los listados ordenados por nombre se ordenan en el front con `localeCompare(…, 'es')` (así "Ángel" va antes de "Boby"), nunca con `<` ni con el orden del back-end.
 - Todo input tiene `<label htmlFor>` enlazado a su `id`.
 - Usar `<Link>` / `<NavLink>` para navegar, nunca `<a href>` interno.
 - Consultas SQL siempre parametrizadas (`$1, $2`), nunca concatenar strings.
@@ -174,7 +182,7 @@ src/
 - Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.
 - Tests (front y back) y CI en GitHub Actions ya configurados.
 - Catálogo de 39 servicios en 6 categorías con tipos original/élite/VIP; `/cortes` y el paso 1 de `/reservar-corte` lo muestran con filtros (el paso 1 añade buscador). La sección de servicios ya no está en el inicio, que enlaza a `/cortes`.
-- Dashboard del admin (en curso, por fases): hecho el layout con rutas hijas, el Resumen (indicadores con comparación, gráficos SVG, citas recientes) y `/admin/citas` (paginada, con filtros en la URL). También hecho: `/admin/servicios` (CRUD de servicios y categorías sin DELETE) y el seed que solo inserta. Faltan empleados y el reporte diario.
+- Dashboard del admin (en curso, por fases): hecho el layout con rutas hijas, el Resumen (indicadores con comparación, gráficos SVG, citas recientes) y `/admin/citas` (paginada, con filtros en la URL). También hecho: `/admin/servicios` (CRUD de servicios y categorías sin DELETE), el seed que solo inserta y `/admin/empleados` (crear, editar, activar/desactivar y restablecer contraseña). Falta el reporte diario.
 - Pendiente (fuera de este trabajo): las asesorías gratuitas.
 - Pendiente: Al terminar el dashboard: borrar las citas demo con seed:demo -- --limpiar.
 - Pendiente: desplegar a producción (ver sección "Después: despliegue" en `checklist-sesiones.md`); revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).

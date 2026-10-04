@@ -216,3 +216,47 @@ NODE_ENV=production npm run seed -- --restablecer-catalogo --confirmar   # se ni
 ```
 
 Comprobación: (1) edita en el panel el precio y el nombre de un servicio del catálogo, desactiva otro y reactiva uno de los viejos; (2) corre `npm run seed` y reinicia el backend: nada cambia (no se duplica el renombrado, no se reactiva ni se apaga nada); (3) `--restablecer-catalogo` lista exactamente esos cambios; con `--confirmar` los revierte y no toca los servicios que creaste tú.
+
+
+## Fase 3 — Empleados (`/admin/empleados`)
+
+Antes de empezar: respaldo de la base (`pg_dump`, fuera del repo). No hay cambios de esquema en esta fase.
+
+### R. Endpoints (curl, con el token del admin)
+
+```bash
+API=http://localhost:5001/api
+TOKEN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"admin_blackiron","contrasena":"..."}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+H="Authorization: Bearer $TOKEN"
+```
+
+| Caso | Esperado |
+|---|---|
+| `GET $API/admin/empleados` | todos los barberos (activos e inactivos) con `usuario`, `usuarios_total`, `cortes_mes`, `citas_pendientes`; sin hash; **una sola fila por barbero** aunque tenga varios usuarios (Davinson tiene 4) |
+| `GET $API/admin/empleados?activo=true` o `?a=1&a=2` | `400` `PARAMETRO_INVALIDO` |
+| `POST $API/admin/empleados` con `{"nombre":"Prueba Uno","usuario":"prueba_uno","contrasena":"clave-segura-1"}` | `201` con el empleado (`foto` nula, activo); puede iniciar sesión y aparece en `GET $API/barberos` |
+| Mismo `usuario` otra vez | `409` `USUARIO_DUPLICADO`; `GET $API/barberos` no gana ninguna fila (sin barbero huérfano) |
+| Nombre vacío o de más de 100, `cargo` > 100, `especialidad` > 150, `usuario` vacío o > 50, contraseña de < 8 o > 72, `activo`/`foto`/`rol` en el cuerpo | `400` `DATOS_INVALIDOS` con `campo` |
+| `PATCH $API/admin/empleados/<id>` con `{"cargo":"Senior"}` | `200`; cuerpo vacío o campo desconocido → `400`; id inexistente → `404` `EMPLEADO_NO_ENCONTRADO` |
+| `PATCH` con `{"activo":false}` | `200` con `citas_pendientes_conservadas`; ya no está en `GET $API/barberos`; su usuario queda inactivo; **su token deja de servir al instante** (`401` `SESION_INVALIDA`) aunque no haya expirado |
+| `POST $API/citas` con `barbero_id` de un inactivo | `400`; sin `barbero_id` ("cualquier barbero") nunca lo asigna |
+| `PATCH` con `{"activo":true}` | barbero y usuario activos otra vez; puede iniciar sesión; vuelve a `GET $API/barberos` |
+| `PATCH $API/admin/usuarios/<id>` con `{"activo":true}` de un barbero inactivo, o `POST $API/admin/usuarios` para él | `409` `BARBERO_INACTIVO` (no se deja un usuario activo con su barbero inactivo) |
+| `curl -X DELETE $API/admin/empleados/1` | `404` (no existe ningún DELETE) |
+| Sin token / con token de barbero | `401` / `403` |
+
+Cortes del mes: se cuentan las citas `completada` del mes en curso **en Bogotá**. A las 23:30 del último día del mes (ya es el mes siguiente en UTC) sigue contando el mes que termina; pasada la medianoche de Bogotá empieza el nuevo.
+
+### S. Pantalla `/admin/empleados`
+
+1. **Orden y filtros:** alfabético en español ("Ángel" antes que "Boby"). Por defecto solo **Activos** (los chips muestran el total de cada estado); "Inactivos" y "Todos". El buscador ignora mayúsculas y tildes y busca en nombre, cargo, especialidad y usuario. Sin paginación.
+2. **Escritorio (≥ 1280 px):** tabla (empleado con avatar y usuario, cargo, estado, cortes este mes, citas pendientes, acciones). **Editar**, **Nuevo empleado** y **Contraseña** abren un panel lateral junto a la tabla.
+3. **Móvil y tablet (< 1280 px):** tarjetas con avatar, cargo, usuario, cortes del mes, citas pendientes, el interruptor Activo/Inactivo y los botones; los paneles se abren a pantalla completa (foco dentro, Escape cierra). Todos los controles miden al menos 44 px.
+4. **Avatar:** los barberos con foto la muestran; los demás (los creados aquí) llevan sus iniciales. Los inactivos se ven atenuados y con la etiqueta "Inactivo".
+5. **Nuevo empleado:** nombre, cargo y especialidad (opcionales), usuario y contraseña (con ojo para verla). Valida al enviar con las mismas reglas del back-end y lleva el foco al primer error; "usuario ya existe" sale en el campo usuario.
+6. **Editar:** solo nombre, cargo y especialidad; solo se envían los campos que cambiaron.
+7. **Contraseña:** restablece la del usuario del empleado. Si un barbero no tiene usuario (Manuel y Rafa en tu base) el botón dice **Crear acceso** y pide usuario y contraseña. Si hay varios usuarios ligados, la fila indica "(+N más)".
+8. **Desactivar** pide confirmación en un diálogo. Si tiene citas pendientes, el aviso dice cuántas y ofrece "Ver y reasignar sus citas", que abre `/admin/citas?barbero=<id>&pestana=proximas`; esas citas siguen asignadas hasta que las reasignes. **Activar** es directo.
+9. **Efecto en la web:** desactiva a un barbero y comprueba que desaparece de "Nuestro Equipo" en `/`, del paso 2 de `/reservar-corte` y de "cualquier barbero"; reactívalo y vuelve. Un barbero nuevo (sin foto) aparece con su avatar de iniciales en `/` y en la reserva.
+10. **Sesión del empleado:** inicia sesión como un barbero en otra ventana, desactívalo desde el admin y recarga su panel: te devuelve al login.
+11. **Estados:** cargando, vacío, error con "Reintentar" (apaga el back-end y recarga).

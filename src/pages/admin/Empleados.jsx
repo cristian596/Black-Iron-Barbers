@@ -1,350 +1,243 @@
-import { useEffect, useState } from 'react'
-import { FiEye, FiEyeOff } from 'react-icons/fi'
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { FiPlus } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
-import { useBarberosActivos } from '../../hooks/useBarberosActivos'
 import {
-  obtenerUsuarios,
+  obtenerEmpleados,
+  crearEmpleado,
+  actualizarEmpleado,
   crearUsuarioBarbero,
   actualizarUsuarioBarbero,
 } from '../../services/api'
+import { useCarga } from '../../hooks/useCarga'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
+import { useFiltroEmpleados } from '../../hooks/useFiltroEmpleados'
+import { enlaceCitasPendientes, interpretarErrorEmpleado, textoCitasPendientes } from '../../utils/empleados'
+import FiltrosEmpleados from '../../components/admin/FiltrosEmpleados'
+import ListaEmpleados from '../../components/admin/ListaEmpleados'
+import PanelAdmin from '../../components/admin/PanelAdmin'
+import FormularioEmpleado from '../../components/admin/FormularioEmpleado'
+import FormularioAcceso from '../../components/admin/FormularioAcceso'
+import ModalConfirmar from '../../components/admin/ModalConfirmar'
+import ErrorCarga from '../../components/ui/ErrorCarga'
+import SinResultados from '../../components/ui/SinResultados'
 
-// Contenido provisional: es la pestaña "Barberos" del panel anterior, movida sin cambios de comportamiento.
-// La parte 3 la reemplaza por el listado de empleados (estado, cortes del mes, crear y desactivar).
-const SeccionBarberos = ({ token, barberosActivos }) => {
-  const [usuarios, setUsuarios] = useState([])
-  const [cargandoUsuarios, setCargandoUsuarios] = useState(true)
-  const [errorUsuarios, setErrorUsuarios] = useState('')
-  const [recarga, setRecarga] = useState(0)
+const LISTA_VACIA = []
+const TIPO_NUEVO = 'nuevo'
+const TIPO_EDITAR = 'editar'
+const TIPO_ACCESO = 'acceso'
 
-  useEffect(() => {
-    const cargarUsuarios = async () => {
-      setCargandoUsuarios(true)
-      setErrorUsuarios('')
-      try {
-        const data = await obtenerUsuarios(token)
-        setUsuarios(data)
-      } catch (err) {
-        setErrorUsuarios(err.message)
-      } finally {
-        setCargandoUsuarios(false)
-      }
-    }
-    cargarUsuarios()
-  }, [token, recarga])
-
-  const recargar = () => setRecarga((valor) => valor + 1)
-
-  return (
-    <div className="flex flex-col gap-10">
-      <FormularioCrearUsuario
-        token={token}
-        barberosActivos={barberosActivos}
-        onCreado={recargar}
-      />
-
-      <section aria-labelledby="titulo-usuarios">
-        <h2 id="titulo-usuarios" className="mb-3 text-2xl font-semibold">
-          Usuarios de barberos
-        </h2>
-        {cargandoUsuarios ? (
-          <p className="text-gray-400">Cargando usuarios...</p>
-        ) : errorUsuarios ? (
-          <p className="text-red-400">{errorUsuarios}</p>
-        ) : usuarios.length === 0 ? (
-          <p className="text-gray-400">Todavía no hay usuarios de barberos creados.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {usuarios.map((u) => (
-              <FilaUsuario key={u.id} usuario={u} token={token} onCambio={recargar} />
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
-  )
-}
-
-const FormularioCrearUsuario = ({ token, barberosActivos, onCreado }) => {
-  const [barberoId, setBarberoId] = useState('')
-  const [nombreUsuario, setNombreUsuario] = useState('')
-  const [contrasena, setContrasena] = useState('')
-  const [mostrarContrasena, setMostrarContrasena] = useState(false)
-  const [cargando, setCargando] = useState(false)
-  const [error, setError] = useState('')
-  const [mensaje, setMensaje] = useState('')
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setMensaje('')
-
-    if (!barberoId) {
-      setError('Selecciona un barbero')
-      return
-    }
-    if (!nombreUsuario.trim()) {
-      setError('El usuario es obligatorio')
-      return
-    }
-    if (contrasena.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres')
-      return
-    }
-
-    setCargando(true)
-    try {
-      await crearUsuarioBarbero(token, {
-        usuario: nombreUsuario.trim(),
-        contrasena,
-        barbero_id: Number(barberoId),
-      })
-      setMensaje('Usuario creado correctamente')
-      setBarberoId('')
-      setNombreUsuario('')
-      setContrasena('')
-      setMostrarContrasena(false)
-      onCreado()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  return (
-    <section aria-labelledby="titulo-crear-usuario" className="max-w-md">
-      <h2 id="titulo-crear-usuario" className="mb-3 text-2xl font-semibold">
-        Crear usuario de barbero
-      </h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="crear-barbero" className="text-sm font-medium text-gray-300">
-            Barbero
-          </label>
-          <select
-            id="crear-barbero"
-            value={barberoId}
-            onChange={(e) => setBarberoId(e.target.value)}
-            className="rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
-            required
-          >
-            <option value="">Selecciona un barbero</option>
-            {barberosActivos.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="crear-usuario" className="text-sm font-medium text-gray-300">
-            Usuario
-          </label>
-          <input
-            id="crear-usuario"
-            name="crear-usuario"
-            type="text"
-            value={nombreUsuario}
-            onChange={(e) => setNombreUsuario(e.target.value)}
-            className="rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="crear-contrasena" className="text-sm font-medium text-gray-300">
-            Contraseña (mínimo 8 caracteres)
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              id="crear-contrasena"
-              name="crear-contrasena"
-              type={mostrarContrasena ? 'text' : 'password'}
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              className="w-full rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
-              minLength={8}
-              required
-            />
-            <button
-              type="button"
-              onClick={() => setMostrarContrasena((v) => !v)}
-              aria-label={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              className="cursor-pointer rounded-lg border border-white/20 p-2 text-gray-300 hover:bg-white/10"
-            >
-              {mostrarContrasena ? <FiEyeOff /> : <FiEye />}
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <p className="text-red-400" role="alert">
-            {error}
-          </p>
-        )}
-        {mensaje && <p className="text-green-400">{mensaje}</p>}
-
-        <button
-          type="submit"
-          disabled={cargando}
-          className="mt-2 w-fit cursor-pointer rounded-xl bg-amber-50 p-2 px-4 font-medium text-black duration-500 hover:bg-amber-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {cargando ? 'Creando...' : 'Crear usuario'}
-        </button>
-      </form>
-    </section>
-  )
-}
-
-const FilaUsuario = ({ usuario, token, onCambio }) => {
-  const [mostrarReset, setMostrarReset] = useState(false)
-  const [nuevaContrasena, setNuevaContrasena] = useState('')
-  const [mostrarContrasena, setMostrarContrasena] = useState(false)
-  const [cargando, setCargando] = useState(false)
-  const [error, setError] = useState('')
-  const [mensaje, setMensaje] = useState('')
-
-  const handleResetear = async (e) => {
-    e.preventDefault()
-    setError('')
-    setMensaje('')
-
-    if (nuevaContrasena.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres')
-      return
-    }
-
-    setCargando(true)
-    try {
-      await actualizarUsuarioBarbero(token, usuario.id, { contrasena: nuevaContrasena })
-      setMensaje('Contraseña reseteada correctamente')
-      setNuevaContrasena('')
-      setMostrarContrasena(false)
-      setMostrarReset(false)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  const handleActivarDesactivar = async () => {
-    const accion = usuario.activo ? 'desactivar' : 'activar'
-    const confirmado = window.confirm(
-      `¿Seguro que quieres ${accion} el usuario de ${usuario.barbero_nombre}?`
-    )
-    if (!confirmado) return
-
-    setError('')
-    setMensaje('')
-    setCargando(true)
-    try {
-      await actualizarUsuarioBarbero(token, usuario.id, { activo: !usuario.activo })
-      onCambio()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setCargando(false)
-    }
-  }
-
-  return (
-    <div className="rounded-xl border border-white/10 bg-[#1a1a1a] p-4">
-      <div className="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          <p className="font-semibold">{usuario.barbero_nombre}</p>
-          <p className="text-sm text-gray-400">Usuario: {usuario.usuario}</p>
-          <span
-            className={`mt-1 inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${
-              usuario.activo
-                ? 'border border-green-500 bg-green-100 text-green-900'
-                : 'border border-red-500 bg-red-100 text-red-900'
-            }`}
-          >
-            {usuario.activo ? 'Activo' : 'Inactivo'}
-          </span>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setMostrarReset((v) => !v)}
-            className="cursor-pointer rounded-lg border border-white/20 px-3 py-1.5 text-sm text-gray-200 duration-200 hover:bg-white/10 active:scale-95"
-          >
-            Resetear contraseña
-          </button>
-          <button
-            type="button"
-            onClick={handleActivarDesactivar}
-            disabled={cargando}
-            className={`cursor-pointer rounded-lg px-3 py-1.5 text-sm font-medium text-white duration-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${
-              usuario.activo ? 'bg-red-600 hover:bg-red-500' : 'bg-green-600 hover:bg-green-500'
-            }`}
-          >
-            {usuario.activo ? 'Desactivar' : 'Activar'}
-          </button>
-        </div>
-      </div>
-
-      {mostrarReset && (
-        <form onSubmit={handleResetear} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="flex flex-col gap-1">
-            <label
-              htmlFor={`reset-contrasena-${usuario.id}`}
-              className="text-sm font-medium text-gray-300"
-            >
-              Nueva contraseña de {usuario.barbero_nombre}
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id={`reset-contrasena-${usuario.id}`}
-                type={mostrarContrasena ? 'text' : 'password'}
-                value={nuevaContrasena}
-                onChange={(e) => setNuevaContrasena(e.target.value)}
-                className="rounded-lg border border-white/20 bg-black p-2 text-white"
-                minLength={8}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setMostrarContrasena((v) => !v)}
-                aria-label={mostrarContrasena ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                className="cursor-pointer rounded-lg border border-white/20 p-2 text-gray-300 hover:bg-white/10"
-              >
-                {mostrarContrasena ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={cargando}
-            className="cursor-pointer rounded-xl bg-amber-50 p-2 px-4 font-medium text-black duration-500 hover:bg-amber-200 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {cargando ? 'Guardando...' : 'Guardar'}
-          </button>
-        </form>
-      )}
-
-      {error && (
-        <p className="mt-2 text-red-400" role="alert">
-          {error}
-        </p>
-      )}
-      {mensaje && <p className="mt-2 text-green-400">{mensaje}</p>}
-    </div>
-  )
-}
+const TITULOS = { [TIPO_NUEVO]: 'Nuevo empleado', [TIPO_EDITAR]: 'Editar empleado', [TIPO_ACCESO]: 'Acceso al panel' }
 
 const Empleados = () => {
   const { token } = useAuth()
-  const { barberosActivos, errorBarberos } = useBarberosActivos()
+  // Tabla + panel lateral solo con ancho de sobra (el menú ocupa 16 rem); si no, tarjetas y panel a pantalla completa.
+  const escritorio = useMediaQuery('(min-width: 1280px)')
+
+  const empleados = useCarga(() => obtenerEmpleados(token), 'empleados')
+  const lista = empleados.datos ?? LISTA_VACIA
+  const filtro = useFiltroEmpleados(lista)
+
+  const [panel, setPanel] = useState(null) // null | { tipo, empleado }
+  const [aviso, setAviso] = useState(null) // null | { texto, empleado } (con empleado se ofrece reasignar sus citas)
+  const [errorAccion, setErrorAccion] = useState('')
+  const [idGuardando, setIdGuardando] = useState(null)
+  const [porDesactivar, setPorDesactivar] = useState(null)
+  const [errorConfirmar, setErrorConfirmar] = useState('')
+
+  const abrirPanel = (tipo, empleado = null) => {
+    setAviso(null)
+    setErrorAccion('')
+    setPanel({ tipo, empleado })
+  }
+
+  const guardarEmpleado = async (datos) => {
+    if (panel.tipo === TIPO_NUEVO) {
+      await crearEmpleado(token, datos)
+      filtro.limpiar() // que el empleado nuevo se vea en la lista
+      setAviso({ texto: `«${datos.nombre}» creado. Ya aparece en la web y puede iniciar sesión con «${datos.usuario}».` })
+    } else {
+      const { empleado } = panel
+      const cambios = Object.fromEntries(
+        Object.entries(datos).filter(([campo, valor]) => (empleado[campo] ?? '') !== valor)
+      )
+      if (Object.keys(cambios).length === 0) {
+        setPanel(null)
+        setAviso({ texto: 'No había cambios que guardar.' })
+        return
+      }
+      await actualizarEmpleado(token, empleado.id, cambios)
+      setAviso({ texto: `«${datos.nombre}» actualizado.` })
+    }
+    setPanel(null)
+    empleados.recargar()
+  }
+
+  const guardarAcceso = async ({ usuario, contrasena }) => {
+    const { empleado } = panel
+    if (empleado.usuario) {
+      await actualizarUsuarioBarbero(token, empleado.usuario.id, { contrasena })
+      setAviso({ texto: `Contraseña de «${empleado.nombre}» actualizada. La anterior ya no sirve.` })
+    } else {
+      await crearUsuarioBarbero(token, { usuario, contrasena, barbero_id: empleado.id })
+      setAviso({ texto: `Acceso creado para «${empleado.nombre}» con el usuario «${usuario}».` })
+    }
+    setPanel(null)
+    empleados.recargar()
+  }
+
+  const activar = async (empleado) => {
+    setAviso(null)
+    setErrorAccion('')
+    setIdGuardando(empleado.id)
+    try {
+      await actualizarEmpleado(token, empleado.id, { activo: true })
+      setAviso({ texto: `«${empleado.nombre}» activado: vuelve a aparecer en la web y su usuario puede iniciar sesión.` })
+      empleados.recargar()
+    } catch (err) {
+      setErrorAccion(interpretarErrorEmpleado(err).mensaje)
+    } finally {
+      setIdGuardando(null)
+    }
+  }
+
+  const alCambiarActivo = (empleado) => {
+    if (empleado.activo) {
+      setErrorConfirmar('')
+      setPorDesactivar(empleado)
+    } else {
+      activar(empleado)
+    }
+  }
+
+  const confirmarDesactivar = async () => {
+    setErrorConfirmar('')
+    setIdGuardando(porDesactivar.id)
+    try {
+      const respuesta = await actualizarEmpleado(token, porDesactivar.id, { activo: false })
+      const conservadas = respuesta.citas_pendientes_conservadas ?? 0
+      setAviso({
+        texto:
+          `«${porDesactivar.nombre}» desactivado: ya no aparece en la web ni en la reserva y su usuario no puede iniciar sesión.` +
+          (conservadas > 0 ? ` Conserva ${textoCitasPendientes(conservadas)}: reasígnalas.` : ''),
+        empleado: conservadas > 0 ? porDesactivar : null,
+      })
+      setPorDesactivar(null)
+      empleados.recargar()
+    } catch (err) {
+      setErrorConfirmar(interpretarErrorEmpleado(err).mensaje)
+    } finally {
+      setIdGuardando(null)
+    }
+  }
+
+  const error = empleados.error
+  const cargando = !error && !empleados.datos
+
+  const formulario =
+    panel &&
+    (panel.tipo === TIPO_ACCESO ? (
+      <FormularioAcceso key={panel.empleado.id} empleado={panel.empleado} alGuardar={guardarAcceso} alCancelar={() => setPanel(null)} />
+    ) : (
+      <FormularioEmpleado
+        key={panel.empleado?.id ?? TIPO_NUEVO}
+        empleado={panel.empleado}
+        alGuardar={guardarEmpleado}
+        alCancelar={() => setPanel(null)}
+      />
+    ))
+  const panelAbierto = panel && (
+    <PanelAdmin lateral={escritorio} titulo={TITULOS[panel.tipo]} alCerrar={() => setPanel(null)}>
+      {formulario}
+    </PanelAdmin>
+  )
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
-      <h1 className="font-playfair text-3xl font-semibold">Empleados</h1>
-      {errorBarberos && <p className="text-red-400">{errorBarberos}</p>}
-      <SeccionBarberos token={token} barberosActivos={barberosActivos} />
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="font-playfair text-3xl font-semibold">Empleados</h1>
+        <button
+          type="button"
+          onClick={() => abrirPanel(TIPO_NUEVO)}
+          disabled={cargando || Boolean(error)}
+          className="inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-lg bg-oro px-4 text-sm font-semibold text-black hover:bg-oro/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <FiPlus aria-hidden="true" /> Nuevo empleado
+        </button>
+      </header>
+
+      {aviso && (
+        <p role="status" className="rounded-lg bg-emerald-900/30 p-3 text-sm text-emerald-300">
+          {aviso.texto}
+          {aviso.empleado && (
+            <>
+              {' '}
+              <Link to={enlaceCitasPendientes(aviso.empleado)} className="font-semibold underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-oro">
+                Ver y reasignar sus citas
+              </Link>
+            </>
+          )}
+        </p>
+      )}
+      {errorAccion && <p role="alert" className="rounded-lg bg-red-900/40 p-3 text-sm text-red-300">{errorAccion}</p>}
+
+      {error ? (
+        <div className="rounded-xl border border-white/10 bg-zinc-950">
+          <ErrorCarga mensaje="No pudimos cargar los empleados." onReintentar={empleados.recargar} variante="oscuro" />
+        </div>
+      ) : cargando ? (
+        <p role="status" className="py-10 text-center text-zinc-400">Cargando empleados...</p>
+      ) : (
+        <div className={`grid min-w-0 grid-cols-1 gap-6 ${panel && escritorio ? 'xl:grid-cols-[minmax(0,1fr)_24rem]' : ''}`}>
+          <section aria-labelledby="titulo-lista-empleados" className="flex min-w-0 flex-col gap-4 rounded-xl border border-white/10 bg-zinc-950 p-4">
+            <h2 id="titulo-lista-empleados" className="sr-only">Lista de empleados</h2>
+            <FiltrosEmpleados filtro={filtro} />
+            {filtro.visibles.length === 0 ? (
+              lista.length === 0 ? (
+                <SinResultados variante="oscuro" mensaje="Todavía no hay empleados. Crea el primero con «Nuevo empleado»." />
+              ) : (
+                <SinResultados variante="oscuro" mensaje="No hay empleados con esos filtros." onLimpiar={filtro.limpiar} />
+              )
+            ) : (
+              <ListaEmpleados
+                empleados={filtro.visibles}
+                tabla={escritorio}
+                alEditar={(empleado) => abrirPanel(TIPO_EDITAR, empleado)}
+                alAcceso={(empleado) => abrirPanel(TIPO_ACCESO, empleado)}
+                alCambiarActivo={alCambiarActivo}
+                idGuardando={idGuardando}
+              />
+            )}
+          </section>
+          {panel && escritorio && panelAbierto}
+        </div>
+      )}
+
+      {panel && !escritorio && panelAbierto}
+
+      {porDesactivar && (
+        <ModalConfirmar
+          titulo={`¿Desactivar a «${porDesactivar.nombre}»?`}
+          texto="Dejará de aparecer en la web y en la reserva, y su usuario no podrá iniciar sesión. Sus citas anteriores se conservan; nada se borra y puedes volver a activarlo cuando quieras."
+          textoConfirmar="Desactivar"
+          cargando={idGuardando === porDesactivar.id}
+          error={errorConfirmar}
+          alConfirmar={confirmarDesactivar}
+          alCerrar={() => setPorDesactivar(null)}
+        >
+          {porDesactivar.citas_pendientes > 0 && (
+            <div role="note" className="mt-3 rounded-lg border border-oro/40 bg-oro/10 p-3 text-sm text-zinc-200">
+              <p>
+                Tiene <strong>{textoCitasPendientes(porDesactivar.citas_pendientes)}</strong>. Seguirán asignadas a este barbero
+                hasta que las reasignes.
+              </p>
+              <Link to={enlaceCitasPendientes(porDesactivar)} className="mt-2 inline-flex min-h-11 items-center font-semibold text-oro underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-oro">
+                Ver y reasignar sus citas
+              </Link>
+            </div>
+          )}
+        </ModalConfirmar>
+      )}
     </div>
   )
 }

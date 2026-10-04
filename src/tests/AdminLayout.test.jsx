@@ -54,7 +54,7 @@ beforeEach(() => {
   fijarEscritorio(true)
   vi.mocked(api.obtenerCitas).mockResolvedValue([])
   vi.mocked(api.obtenerBarberos).mockResolvedValue([])
-  vi.mocked(api.obtenerUsuarios).mockResolvedValue([])
+  vi.mocked(api.obtenerEmpleados).mockResolvedValue([])
   // El Resumen carga estadísticas y citas recientes al abrirse
   const periodo = { clave: 'hoy', desde: '2026-10-04', hasta: '2026-10-04' }
   const ceros = { citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0 }

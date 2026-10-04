@@ -15,7 +15,7 @@ const EtiquetaInactivo = () => (
 const Tarjeta = ({ servicio, alEditar, alCambiarActivo, guardando }) => (
   <article className={`min-w-0 rounded-xl border border-white/10 bg-zinc-950 p-4 ${servicio.activo ? '' : 'opacity-60'}`}>
     <div className="flex items-start justify-between gap-2">
-      <h3 className="min-w-0 break-words text-base font-semibold">{servicio.nombre}</h3>
+      <h3 className="min-w-0 wrap-anywhere text-base font-semibold">{servicio.nombre}</h3>
       <InsigniaTipo tipo={servicio.tipo} />
     </div>
     <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">{nombreCategoria(servicio)}</p>

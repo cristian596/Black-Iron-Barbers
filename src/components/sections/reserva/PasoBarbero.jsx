@@ -1,4 +1,5 @@
 import { FaRandom } from 'react-icons/fa'
+import AvatarBarbero from '../../ui/AvatarBarbero'
 
 const PasoBarbero = ({ barberos, barberoIdSeleccionado, onSeleccionar }) => {
   return (
@@ -54,12 +55,7 @@ const PasoBarbero = ({ barberos, barberoIdSeleccionado, onSeleccionar }) => {
                   ✓
                 </span>
               )}
-              <img
-                src={barbero.foto}
-                alt={`Foto de ${barbero.nombre}, barbero en Black Iron Barbers`}
-                className="h-14 w-14 shrink-0 rounded-full object-cover"
-                loading="lazy"
-              />
+              <AvatarBarbero barbero={barbero} className="h-14 w-14 rounded-full" textoClase="text-lg" />
               <span>
                 <h3 className="font-cinzel text-lg font-bold text-black">{barbero.nombre}</h3>
                 <span className="block font-poppins text-sm text-zinc-600">{barbero.especialidad}</span>

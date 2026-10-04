@@ -136,10 +136,13 @@ export const crearCategoriaAdmin = (token, datos) =>
 export const actualizarCategoriaAdmin = (token, id, cambios) =>
   request(`/admin/categorias/${id}`, { method: 'PATCH', headers: authHeader(token), body: JSON.stringify(cambios) });
 
-export const obtenerUsuarios = (token) =>
-  request('/admin/usuarios', {
-    headers: authHeader(token),
-  });
+export const obtenerEmpleados = (token) => request('/admin/empleados', { headers: authHeader(token) });
+
+export const crearEmpleado = (token, datos) =>
+  request('/admin/empleados', { method: 'POST', headers: authHeader(token), body: JSON.stringify(datos) });
+
+export const actualizarEmpleado = (token, id, cambios) =>
+  request(`/admin/empleados/${id}`, { method: 'PATCH', headers: authHeader(token), body: JSON.stringify(cambios) });
 
 export const crearUsuarioBarbero = (token, datos) =>
   request('/admin/usuarios', {
