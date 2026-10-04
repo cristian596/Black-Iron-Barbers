@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { obtenerServicios } from '../../services/api'
-import { obtenerCategoria } from '../../data/categoriasServicios'
+import { useFiltroServicios } from '../../hooks/useFiltroServicios'
 import TarjetaServicio from '../ui/TarjetaServicio'
+import FiltrosServicios from '../ui/FiltrosServicios'
+import SinResultados from '../ui/SinResultados'
+import ErrorCarga from '../ui/ErrorCarga'
 import Revelar from '../ui/Revelar'
 import { retrasoEscalonado } from '../../utils/escalonado'
 
@@ -12,42 +15,41 @@ const CatalogoServicios = () => {
   const [servicios, setServicios] = useState([])
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
-  const [categoriaActiva, setCategoriaActiva] = useState('Todos')
+  // Se incrementa para volver a pedir la lista (botón Reintentar).
+  const [recarga, setRecarga] = useState(0)
+  const filtro = useFiltroServicios(servicios)
 
   useEffect(() => {
+    let cancelado = false
+
     const cargarServicios = async () => {
       try {
         const data = await obtenerServicios()
-        setServicios(data)
+        if (!cancelado) setServicios(data)
       } catch (err) {
-        setError(err.message)
+        if (!cancelado) setError(err.message)
       } finally {
-        setCargando(false)
+        if (!cancelado) setCargando(false)
       }
     }
     cargarServicios()
-  }, [])
 
-  const serviciosConCategoria = useMemo(
-    () => servicios.map((servicio) => ({ ...servicio, categoria: obtenerCategoria(servicio) })),
-    [servicios]
-  )
+    return () => {
+      cancelado = true
+    }
+  }, [recarga])
 
-  const categorias = useMemo(
-    () => ['Todos', ...new Set(serviciosConCategoria.map((servicio) => servicio.categoria))],
-    [serviciosConCategoria]
-  )
+  const reintentar = () => {
+    setError('')
+    setCargando(true)
+    setRecarga((veces) => veces + 1)
+  }
 
-  const serviciosFiltrados = useMemo(
-    () =>
-      categoriaActiva === 'Todos'
-        ? serviciosConCategoria
-        : serviciosConCategoria.filter((servicio) => servicio.categoria === categoriaActiva),
-    [serviciosConCategoria, categoriaActiva]
-  )
+  // Con varias categorías a la vista cada una lleva su encabezado; con una sola no hace falta.
+  const conEncabezados = filtro.grupos.length > 1
 
   return (
-    <div className='grid justify-center items-center py-3 bg-linear-to-br from-zinc-800 to-amber-600'>
+    <div className='grid grid-cols-1 py-3 bg-linear-to-br from-zinc-800 to-amber-600'>
       <Revelar
         como='h2'
         className='flex items-center justify-center text-white py-3 font-bold font-cinzel text-3xl lg:text-6xl text-center px-4'
@@ -56,52 +58,48 @@ const CatalogoServicios = () => {
       </Revelar>
 
       {cargando && (
-        <p className='text-center text-white font-cinzel text-xl py-5'>Cargando servicios...</p>
+        <p role='status' className='text-center text-white font-cinzel text-xl py-5'>Cargando servicios...</p>
       )}
 
-      {error && (
-        <p className='text-center text-white font-cinzel text-xl py-5'>{error}</p>
-      )}
+      {error && <ErrorCarga mensaje={error} onReintentar={reintentar} variante='oscuro' />}
 
       {!cargando && !error && (
         <>
           <Revelar
             retraso={80}
-            className='flex flex-wrap justify-center gap-2 px-5 pb-5'
-            role='tablist'
-            aria-label='Categorías de servicios'
+            className='min-w-0 px-5 pb-5'
+            role='group'
+            aria-label='Filtrar servicios'
           >
-            {categorias.map((categoria) => (
-              <button
-                key={categoria}
-                type='button'
-                role='tab'
-                aria-selected={categoriaActiva === categoria}
-                onClick={() => setCategoriaActiva(categoria)}
-                className={`rounded-full px-4 py-2 font-poppins font-semibold cursor-pointer active:scale-95 duration-300 ${
-                  categoriaActiva === categoria
-                    ? 'bg-black text-oro'
-                    : 'bg-white text-black hover:bg-oro'
-                }`}
-              >
-                {categoria}
-              </button>
-            ))}
+            <FiltrosServicios filtro={filtro} variante='oscuro' />
           </Revelar>
 
-          <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 p-5'>
-            {serviciosFiltrados.map((servicio, indice) => (
-              // El retardo se reinicia cada COLUMNAS_MAX tarjetas: cada una entra al
-              // llegar a pantalla, así que una fila lejana no debe esperar por las anteriores
-              <Revelar
-                key={servicio.id}
-                retraso={retrasoEscalonado(indice % COLUMNAS_MAX)}
-                className='grid'
-              >
-                <TarjetaServicio servicio={servicio} categoria={servicio.categoria} />
-              </Revelar>
-            ))}
-          </div>
+          {filtro.visibles.length === 0 ? (
+            <SinResultados onLimpiar={filtro.limpiar} variante='oscuro' />
+          ) : (
+            <div className='grid gap-8 p-5'>
+              {filtro.grupos.map((grupo) => (
+                <section key={grupo.slug} aria-label={grupo.nombre}>
+                  {conEncabezados && (
+                    <h3 className='mb-4 font-cinzel text-2xl font-bold text-white lg:text-3xl'>{grupo.nombre}</h3>
+                  )}
+                  <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
+                    {grupo.servicios.map((servicio, indice) => (
+                      // El retardo se reinicia cada COLUMNAS_MAX tarjetas: cada una entra al
+                      // llegar a pantalla, así que una fila lejana no debe esperar por las anteriores
+                      <Revelar
+                        key={servicio.id}
+                        retraso={retrasoEscalonado(indice % COLUMNAS_MAX)}
+                        className='grid'
+                      >
+                        <TarjetaServicio servicio={servicio} Titulo={conEncabezados ? 'h4' : 'h3'} />
+                      </Revelar>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

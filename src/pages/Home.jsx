@@ -1,6 +1,5 @@
 import Hero from '../components/sections/Hero';
 import ReservaATuManera from '../components/sections/ReservaATuManera';
-import CatalogoServicios from '../components/sections/CatalogoServicios';
 import NuestrosColaboradores from '../components/sections/NuestrosColaboradores';
 import Estadisticas from '../components/sections/Estadisticas';
 import Testimonios from '../components/sections/Testimonios';
@@ -12,7 +11,6 @@ const Home = () => {
     <>
       <Hero />
       <ReservaATuManera />
-      <CatalogoServicios />
       <NuestrosColaboradores />
       <Estadisticas />
       <Testimonios />

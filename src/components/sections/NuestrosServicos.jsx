@@ -1,11 +1,10 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import Revelar from '../ui/Revelar'
 
 const NuestrosServicos = () => {
-    const navigate = useNavigate()
   return (
     <>
-    <div className='flex flex-col justify-center items-center p-20 gap-10 bg-cover bg-no-repeat bg-center'
+    <div className='flex flex-col justify-center items-center p-6 sm:p-12 lg:p-20 gap-10 bg-cover bg-no-repeat bg-center'
     style={{
         backgroundImage:"url('/CourtMan/court_11.jpg')"
     }}>
@@ -15,9 +14,9 @@ const NuestrosServicos = () => {
         </div>
 
         <Revelar retraso={160}>
-          <button
-          onClick={()=> navigate("/cortes")}
-          className='rounded-xl border bg-red-500 p-2 text-white hover:bg-amber-200 hover:text-black cursor-pointer active:scale-95 duration-300' >Mas Información</button>
+          <Link
+          to='/cortes'
+          className='inline-block rounded-xl border bg-red-500 p-2 text-white hover:bg-amber-200 hover:text-black cursor-pointer active:scale-95 duration-300' >Mas Información</Link>
         </Revelar>
     </div>
     </>
