@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 
 import Landingpage from '../pages/Landingpage'
@@ -11,7 +11,12 @@ const Cortes = lazy(() => import('../pages/Cortes'));
 const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
 const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
 const Panel = lazy(() => import('../pages/Panel'));
-const Admin = lazy(() => import('../pages/Admin'));
+const AdminLayout = lazy(() => import('../pages/admin/AdminLayout'));
+const Resumen = lazy(() => import('../pages/admin/Resumen'));
+const CitasAdmin = lazy(() => import('../pages/admin/Citas'));
+const Servicios = lazy(() => import('../pages/admin/Servicios'));
+const Empleados = lazy(() => import('../pages/admin/Empleados'));
+const Reportes = lazy(() => import('../pages/admin/Reportes'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
 const AppRouter = createBrowserRouter([
@@ -59,11 +64,21 @@ const AppRouter = createBrowserRouter([
       <Suspense fallback={<CargandoPagina/>}>
         <ProtectedRoute>
           <RoleRoute rol="admin">
-            <Admin/>
+            <AdminLayout/>
           </RoleRoute>
         </ProtectedRoute>
       </Suspense>
-    )
+    ),
+    // Cada página hija carga con React.lazy; el Suspense está dentro de AdminLayout (alrededor del Outlet)
+    // para que el menú no desaparezca mientras llega la página.
+    children: [
+      { index: true, element: <Resumen /> },
+      { path: 'citas', element: <CitasAdmin /> },
+      { path: 'servicios', element: <Servicios /> },
+      { path: 'empleados', element: <Empleados /> },
+      { path: 'reportes', element: <Reportes /> },
+      { path: '*', element: <Navigate to="/admin" replace /> },
+    ]
   }
 ]);
 

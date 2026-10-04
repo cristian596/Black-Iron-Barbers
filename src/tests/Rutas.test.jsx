@@ -65,7 +65,7 @@ describe('NavBar en todas las rutas', () => {
     nav.getAllByRole('link').forEach((a) => expect(a).not.toHaveAttribute('aria-current'))
   }, ESPERA_TEST)
 
-  it.each([['/panel'], ['/admin']])('%s sin sesión redirige al acceso sin romperse', async (ruta) => {
+  it.each([['/panel'], ['/admin'], ['/admin/citas'], ['/admin/servicios'], ['/admin/empleados'], ['/admin/reportes']])('%s sin sesión redirige al acceso sin romperse', async (ruta) => {
     const { router } = montar(ruta)
 
     await screen.findByRole('banner', {}, { timeout: ESPERA_CARGA })

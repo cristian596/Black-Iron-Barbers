@@ -6,7 +6,7 @@ import TablaCitas from '../components/dashboard/TablaCitas'
 import FiltrosCitas from '../components/dashboard/FiltrosCitas'
 import CambiarContrasena from '../components/dashboard/CambiarContrasena'
 import NoIndex from '../components/ui/NoIndex'
-import { hoyISO } from '../utils/formato'
+import { hoyISO } from '../utils/fechas'
 
 const Panel = () => {
   const { usuario, token, logout } = useAuth()

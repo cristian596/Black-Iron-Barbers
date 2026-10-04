@@ -1,4 +1,18 @@
-export const hoyISO = () => new Date().toISOString().slice(0, 10)
+// Ingresos totales: un total en cero se muestra como $0 (formatearPrecio lo mostraría como "Gratis").
+export const formatearDinero = (valor) => `$${Number(valor).toLocaleString('es-CO')}`
+
+// Variación porcentual entre dos períodos. Sin base de comparación (período anterior en 0 o datos que no
+// son números) devuelve "—": nunca NaN ni ∞.
+export const formatearDelta = (actual, previo) => {
+  if (!Number.isFinite(actual) || !Number.isFinite(previo) || previo === 0) {
+    return { texto: '—', direccion: 'sin-base' }
+  }
+  const porcentaje = Math.round(((actual - previo) / previo) * 100)
+  if (porcentaje === 0) return { texto: '0%', direccion: 'igual' }
+  return porcentaje > 0
+    ? { texto: `${porcentaje}%`, direccion: 'sube' }
+    : { texto: `${Math.abs(porcentaje)}%`, direccion: 'baja' }
+}
 
 export const soloFecha = (fecha) => (typeof fecha === 'string' ? fecha.slice(0, 10) : '')
 
