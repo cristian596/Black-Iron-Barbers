@@ -1,4 +1,5 @@
 import { formatearFechaLegible } from '../../../utils/fechas'
+import { formatearPrecio } from '../../../utils/formato'
 
 const CampoResumen = ({ etiqueta, valor }) => (
   <div className="flex justify-between gap-2">
@@ -40,7 +41,7 @@ const ResumenReserva = ({ servicio, barbero, mostrarBarbero, fecha, hora, onCont
           {servicio && (
             <div className="mt-4 flex items-center justify-between border-t border-zinc-200 pt-3 font-cinzel font-bold text-black">
               <span>Total</span>
-              <span>${total.toLocaleString('es-CO')}</span>
+              <span>{formatearPrecio(total)}</span>
             </div>
           )}
 
@@ -62,7 +63,7 @@ const ResumenReserva = ({ servicio, barbero, mostrarBarbero, fecha, hora, onCont
         <div className="font-poppins">
           <p className="text-xs text-zinc-500">Total</p>
           <p className="font-cinzel text-lg font-bold text-black">
-            {total !== null ? `$${total.toLocaleString('es-CO')}` : '—'}
+            {total !== null ? formatearPrecio(total) : '—'}
           </p>
         </div>
         <button

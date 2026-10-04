@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { obtenerDisponibilidad } from '../../../services/api'
 import { hoyISO, sumarDiasISO, formatearFechaChip } from '../../../utils/fechas'
 
@@ -11,6 +11,7 @@ const PasoFechaHora = ({
   hora,
   onSeleccionarFecha,
   onSeleccionarHora,
+  onServicioNoDisponible,
   recargaHoras = 0,
 }) => {
   const fechasDisponibles = useMemo(() => {
@@ -21,6 +22,12 @@ const PasoFechaHora = ({
   const [horas, setHoras] = useState([])
   const [cargandoHoras, setCargandoHoras] = useState(false)
   const [errorHoras, setErrorHoras] = useState('')
+
+  // Ref para no volver a pedir horas cada vez que el padre crea un manejador nuevo.
+  const alServicioNoDisponible = useRef(onServicioNoDisponible)
+  useEffect(() => {
+    alServicioNoDisponible.current = onServicioNoDisponible
+  }, [onServicioNoDisponible])
 
   useEffect(() => {
     // Sin fecha elegida, el render ya muestra "Selecciona primero una fecha" sin mirar
@@ -36,6 +43,11 @@ const PasoFechaHora = ({
         const data = await obtenerDisponibilidad(servicioId, fecha, barberoId)
         if (!cancelado) setHoras(data.horas)
       } catch (err) {
+        if (err.codigo === 'SERVICIO_NO_DISPONIBLE') {
+          // El servicio se desactivó mientras el usuario reservaba: el padre vuelve al paso Servicio.
+          if (!cancelado) alServicioNoDisponible.current?.()
+          return
+        }
         if (!cancelado) setErrorHoras(err.message)
       } finally {
         if (!cancelado) setCargandoHoras(false)

@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { obtenerServicios, obtenerBarberos, crearCita } from '../services/api'
 import IndicadorProgreso from '../components/sections/reserva/IndicadorProgreso'
@@ -8,6 +8,7 @@ import PasoFechaHora from '../components/sections/reserva/PasoFechaHora'
 import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
 import PantallaExito from '../components/sections/reserva/PantallaExito'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
+import ErrorCarga from '../components/ui/ErrorCarga'
 import { PASOS_RESERVA } from '../components/sections/reserva/pasos'
 import { reservaReducer, estadoInicialReserva } from '../components/sections/reserva/reservaReducer'
 
@@ -41,21 +42,57 @@ const ReservaCorte = () => {
   const [barberos, setBarberos] = useState([])
   const [cargandoDatos, setCargandoDatos] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
+  // Se incrementa para volver a pedir servicios y barberos (Reintentar, o un servicio que dejó de estar activo).
+  const [recarga, setRecarga] = useState(0)
+
+  const recargarDatos = useCallback(() => {
+    setErrorCarga('')
+    setCargandoDatos(true)
+    setRecarga((veces) => veces + 1)
+  }, [])
+
+  // Las tres vías (400 al confirmar, 400 al pedir horas, enlace viejo) terminan igual: paso Servicio,
+  // sin selección ni fecha/hora, con aviso, y la lista de servicios se vuelve a pedir.
+  const manejarServicioNoDisponible = useCallback(() => {
+    dispatch({ type: 'SERVICIO_NO_DISPONIBLE' })
+    recargarDatos()
+  }, [recargarDatos])
+
+  // La carga asíncrona necesita el servicio elegido más reciente (p. ej. el de ?servicio=<id>).
+  const servicioIdRef = useRef(estado.servicioId)
+  useEffect(() => {
+    servicioIdRef.current = estado.servicioId
+  }, [estado.servicioId])
 
   useEffect(() => {
+    let cancelado = false
+    let recargando = false
+
     const cargarDatos = async () => {
       try {
         const [serviciosData, barberosData] = await Promise.all([obtenerServicios(), obtenerBarberos()])
+        if (cancelado) return
         setServicios(serviciosData)
         setBarberos(barberosData)
+
+        // Enlace viejo: ?servicio=<id> de un servicio inactivo o inexistente.
+        const elegido = servicioIdRef.current
+        if (elegido && !serviciosData.some((servicio) => servicio.id === elegido)) {
+          recargando = true
+          manejarServicioNoDisponible()
+        }
       } catch (err) {
-        setErrorCarga(err.message)
+        if (!cancelado) setErrorCarga(err.message)
       } finally {
-        setCargandoDatos(false)
+        if (!cancelado && !recargando) setCargandoDatos(false)
       }
     }
     cargarDatos()
-  }, [])
+
+    return () => {
+      cancelado = true
+    }
+  }, [recarga, manejarServicioNoDisponible])
 
   const indiceActual = PASOS_RESERVA.findIndex((paso) => paso.key === estado.paso)
   const esPrimerPaso = indiceActual === 0
@@ -87,6 +124,11 @@ const ReservaCorte = () => {
       })
       dispatch({ type: 'RESERVA_CONFIRMADA', resumen })
     } catch (err) {
+      if (err.codigo === 'SERVICIO_NO_DISPONIBLE') {
+        // El servicio se desactivó mientras el usuario reservaba: se cierra el modal y se vuelve al paso Servicio.
+        manejarServicioNoDisponible()
+        return
+      }
       if (err.status === 409) {
         // La hora ya no es válida: se vuelve al paso de fecha/hora con disponibilidad
         // recargada, en vez de dejar el modal mostrando un error sobre algo que ya cambió.
@@ -122,11 +164,7 @@ const ReservaCorte = () => {
             <IndicadorProgreso pasoActual={estado.paso} />
           </div>
 
-          {errorCarga && (
-            <p role="alert" className="mt-6 font-poppins font-semibold text-red-600">
-              {errorCarga}
-            </p>
-          )}
+          {errorCarga && <ErrorCarga mensaje={errorCarga} onReintentar={recargarDatos} />}
 
           {estado.errorGlobal && (
             <p role="alert" className="mt-6 font-poppins font-semibold text-red-600">
@@ -136,8 +174,10 @@ const ReservaCorte = () => {
 
           <div className="mt-8 w-full">
             {cargandoDatos ? (
-              <p className="text-center font-poppins text-zinc-600">Cargando información...</p>
-            ) : (
+              <p role="status" className="text-center font-poppins text-zinc-600">
+                Cargando información...
+              </p>
+            ) : errorCarga ? null : (
               <>
                 {estado.paso === 'servicio' && (
                   <PasoServicio
@@ -162,6 +202,7 @@ const ReservaCorte = () => {
                     recargaHoras={estado.recargaHoras}
                     onSeleccionarFecha={(fecha) => dispatch({ type: 'SELECCIONAR_FECHA', fecha })}
                     onSeleccionarHora={(hora) => dispatch({ type: 'SELECCIONAR_HORA', hora })}
+                    onServicioNoDisponible={manejarServicioNoDisponible}
                   />
                 )}
               </>
@@ -182,7 +223,7 @@ const ReservaCorte = () => {
           )}
         </div>
 
-        {mostrarResumen && !cargandoDatos && (
+        {mostrarResumen && !cargandoDatos && !errorCarga && (
           <ResumenReserva
             servicio={servicioSeleccionado}
             barbero={barberoSeleccionado}

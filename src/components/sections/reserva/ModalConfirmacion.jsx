@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatearFechaLegible } from '../../../utils/fechas'
 import { esTelefonoValido } from '../../../utils/telefono'
+import { formatearPrecio } from '../../../utils/formato'
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -143,7 +144,7 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
           <div className="mt-1 flex justify-between gap-2 border-t border-zinc-200 pt-2">
             <dt className="text-zinc-500">Total</dt>
             <dd className="text-right font-bold text-black">
-              ${servicio ? servicio.precio.toLocaleString('es-CO') : 0}
+              {servicio ? formatearPrecio(servicio.precio) : '—'}
             </dd>
           </div>
         </dl>

@@ -1,3 +1,5 @@
+export const MENSAJE_SERVICIO_NO_DISPONIBLE = 'Ese servicio ya no está disponible. Elige otro de la lista.'
+
 // barberoId: null significa "Cualquier barbero" (opción por defecto), no "sin elegir".
 export const estadoInicialReserva = (servicioId = '', barberoId = null) => ({
   paso: 'servicio',
@@ -18,6 +20,11 @@ export const reservaReducer = (estado, accion) => {
     case 'SELECCIONAR_SERVICIO':
       // La duración del servicio cambia la disponibilidad: fecha y hora ya no son válidas.
       return { ...estado, servicioId: accion.servicioId, fecha: '', hora: '', errorGlobal: '' }
+
+    case 'SERVICIO_NO_DISPONIBLE':
+      // El servicio elegido ya no está activo (400 con codigo al confirmar o al pedir disponibilidad, o un
+      // enlace viejo ?servicio=<id>): se vuelve al paso Servicio sin selección y con un aviso de una sola vez.
+      return { ...estado, paso: 'servicio', servicioId: '', fecha: '', hora: '', errorGlobal: MENSAJE_SERVICIO_NO_DISPONIBLE }
 
     case 'SELECCIONAR_BARBERO':
       // El calendario depende del barbero: fecha y hora ya no son válidas.

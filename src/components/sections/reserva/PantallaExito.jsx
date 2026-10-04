@@ -1,4 +1,5 @@
 import { formatearFechaLegible } from '../../../utils/fechas'
+import { formatearPrecio } from '../../../utils/formato'
 
 const PantallaExito = ({ resumen, onNuevaReserva }) => (
   <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-5 text-center">
@@ -34,7 +35,7 @@ const PantallaExito = ({ resumen, onNuevaReserva }) => (
       </div>
       <div className="mt-1 flex justify-between gap-2 border-t border-zinc-200 pt-2">
         <dt className="text-zinc-500">Total</dt>
-        <dd className="text-right font-bold text-black">${resumen.precio.toLocaleString('es-CO')}</dd>
+        <dd className="text-right font-bold text-black">{formatearPrecio(resumen.precio)}</dd>
       </div>
     </dl>
 
