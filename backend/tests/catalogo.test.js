@@ -5,7 +5,14 @@ import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import catalogoReal from '../db/data/servicios.js';
 import descripcionesReales from '../db/data/descripciones.js';
-import { sembrarCatalogo, validarCatalogo, NOMBRES_SERVICIOS_LEGADOS } from '../db/sembrarCatalogo.js';
+import {
+  sembrarCatalogo,
+  validarCatalogo,
+  restablecerCatalogo,
+  calcularRestablecimiento,
+  NOMBRES_SERVICIOS_LEGADOS,
+} from '../db/sembrarCatalogo.js';
+import { aplicarMigracionesCatalogo, MIGRACION_CLAVES, MIGRACION_LEGADO } from '../db/migracionesCatalogo.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,7 +40,7 @@ let bd;
 // Deja la base como estaba en desarrollo antes del rediseño: catálogo viejo con ids 1-6,
 // tres citas apuntando a los servicios 1-3 y la secuencia avanzada por seeds repetidos.
 const prepararEscenarioLegado = async () => {
-  await bd.query('TRUNCATE citas, servicios, categorias, barberos RESTART IDENTITY CASCADE');
+  await bd.query('TRUNCATE citas, servicios, categorias, barberos, migraciones_aplicadas RESTART IDENTITY CASCADE');
   await bd.query(`INSERT INTO barberos (id, nombre, activo) VALUES (1, 'Barbero Prueba', true)`);
   for (const [nombre, duracion, precio] of LEGADOS) {
     await bd.query('INSERT INTO servicios (nombre, duracion_min, precio) VALUES ($1, $2, $3)', [nombre, duracion, precio]);
@@ -95,6 +102,31 @@ describe('Datos del catálogo (backend/db/data)', () => {
     expect(problemas).toMatch(/tipo inválido en servicios: 1/);
     expect(problemas).toMatch(/slugs repetidos: a/);
     expect(problemas).toMatch(/precio o duración inválidos en servicios: 2/);
+  });
+
+  it('validarCatalogo exige una clave única y no vacía en cada servicio y categoría', () => {
+    const sinClaves = [{ categoria: 'A', slug: 'a', servicios: [{ id: 1, nombre: 'X', tipo: 'vip', precio: 10, duracion: 5 }] }];
+    expect(validarCatalogo(sinClaves, [{ id: 1, descripcion: 'x' }]).join(' | ')).toMatch(/servicios sin clave.*1.*categorías sin clave.*a/);
+
+    const vacias = [{ categoria: 'A', slug: 'a', clave: '  ', servicios: [{ id: 1, clave: '', nombre: 'X', tipo: 'vip', precio: 10, duracion: 5 }] }];
+    const problemasVacias = validarCatalogo(vacias, [{ id: 1, descripcion: 'x' }]).join(' | ');
+    expect(problemasVacias).toMatch(/servicios sin clave/);
+    expect(problemasVacias).toMatch(/categorías sin clave/);
+
+    const repetidas = [
+      { categoria: 'A', slug: 'a', clave: 'k', servicios: [{ id: 1, clave: 's', nombre: 'X', tipo: 'vip', precio: 10, duracion: 5 }] },
+      { categoria: 'B', slug: 'b', clave: 'k', servicios: [{ id: 2, clave: 's', nombre: 'Y', tipo: 'vip', precio: 10, duracion: 5 }] },
+    ];
+    const problemasRepetidas = validarCatalogo(repetidas, [{ id: 1, descripcion: 'x' }, { id: 2, descripcion: 'y' }]).join(' | ');
+    expect(problemasRepetidas).toMatch(/claves de servicio repetidas: s/);
+    expect(problemasRepetidas).toMatch(/claves de categoría repetidas: k/);
+  });
+
+  it('todos los servicios y categorías de los datos reales tienen clave', () => {
+    const servicios = catalogoReal.flatMap((c) => c.servicios);
+    expect(servicios.every((x) => typeof x.clave === 'string' && x.clave.length > 0)).toBe(true);
+    expect(catalogoReal.every((c) => typeof c.clave === 'string' && c.clave.length > 0)).toBe(true);
+    expect(new Set(servicios.map((x) => x.clave)).size).toBe(39);
   });
 
   it('sembrarCatalogo rechaza datos incoherentes antes de tocar la base', async () => {
@@ -224,11 +256,13 @@ describe('Idempotencia del seed', () => {
     expect(despues).toEqual(antes);
     expect(despues.rows).toHaveLength(45); // 39 nuevos + 6 viejos
     expect(despues.categorias).toHaveLength(6);
-    expect(resultado.desactivados).toBe(0);
+    expect(resultado.servicios.insertados).toBe(0);
+    expect(resultado.categorias.insertadas).toBe(0);
+    expect(resultado.migraciones.legado.aplicada).toBe(false); // el paso único ya estaba registrado
     expect(await estadoDeLasCitas()).toEqual(citasAntes);
   });
 
-  it('si cambian un precio o una descripción en los datos, el seed los actualiza', async () => {
+  it('si cambian un precio o una descripción en los datos, el seed NO actualiza lo que ya existe (solo inserta)', async () => {
     const modificado = structuredClone(catalogoReal);
     modificado[0].servicios[0].precio = 19999;
     const listaModificada = descripcionesReales.map((d) => (d.id === 1 ? { ...d, descripcion: 'Descripción nueva' } : d));
@@ -236,22 +270,269 @@ describe('Idempotencia del seed', () => {
     await sembrarCatalogo(bd, { catalogo: modificado, listaDescripciones: listaModificada });
 
     const { rows } = await bd.query('SELECT precio, descripcion FROM servicios WHERE nombre = $1', [catalogoReal[0].servicios[0].nombre]);
-    expect(rows[0]).toEqual({ precio: 19999, descripcion: 'Descripción nueva' });
+    expect(rows[0]).toEqual({ precio: catalogoReal[0].servicios[0].precio, descripcion: descripcionesReales[0].descripcion });
     const { rows: total } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios');
     expect(total[0].n).toBe(45);
   });
 
-  it('reactiva un servicio nuevo que alguien desactivó a mano', async () => {
+  it('NO reactiva un servicio nuevo que el admin desactivó', async () => {
     const nombre = catalogoReal[1].servicios[0].nombre;
     await bd.query('UPDATE servicios SET activo = false WHERE nombre = $1', [nombre]);
     await sembrarCatalogo(bd);
     const { rows } = await bd.query('SELECT activo FROM servicios WHERE nombre = $1', [nombre]);
-    expect(rows[0].activo).toBe(true);
+    expect(rows[0].activo).toBe(false);
   });
 
   it('los nombres viejos que coinciden con los del catálogo nuevo no se desactivan', () => {
     const nuevos = catalogoReal.flatMap((c) => c.servicios.map((s) => s.nombre));
     // Documenta el hecho: hoy ninguno coincide exactamente, por eso los 6 viejos se apagan.
     expect(NOMBRES_SERVICIOS_LEGADOS.filter((n) => nuevos.includes(n))).toEqual([]);
+  });
+});
+
+describe('Seed que solo inserta (nunca pisa lo que el admin edite)', () => {
+
+  beforeAll(async () => {
+    await prepararEscenarioLegado();
+    await sembrarCatalogo(bd);
+  });
+
+  it('no pisa ediciones del admin: nombre, precio, duración, tipo, categoría ni descripción', async () => {
+    const { rows: cats } = await bd.query("SELECT id FROM categorias WHERE clave_seed = 'barba'");
+    await bd.query(
+      `UPDATE servicios SET precio = 77777, duracion_min = 99, tipo = 'vip', descripcion = 'Editada por el admin', categoria_id = $1
+       WHERE clave_seed = 'corte-militar'`,
+      [cats[0].id]
+    );
+    await bd.query("UPDATE categorias SET nombre = 'Cortes renombrada', orden = 9 WHERE clave_seed = 'cortes'");
+
+    const resultado = await sembrarCatalogo(bd);
+
+    const { rows } = await bd.query(
+      "SELECT precio, duracion_min, tipo, descripcion, categoria_id FROM servicios WHERE clave_seed = 'corte-militar'"
+    );
+    expect(rows[0]).toEqual({ precio: 77777, duracion_min: 99, tipo: 'vip', descripcion: 'Editada por el admin', categoria_id: cats[0].id });
+    const { rows: cat } = await bd.query("SELECT nombre, orden FROM categorias WHERE clave_seed = 'cortes'");
+    expect(cat[0]).toEqual({ nombre: 'Cortes renombrada', orden: 9 });
+    expect(resultado.servicios.insertados).toBe(0);
+    expect(resultado.categorias.insertadas).toBe(0);
+  });
+
+  it('no reactiva lo que el admin desactivó ni desactiva lo que reactivó (ni siquiera un servicio del catálogo anterior)', async () => {
+    await bd.query("UPDATE servicios SET activo = false WHERE clave_seed = 'corte-clasico'");
+    await bd.query("UPDATE servicios SET activo = true WHERE nombre = 'Corte de Cabello'"); // legado reactivado por el admin
+
+    await sembrarCatalogo(bd);
+    await aplicarMigracionesCatalogo(bd); // como en cada arranque del backend
+
+    const { rows } = await bd.query("SELECT clave_seed, nombre, activo FROM servicios WHERE clave_seed = 'corte-clasico' OR nombre = 'Corte de Cabello' ORDER BY id");
+    expect(rows.find((r) => r.nombre === 'Corte de Cabello').activo).toBe(true);
+    expect(rows.find((r) => r.clave_seed === 'corte-clasico').activo).toBe(false);
+  });
+
+  it('un servicio renombrado por el admin no se duplica: el seed lo reconoce por su clave', async () => {
+    await bd.query("UPDATE servicios SET nombre = 'Militar renombrado' WHERE clave_seed = 'corte-militar'");
+    const { rows: antes } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios');
+
+    await sembrarCatalogo(bd);
+
+    const { rows: despues } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios');
+    expect(despues[0].n).toBe(antes[0].n);
+    const { rows } = await bd.query("SELECT nombre FROM servicios WHERE nombre = 'Corte militar' OR clave_seed = 'corte-militar'");
+    expect(rows).toEqual([{ nombre: 'Militar renombrado' }]);
+  });
+
+  it('un servicio creado por el admin (clave_seed nulo) no se toca jamás', async () => {
+    const { rows: cat } = await bd.query("SELECT id FROM categorias WHERE clave_seed = 'barba'");
+    await bd.query(
+      `INSERT INTO servicios (nombre, duracion_min, precio, categoria_id, tipo, descripcion, activo)
+       VALUES ('Servicio del admin', 33, 12345, $1, 'elite', 'Mío', false)`,
+      [cat[0].id]
+    );
+    const antes = await bd.query("SELECT * FROM servicios WHERE nombre = 'Servicio del admin'");
+
+    await sembrarCatalogo(bd);
+    await aplicarMigracionesCatalogo(bd);
+
+    const despues = await bd.query("SELECT * FROM servicios WHERE nombre = 'Servicio del admin'");
+    expect(despues.rows).toEqual(antes.rows);
+    expect(despues.rows[0].clave_seed).toBeNull();
+  });
+
+  it('inserta lo que falta (y solo eso): un servicio y una categoría sembrados que ya no estén', async () => {
+    await bd.query("DELETE FROM servicios WHERE clave_seed IN ('corte-mullet', 'corte-ejecutivo')");
+    await bd.query("DELETE FROM servicios WHERE categoria_id = (SELECT id FROM categorias WHERE clave_seed = 'ondulados')");
+    await bd.query("DELETE FROM categorias WHERE clave_seed = 'ondulados'");
+
+    const resultado = await sembrarCatalogo(bd);
+
+    const ondulados = catalogoReal.find((c) => c.clave === 'ondulados').servicios.length;
+    expect(resultado.categorias.insertadas).toBe(1);
+    expect(resultado.servicios.insertados).toBe(2 + ondulados);
+    const { rows } = await bd.query("SELECT nombre FROM servicios WHERE clave_seed IN ('corte-mullet', 'corte-ejecutivo') ORDER BY nombre");
+    expect(rows).toHaveLength(2);
+    const { rows: edit } = await bd.query("SELECT precio FROM servicios WHERE clave_seed = 'corte-militar'");
+    expect(edit[0].precio).toBe(77777); // lo editado antes sigue igual
+  });
+
+  it('si el nombre o slug de una categoría del catálogo ya lo usa otra categoría del admin, la omite sin pisarla', async () => {
+    await prepararEscenarioLegado();
+    await bd.query("INSERT INTO categorias (nombre, slug, orden) VALUES ('Cortes', 'cortes-del-admin', 1)");
+
+    const resultado = await sembrarCatalogo(bd);
+
+    expect(resultado.omitidos.join(' ')).toMatch(/Cortes/);
+    const { rows } = await bd.query("SELECT clave_seed FROM categorias WHERE nombre = 'Cortes'");
+    expect(rows).toEqual([{ clave_seed: null }]);
+    const { rows: servicios } = await bd.query("SELECT COUNT(*)::int AS n FROM servicios WHERE clave_seed = 'corte-militar'");
+    expect(servicios[0].n).toBe(0);
+  });
+
+  it('sembrarCatalogo rechaza datos sin clave antes de tocar la base', async () => {
+    const sinClave = [{ categoria: 'A', slug: 'a', servicios: [{ id: 1, nombre: 'X', tipo: 'vip', precio: 10, duracion: 5 }] }];
+    await expect(sembrarCatalogo(bd, { catalogo: sinClave, listaDescripciones: [{ id: 1, descripcion: 'x' }] })).rejects.toThrow(
+      /sin clave/
+    );
+  });
+});
+
+describe('Migración de claves y apagado del catálogo anterior (pasos únicos)', () => {
+  // Simula una base creada por el seed ANTERIOR (sin claves, casado por nombre) y aún sin migrar.
+  const prepararBaseSinMigrar = async () => {
+    await prepararEscenarioLegado();
+    await sembrarCatalogo(bd);
+    await bd.query('UPDATE servicios SET clave_seed = NULL');
+    await bd.query('UPDATE categorias SET clave_seed = NULL');
+    await bd.query('DELETE FROM migraciones_aplicadas');
+  };
+
+  it('el backfill asigna clave a los servicios (por nombre) y categorías (por slug) del catálogo y lo registra', async () => {
+    await prepararBaseSinMigrar();
+    await bd.query("INSERT INTO servicios (nombre, duracion_min, precio) VALUES ('Servicio del admin sin clave', 10, 1000)");
+
+    const resultado = await aplicarMigracionesCatalogo(bd);
+
+    expect(resultado.claves.aplicada).toBe(true);
+    expect(resultado.claves.detalle).toEqual({ categorias: 6, servicios: 39 });
+    const { rows } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios WHERE clave_seed IS NOT NULL');
+    expect(rows[0].n).toBe(39);
+    const { rows: libre } = await bd.query("SELECT clave_seed FROM servicios WHERE nombre = 'Servicio del admin sin clave'");
+    expect(libre[0].clave_seed).toBeNull();
+    const { rows: registro } = await bd.query('SELECT clave FROM migraciones_aplicadas ORDER BY clave');
+    expect(registro.map((r) => r.clave)).toContain(MIGRACION_CLAVES);
+  });
+
+  it('limitación conocida: un servicio renombrado ANTES del backfill ya no se puede casar por nombre (se vuelve a crear, nunca se pisa)', async () => {
+    await prepararBaseSinMigrar();
+    await bd.query("UPDATE servicios SET nombre = 'Corte militar (mío)' WHERE nombre = 'Corte militar'");
+    const { rows: antes } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios');
+
+    // El backfill corre en el arranque, ANTES del seed; el renombrado previo a la migración no se puede casar
+    // por nombre (limitación documentada), pero el seed solo duplicaría ese servicio, nunca pisaría nada.
+    await aplicarMigracionesCatalogo(bd);
+    await sembrarCatalogo(bd);
+
+    const { rows: despues } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios');
+    expect(despues[0].n).toBe(antes[0].n + 1);
+    const { rows } = await bd.query("SELECT nombre, precio FROM servicios WHERE nombre IN ('Corte militar (mío)', 'Corte militar') ORDER BY nombre");
+    expect(rows).toHaveLength(2);
+  });
+
+  it('el paso del catálogo anterior se registra una sola vez y, si ya estaban inactivos, no reactiva nada', async () => {
+    await prepararBaseSinMigrar(); // el escenario ya dejó los 6 viejos inactivos
+    const resultado = await aplicarMigracionesCatalogo(bd);
+
+    expect(resultado.legado.aplicada).toBe(true);
+    expect(resultado.legado.detalle).toEqual({ desactivados: 0 });
+    const { rows } = await bd.query('SELECT activo FROM servicios WHERE id <= 6');
+    expect(rows.every((r) => r.activo === false)).toBe(true);
+    const { rows: registro } = await bd.query('SELECT clave FROM migraciones_aplicadas');
+    expect(registro.map((r) => r.clave).sort()).toEqual([MIGRACION_CLAVES, MIGRACION_LEGADO].sort());
+  });
+
+  it('si el admin reactiva uno de los 6 viejos, ninguna ejecución posterior lo vuelve a apagar', async () => {
+    await prepararBaseSinMigrar();
+    await aplicarMigracionesCatalogo(bd);
+    await bd.query("UPDATE servicios SET activo = true WHERE nombre = 'Perfilado de Cejas'");
+
+    for (let i = 0; i < 3; i += 1) {
+      await aplicarMigracionesCatalogo(bd);
+      await sembrarCatalogo(bd);
+    }
+
+    const { rows } = await bd.query("SELECT activo FROM servicios WHERE nombre = 'Perfilado de Cejas'");
+    expect(rows[0].activo).toBe(true);
+  });
+
+  it('con servicios viejos activos desactiva los 6 una vez (sin borrarlos), y solo cuando el catálogo nuevo ya está', async () => {
+    await prepararEscenarioLegado();
+    await bd.query('UPDATE servicios SET activo = true WHERE id <= 6');
+
+    // Aún sin catálogo nuevo: el paso queda pendiente y no apaga nada.
+    const pendiente = await aplicarMigracionesCatalogo(bd);
+    expect(pendiente.legado.aplicada).toBe(false);
+    const { rows: siguenActivos } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios WHERE id <= 6 AND activo');
+    expect(siguenActivos[0].n).toBe(6);
+
+    await sembrarCatalogo(bd);
+
+    const { rows } = await bd.query('SELECT id, nombre, activo FROM servicios WHERE id <= 6 ORDER BY id');
+    expect(rows.map((r) => r.nombre)).toEqual(LEGADOS.map(([nombre]) => nombre));
+    expect(rows.every((r) => r.activo === false)).toBe(true);
+  });
+
+  it('las citas históricas siguen apuntando a sus servicios viejos después de todo el proceso', async () => {
+    await prepararEscenarioLegado();
+    const antes = await estadoDeLasCitas();
+    await sembrarCatalogo(bd);
+    await sembrarCatalogo(bd);
+    expect(await estadoDeLasCitas()).toEqual(antes);
+  });
+});
+
+describe('--restablecer-catalogo (solo desarrollo)', () => {
+  beforeAll(async () => {
+    await prepararEscenarioLegado();
+    await sembrarCatalogo(bd);
+  });
+
+  it('sin cambios la base ya coincide con el catálogo: no hay nada que sobrescribir', async () => {
+    const plan = await calcularRestablecimiento(bd);
+    expect(plan).toEqual({ cambios: [], faltantes: [] });
+  });
+
+  it('la simulación lista qué se sobrescribiría y no escribe nada', async () => {
+    await bd.query("UPDATE servicios SET precio = 1, nombre = 'Otro nombre', activo = false WHERE clave_seed = 'corte-militar'");
+    await bd.query("UPDATE categorias SET nombre = 'Otra', activo = false WHERE clave_seed = 'barba'");
+
+    const plan = await calcularRestablecimiento(bd);
+
+    const servicio = plan.cambios.find((c) => c.tipo === 'servicio');
+    expect(servicio.etiqueta).toBe('Corte militar');
+    expect(servicio.campos.map((c) => c.campo).sort()).toEqual(['activo', 'nombre', 'precio']);
+    expect(servicio.campos.find((c) => c.campo === 'precio')).toEqual({ campo: 'precio', actual: 1, nuevo: 18000 });
+    const categoria = plan.cambios.find((c) => c.tipo === 'categoria');
+    expect(categoria.campos.map((c) => c.campo).sort()).toEqual(['activo', 'nombre']);
+    const { rows } = await bd.query("SELECT precio FROM servicios WHERE clave_seed = 'corte-militar'");
+    expect(rows[0].precio).toBe(1);
+  });
+
+  it('restablecer sobrescribe lo editado en filas del catálogo, reactiva, inserta lo que falte y no toca servicios del admin', async () => {
+    const { rows: cat } = await bd.query("SELECT id FROM categorias WHERE clave_seed = 'cortes'");
+    await bd.query(
+      "INSERT INTO servicios (nombre, duracion_min, precio, categoria_id, tipo, descripcion) VALUES ('Solo del admin', 10, 5000, $1, 'original', 'x')",
+      [cat[0].id]
+    );
+    await bd.query("DELETE FROM servicios WHERE clave_seed = 'corte-mullet'");
+
+    const resultado = await restablecerCatalogo(bd);
+
+    expect(resultado.restablecidos).toBeGreaterThan(0);
+    expect(resultado.insertados.servicios.insertados).toBe(1);
+    const { rows } = await bd.query("SELECT nombre, precio, activo FROM servicios WHERE clave_seed = 'corte-militar'");
+    expect(rows[0]).toEqual({ nombre: 'Corte militar', precio: 18000, activo: true });
+    const { rows: admin } = await bd.query("SELECT precio FROM servicios WHERE nombre = 'Solo del admin'");
+    expect(admin[0].precio).toBe(5000);
+    expect(await calcularRestablecimiento(bd)).toEqual({ cambios: [], faltantes: [] });
   });
 });

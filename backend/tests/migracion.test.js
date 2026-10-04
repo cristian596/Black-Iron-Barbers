@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
+import { aplicarMigracionesCatalogo, MIGRACION_CLAVES, MIGRACION_LEGADO } from '../db/migracionesCatalogo.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -192,6 +193,107 @@ describe('Migración de esquema (backend/db/schema.sql)', () => {
          WHERE conname IN ('servicios_tipo_check', 'servicios_precio_check', 'servicios_duracion_min_check', 'servicios_nombre_key')`
       );
       expect(restricciones).toHaveLength(4);
+    } finally {
+      await bd.end();
+    }
+  });
+});
+
+describe('Migración de esquema: gestión del catálogo (clave_seed, categorias.activo, migraciones_aplicadas)', () => {
+  it('en una base vacía crea las columnas, las restricciones UNIQUE y la tabla de migraciones', async () => {
+    await recrearBasePrueba();
+    const bd = conectarseABasePrueba();
+    try {
+      await bd.query(schemaCompleto);
+      await bd.query(schemaCompleto); // idempotente
+
+      const { rows: columnas } = await bd.query(
+        `SELECT table_name, column_name, is_nullable, column_default FROM information_schema.columns
+         WHERE (table_name, column_name) IN (('servicios', 'clave_seed'), ('categorias', 'clave_seed'), ('categorias', 'activo'))
+         ORDER BY table_name, column_name`
+      );
+      expect(columnas).toEqual([
+        { table_name: 'categorias', column_name: 'activo', is_nullable: 'NO', column_default: 'true' },
+        { table_name: 'categorias', column_name: 'clave_seed', is_nullable: 'YES', column_default: null },
+        { table_name: 'servicios', column_name: 'clave_seed', is_nullable: 'YES', column_default: null },
+      ]);
+
+      const { rows: restricciones } = await bd.query(
+        "SELECT conname FROM pg_constraint WHERE conname IN ('servicios_clave_seed_key', 'categorias_clave_seed_key') ORDER BY conname"
+      );
+      expect(restricciones.map((r) => r.conname)).toEqual(['categorias_clave_seed_key', 'servicios_clave_seed_key']);
+
+      const { rows: tabla } = await bd.query(
+        `SELECT column_name FROM information_schema.columns WHERE table_name = 'migraciones_aplicadas' ORDER BY column_name`
+      );
+      expect(tabla.map((c) => c.column_name)).toEqual(['aplicada_en', 'clave']);
+    } finally {
+      await bd.end();
+    }
+  });
+
+  it('clave_seed es único pero admite muchos NULL (servicios y categorías creados por el admin)', async () => {
+    const bd = conectarseABasePrueba();
+    try {
+      await bd.query("INSERT INTO servicios (nombre, duracion_min, precio) VALUES ('A', 10, 1), ('B', 10, 1)");
+      await bd.query("INSERT INTO servicios (nombre, duracion_min, precio, clave_seed) VALUES ('C', 10, 1, 'k')");
+      await expect(
+        bd.query("INSERT INTO servicios (nombre, duracion_min, precio, clave_seed) VALUES ('D', 10, 1, 'k')")
+      ).rejects.toThrow(/servicios_clave_seed_key/);
+      await bd.query("INSERT INTO categorias (nombre, slug, orden) VALUES ('X', 'x', 1), ('Y', 'y', 2)");
+      const { rows } = await bd.query('SELECT activo FROM categorias');
+      expect(rows.every((r) => r.activo === true)).toBe(true); // las categorías existentes quedan activas
+    } finally {
+      await bd.end();
+    }
+  });
+
+  it('sobre una base previa deja las filas existentes sin clave, las categorías activas y no registra migraciones por sí solo', async () => {
+    await recrearBasePrueba();
+    const bd = conectarseABasePrueba();
+    try {
+      await bd.query(ESQUEMA_PREVIO);
+      await bd.query("INSERT INTO servicios (id, nombre, duracion_min, precio) VALUES (1, 'Corte viejo', 30, 50000)");
+      await bd.query(schemaCompleto);
+
+      const { rows } = await bd.query('SELECT nombre, clave_seed, activo FROM servicios');
+      expect(rows).toEqual([{ nombre: 'Corte viejo', clave_seed: null, activo: true }]);
+      const { rows: migraciones } = await bd.query('SELECT COUNT(*)::int AS n FROM migraciones_aplicadas');
+      expect(migraciones[0].n).toBe(0); // los pasos de datos los ejecuta aplicarMigracionesCatalogo, no el esquema
+    } finally {
+      await bd.end();
+    }
+  });
+
+  it('aplicarMigracionesCatalogo sobre una base de desarrollo con el catálogo ya sembrado y el anterior inactivo: asigna claves, registra ambos pasos y no reactiva nada', async () => {
+    await recrearBasePrueba();
+    const bd = conectarseABasePrueba();
+    try {
+      await bd.query(schemaCompleto);
+      // Estado de la base de desarrollo antes de esta migración: catálogo viejo inactivo, uno nuevo sin claves.
+      await bd.query("INSERT INTO servicios (nombre, duracion_min, precio, activo) VALUES ('Corte de Cabello', 35, 55000, false), ('Corte de Barba', 45, 48000, false)");
+      await bd.query("INSERT INTO categorias (nombre, slug, orden) VALUES ('Cortes', 'cortes', 1)");
+      await bd.query(
+        "INSERT INTO servicios (nombre, duracion_min, precio, categoria_id, tipo, descripcion) SELECT 'Corte militar', 25, 18000, id, 'original', 'x' FROM categorias WHERE slug = 'cortes'"
+      );
+
+      const resultado = await aplicarMigracionesCatalogo(bd);
+
+      expect(resultado.claves).toEqual({ aplicada: true, detalle: { categorias: 1, servicios: 1 } });
+      expect(resultado.legado).toEqual({ aplicada: true, detalle: { desactivados: 0 } });
+      const { rows } = await bd.query('SELECT nombre, clave_seed, activo FROM servicios ORDER BY id');
+      expect(rows).toEqual([
+        { nombre: 'Corte de Cabello', clave_seed: null, activo: false },
+        { nombre: 'Corte de Barba', clave_seed: null, activo: false },
+        { nombre: 'Corte militar', clave_seed: 'corte-militar', activo: true },
+      ]);
+      const { rows: registro } = await bd.query('SELECT clave FROM migraciones_aplicadas ORDER BY clave');
+      expect(registro.map((r) => r.clave)).toEqual([MIGRACION_CLAVES, MIGRACION_LEGADO].sort());
+
+      // Una segunda ejecución no hace nada
+      const otra = await aplicarMigracionesCatalogo(bd);
+      expect(otra.claves.aplicada).toBe(false);
+      expect(otra.legado.aplicada).toBe(false);
     } finally {
       await bd.end();
     }

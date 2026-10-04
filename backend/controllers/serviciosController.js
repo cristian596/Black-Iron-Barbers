@@ -6,6 +6,10 @@ const PARAMETROS_ADMITIDOS = ['categoria', 'tipo', 'q', 'ordenar', 'direccion', 
 const MAX_LONGITUD_Q = 100;
 const ID_MAXIMO_INT = 2147483647;
 
+// Un servicio de una categoría inactiva no se muestra (el admin no puede desactivar una categoría con servicios
+// activos, pero sí reactivar/mover servicios después; esta condición lo garantiza en la web pública).
+const VISIBLE = '(s.categoria_id IS NULL OR c.activo = true)';
+
 const SELECT_SERVICIOS = `
   SELECT s.id, s.nombre, s.descripcion, s.precio, s.duracion_min, s.tipo,
          c.id AS categoria_id, c.nombre AS categoria_nombre, c.slug AS categoria_slug, c.orden AS categoria_orden
@@ -80,7 +84,7 @@ export const listarServicios = async (req, res, next) => {
       }
     }
 
-    const condiciones = ['s.activo = true'];
+    const condiciones = ['s.activo = true', VISIBLE];
     const parametros = [];
 
     if (categoria) {
@@ -150,7 +154,7 @@ export const obtenerServicio = async (req, res, next) => {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }
 
-    const { rows } = await pool.query(`${SELECT_SERVICIOS} WHERE s.id = $1 AND s.activo = true`, [servicioId]);
+    const { rows } = await pool.query(`${SELECT_SERVICIOS} WHERE s.id = $1 AND s.activo = true AND ${VISIBLE}`, [servicioId]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Servicio no encontrado' });
     }

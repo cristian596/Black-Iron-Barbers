@@ -6,6 +6,7 @@ export const listarCategorias = async (req, res, next) => {
       `SELECT c.id, c.nombre, c.slug, c.orden, COUNT(s.id)::int AS total_servicios
        FROM categorias c
        LEFT JOIN servicios s ON s.categoria_id = c.id AND s.activo = true
+       WHERE c.activo = true
        GROUP BY c.id
        ORDER BY c.orden ASC, c.id ASC`
     );

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from '../config/env.js';
+import { aplicarMigracionesCatalogo } from './migracionesCatalogo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { Pool } = pg;
@@ -46,4 +47,5 @@ export const conectarConReintentos = async (intentos = 5, esperaMs = 5000) => {
   // ejemplo, citas solapadas que bloquean la restricción nueva) es un problema de datos,
   // no de conectividad, así que se deja fallar con su mensaje real en vez de reintentar.
   await crearTablas();
+  await aplicarMigracionesCatalogo(pool);
 };
