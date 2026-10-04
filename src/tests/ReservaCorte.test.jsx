@@ -12,7 +12,37 @@ vi.mock('../services/api', () => ({
   crearCita: vi.fn(),
 }))
 
-const SERVICIOS = [{ id: 1, nombre: 'Corte Clasico', duracion_min: 35, precio: 55000 }]
+const CORTES = { id: 1, nombre: 'Cortes', slug: 'cortes' }
+const BARBA = { id: 2, nombre: 'Barba', slug: 'barba' }
+const SERVICIOS = [
+  {
+    id: 1,
+    nombre: 'Corte Clasico',
+    descripcion: 'Corte tradicional con acabado limpio',
+    tipo: 'original',
+    duracion_min: 35,
+    precio: 55000,
+    categoria: CORTES,
+  },
+]
+const SERVICIO_BARBA = {
+  id: 2,
+  nombre: 'Perfilado de barba',
+  descripcion: 'Perfilado de barba definido',
+  tipo: 'elite',
+  duracion_min: 20,
+  precio: 12000,
+  categoria: BARBA,
+}
+const SERVICIO_GRATIS = {
+  id: 3,
+  nombre: 'Asesoría gratuita',
+  descripcion: 'Conversación sin costo',
+  tipo: 'original',
+  duracion_min: 15,
+  precio: 0,
+  categoria: CORTES,
+}
 const BARBEROS = [{ id: 1, nombre: 'Boby', especialidad: 'Fade y Barba' }]
 
 // "Continuar" vive duplicado en el DOM (panel de escritorio + barra móvil); Tailwind
@@ -309,5 +339,129 @@ describe('ReservaCorte — confirmación y éxito', () => {
     await llegarAlModal(user)
 
     expect(screen.queryByRole('button', { name: /^continuar$/i })).not.toBeInTheDocument()
+  })
+})
+
+const MENSAJE_NO_DISPONIBLE = 'Ese servicio ya no está disponible. Elige otro de la lista.'
+
+const errorServicioNoDisponible = () =>
+  Object.assign(new Error('El servicio seleccionado no existe o no está disponible'), {
+    status: 400,
+    codigo: 'SERVICIO_NO_DISPONIBLE',
+  })
+
+describe('ReservaCorte — estados de carga y servicio que deja de estar disponible', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    obtenerServicios.mockResolvedValue(SERVICIOS)
+    obtenerBarberos.mockResolvedValue(BARBEROS)
+    obtenerDisponibilidad.mockResolvedValue({ horas: ['10:00', '10:30'] })
+  })
+
+  it('mientras carga muestra un estado accesible (role="status")', async () => {
+    renderConRuta()
+
+    expect(screen.getByRole('status')).toHaveTextContent(/cargando/i)
+    await screen.findByRole('button', { name: /corte clasico/i })
+  })
+
+  it('si falla la carga muestra el error con "Reintentar", que vuelve a pedir los datos', async () => {
+    const user = userEvent.setup()
+    obtenerServicios.mockRejectedValueOnce(new Error('No se pudo conectar con el servidor'))
+    renderConRuta()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo conectar con el servidor')
+    expect(screen.queryByText(/no hay servicios disponibles/i)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }))
+
+    expect(await screen.findByRole('button', { name: /corte clasico/i })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(obtenerServicios).toHaveBeenCalledTimes(2)
+  })
+
+  it('con ?servicio= de un servicio activo, abre la categoría de ese servicio', async () => {
+    obtenerServicios.mockResolvedValue([...SERVICIOS, SERVICIO_BARBA])
+    renderConRuta('/reservar-corte?servicio=2')
+
+    await screen.findByRole('button', { name: /perfilado de barba/i })
+    const grupo = screen.getByRole('group', { name: 'Categoría' })
+    expect(within(grupo).getByRole('button', { name: 'Barba' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('button', { name: /corte clasico/i })).not.toBeInTheDocument()
+    expect(continuarHabilitado()).toBe(true)
+  })
+
+  it('un servicio de precio 0 se muestra como "Gratis" también en el total del resumen', async () => {
+    const user = userEvent.setup()
+    obtenerServicios.mockResolvedValue([SERVICIO_GRATIS])
+    renderConRuta()
+
+    await user.click(await screen.findByRole('button', { name: /asesoría gratuita/i }))
+
+    screen.getAllByLabelText(/resumen de la reserva/i).forEach((resumen) => {
+      expect(within(resumen).getByText('Gratis')).toBeInTheDocument()
+    })
+  })
+
+  describe('las tres vías del servicio no disponible', () => {
+    it('enlace viejo ?servicio=<id> inexistente: aviso, sin selección, paso Servicio y lista recargada', async () => {
+      renderConRuta('/reservar-corte?servicio=99')
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(MENSAJE_NO_DISPONIBLE)
+      expect(await screen.findByRole('button', { name: /corte clasico/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /elige un servicio/i })).toBeInTheDocument()
+      expect(continuarDeshabilitado()).toBe(true)
+      expect(screen.getByRole('button', { name: /corte clasico/i })).toHaveAttribute('aria-pressed', 'false')
+      expect(obtenerServicios).toHaveBeenCalledTimes(2)
+    })
+
+    it('al confirmar, un 400 con codigo cierra el modal, vuelve al paso Servicio y recarga la lista', async () => {
+      const user = userEvent.setup()
+      crearCita.mockRejectedValueOnce(errorServicioNoDisponible())
+      renderConRuta('/reservar-corte?servicio=1')
+      await llegarAlModal(user)
+      await llenarContactoValido(user)
+
+      obtenerServicios.mockResolvedValueOnce([SERVICIO_BARBA]) // la recarga ya no trae el servicio 1
+      await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(MENSAJE_NO_DISPONIBLE)
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(await screen.findByRole('button', { name: /perfilado de barba/i })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /corte clasico/i })).not.toBeInTheDocument()
+      expect(continuarDeshabilitado()).toBe(true)
+      expect(obtenerServicios).toHaveBeenCalledTimes(2)
+    })
+
+    it('al pedir la disponibilidad, un 400 con codigo vuelve al paso Servicio con el aviso y recarga la lista', async () => {
+      const user = userEvent.setup()
+      obtenerDisponibilidad.mockRejectedValue(errorServicioNoDisponible())
+      renderConRuta('/reservar-corte?servicio=1')
+
+      await screen.findByRole('button', { name: /corte clasico/i })
+      await clickContinuar(user) // → barbero
+      await screen.findByRole('heading', { name: /cualquier barbero/i })
+      await clickContinuar(user) // → fecha-hora
+      await seleccionarPrimeraFecha(user)
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(MENSAJE_NO_DISPONIBLE)
+      expect(await screen.findByRole('heading', { name: /elige un servicio/i })).toBeInTheDocument()
+      expect(continuarDeshabilitado()).toBe(true)
+      expect(obtenerServicios).toHaveBeenCalledTimes(2)
+    })
+
+    it('un 400 SIN codigo al confirmar no se confunde con servicio no disponible: el error queda en el modal', async () => {
+      const user = userEvent.setup()
+      crearCita.mockRejectedValueOnce(Object.assign(new Error('La fecha no es válida'), { status: 400 }))
+      renderConRuta('/reservar-corte?servicio=1')
+      await llegarAlModal(user)
+      await llenarContactoValido(user)
+
+      await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
+
+      expect(await screen.findByText('La fecha no es válida')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(obtenerServicios).toHaveBeenCalledTimes(1)
+    })
   })
 })

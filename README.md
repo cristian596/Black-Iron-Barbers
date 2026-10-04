@@ -46,7 +46,7 @@ docker compose up --build
 | Comando | Qué hace |
 |---|---|
 | `npm start` | Levanta el servidor (necesita Postgres) |
-| `npm run seed` | Siembra barberos, servicios y el admin inicial |
+| `npm run seed` | Siembra barberos, el catálogo de servicios (upsert por nombre) y el admin inicial; se puede repetir sin duplicar |
 | `npm test` | Tests con Vitest + Supertest contra una base de pruebas aislada |
 
 Para correr `npm test` en local, copia `backend/.env.test.example` a
@@ -54,6 +54,23 @@ Para correr `npm test` en local, copia `backend/.env.test.example` a
 `DB_NAME` de ese archivo **debe ser distinto** al de desarrollo (por
 ejemplo `black_iron_test`): los tests crean esa base, le aplican el
 esquema y la limpian antes de cada corrida, sin tocar la base real.
+
+## Catálogo de servicios
+
+39 servicios en 6 categorías, con tipo `original`, `elite` o `vip`, descripción, duración y precio (0 se muestra como "Gratis").
+La fuente del catálogo está en `backend/db/data/` y el seed la aplica por nombre, sin borrar nada: los 6 servicios del catálogo
+anterior quedan inactivos para conservar el historial de citas, y los ids de los nuevos los asigna la secuencia.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/servicios` | Servicios activos. Filtros: `categoria` (slug), `tipo`, `q`. Orden: `ordenar` (`precio`, `duracion`, `nombre`) y `direccion`. `agrupar=categoria` los devuelve por categoría |
+| GET | `/api/servicios/:id` | Un servicio activo (404 si no existe o está inactivo) |
+| GET | `/api/categorias` | Categorías en orden, con `total_servicios` |
+
+Un parámetro desconocido, repetido o inválido responde 400. Reservar o consultar disponibilidad de un servicio inexistente o inactivo
+responde 400 con `codigo: "SERVICIO_NO_DISPONIBLE"`. Hay ejemplos con `curl` en
+[docs/pruebas-manuales-servicios.md](./docs/pruebas-manuales-servicios.md) y
+[docs/pruebas-manuales-reservas.md](./docs/pruebas-manuales-reservas.md).
 
 ## Rutas principales
 

@@ -4,14 +4,26 @@ Comandos reales contra el backend levantado con `docker compose up` (API en `htt
 
 ```bash
 API="http://localhost:5001/api"
+
+# Id de un servicio ACTIVO por su nombre exacto (los ids los asigna la base; no se escriben a mano).
+# La URL se codifica con Node porque el curl de Windows envía las tildes en latin-1 y el servidor no las reconoce.
+id_servicio() {
+  node -e "fetch(process.argv[1]+'/servicios?q='+encodeURIComponent(process.argv[2])).then(r=>r.json()).then(l=>{const s=l.find(x=>x.nombre===process.argv[2]);if(!s){console.error('Servicio no encontrado: '+process.argv[2]);process.exit(1)}console.log(s.id)})" "$API" "$1"
+}
+
+CORTE=$(id_servicio "Corte clásico")              # 30 min
+SERVICIO_90=$(id_servicio "Keratina cabello corto")   # 90 min
+echo "CORTE=$CORTE SERVICIO_90=$SERVICIO_90"      # deben ser números; si salen vacíos, el seed no se ha corrido
 ```
+
+> Las duraciones de arriba son las del catálogo actual. Los casos 3 y 4 dependen de que `SERVICIO_90` dure 90 min y `CORTE` 30 min; si cambias esos servicios, elige otros con `GET /api/servicios?ordenar=duracion`.
 
 ## 1. Cualquier barbero, asignación por menos citas
 
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Cliente Prueba","correo":"cliente@example.com","telefono":"3001112222","consentimiento":true,"servicio_id":1,"fecha":"2026-12-01","hora":"09:00"}'
+  -d '{"cliente":"Cliente Prueba","correo":"cliente@example.com","telefono":"3001112222","consentimiento":true,"servicio_id":'$CORTE',"fecha":"2026-12-01","hora":"09:00"}'
 ```
 
 Resultado esperado: `201`, `barbero_id` es el barbero activo con menos citas ese día (empate por id ascendente).
@@ -23,7 +35,7 @@ Repetir exactamente la misma petición del punto 1 (mismo `servicio_id`, `fecha`
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Cliente Prueba","correo":"cliente@example.com","telefono":"3001112222","consentimiento":true,"servicio_id":1,"barbero_id":1,"fecha":"2026-12-01","hora":"09:00"}'
+  -d '{"cliente":"Cliente Prueba","correo":"cliente@example.com","telefono":"3001112222","consentimiento":true,"servicio_id":'$CORTE',"barbero_id":1,"fecha":"2026-12-01","hora":"09:00"}'
 ```
 
 Resultado esperado: `409`, `{"error":"Ese horario ya está reservado para este barbero, elige otro"}`.
@@ -33,15 +45,15 @@ Resultado esperado: `409`, `{"error":"Ese horario ya está reservado para este b
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Cliente A","correo":"a@example.com","telefono":"3001112222","consentimiento":true,"servicio_id":3,"barbero_id":1,"fecha":"2026-12-02","hora":"10:00"}'
+  -d '{"cliente":"Cliente A","correo":"a@example.com","telefono":"3001112222","consentimiento":true,"servicio_id":'$SERVICIO_90',"barbero_id":1,"fecha":"2026-12-02","hora":"10:00"}'
 ```
 
-Resultado esperado: `201` (Combo de 90 min, 10:00–11:30).
+Resultado esperado: `201` (servicio de 90 min, 10:00–11:30).
 
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Cliente B","correo":"b@example.com","telefono":"3002223333","consentimiento":true,"servicio_id":1,"barbero_id":1,"fecha":"2026-12-02","hora":"10:30"}'
+  -d '{"cliente":"Cliente B","correo":"b@example.com","telefono":"3002223333","consentimiento":true,"servicio_id":'$CORTE',"barbero_id":1,"fecha":"2026-12-02","hora":"10:30"}'
 ```
 
 Resultado esperado: `409` (se solapa con la cita anterior, aunque la hora exacta sea distinta).
@@ -51,7 +63,7 @@ Resultado esperado: `409` (se solapa con la cita anterior, aunque la hora exacta
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Cliente Tarde","correo":"tarde@example.com","telefono":"3003334444","consentimiento":true,"servicio_id":3,"barbero_id":1,"fecha":"2026-12-03","hora":"18:30"}'
+  -d '{"cliente":"Cliente Tarde","correo":"tarde@example.com","telefono":"3003334444","consentimiento":true,"servicio_id":'$SERVICIO_90',"barbero_id":1,"fecha":"2026-12-03","hora":"18:30"}'
 ```
 
 Resultado esperado: `400`, `{"error":"El servicio no cabe dentro del horario de atención a esa hora"}`.
@@ -91,7 +103,7 @@ Resultado esperado: `200`, `estado: "cancelada"`. Luego, reservar en el mismo ba
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Cliente Nuevo","correo":"nuevo@example.com","telefono":"3004445555","consentimiento":true,"servicio_id":1,"barbero_id":1,"fecha":"2026-12-02","hora":"10:00"}'
+  -d '{"cliente":"Cliente Nuevo","correo":"nuevo@example.com","telefono":"3004445555","consentimiento":true,"servicio_id":'$CORTE',"barbero_id":1,"fecha":"2026-12-02","hora":"10:00"}'
 ```
 
 Resultado esperado: `201` (el hueco quedó libre).
@@ -101,7 +113,7 @@ Resultado esperado: `201` (el hueco quedó libre).
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Tel Invalido","correo":"telinvalido@example.com","telefono":"12345","consentimiento":true,"servicio_id":1,"barbero_id":5,"fecha":"2026-12-04","hora":"10:00"}'
+  -d '{"cliente":"Tel Invalido","correo":"telinvalido@example.com","telefono":"12345","consentimiento":true,"servicio_id":'$CORTE',"barbero_id":5,"fecha":"2026-12-04","hora":"10:00"}'
 ```
 
 Resultado esperado: `400`, `{"error":"El teléfono debe ser un celular colombiano válido (10 dígitos, inicia en 3)"}`.
@@ -109,7 +121,7 @@ Resultado esperado: `400`, `{"error":"El teléfono debe ser un celular colombian
 ```bash
 curl -X POST "$API/citas" \
   -H "Content-Type: application/json" \
-  -d '{"cliente":"Tel Con Prefijo","correo":"telprefijo@example.com","telefono":"+57 300 999 8888","consentimiento":true,"servicio_id":1,"barbero_id":5,"fecha":"2026-12-04","hora":"11:00"}'
+  -d '{"cliente":"Tel Con Prefijo","correo":"telprefijo@example.com","telefono":"+57 300 999 8888","consentimiento":true,"servicio_id":'$CORTE',"barbero_id":5,"fecha":"2026-12-04","hora":"11:00"}'
 ```
 
 Resultado esperado: `201`, el campo `telefono` de la respuesta es `"3009998888"`.
@@ -120,7 +132,7 @@ Obtén primero la fecha real de hoy en Bogotá (no la fecha UTC del sistema):
 
 ```bash
 HOY=$(node -e "console.log(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Bogota'}).format(new Date()))")
-curl "$API/disponibilidad?servicio=1&barbero=1&fecha=$HOY"
+curl "$API/disponibilidad?servicio=$CORTE&barbero=1&fecha=$HOY"
 ```
 
 Resultado esperado: las horas anteriores a la hora actual de Bogotá no aparecen en el arreglo `horas`.

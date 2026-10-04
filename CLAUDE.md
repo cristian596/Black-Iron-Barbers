@@ -30,8 +30,8 @@ backend/
 ├── index.js            solo arranque del servidor
 ├── app.js              express, cors, rutas, manejo de errores (exporta crearApp() para tests)
 ├── config/env.js       valida variables de entorno al arrancar
-├── db/                 connection.js, schema.sql, seed.js
-├── routes/             auth, barberos, servicios, citas, admin
+├── db/                 connection.js, schema.sql, seed.js, sembrarCatalogo.js, data/ (catálogo y descripciones)
+├── routes/             auth, barberos, servicios, categorias, citas, admin
 ├── controllers/        lógica de cada ruta
 ├── middlewares/        verificarToken, requiereRol, errorHandler, validate
 └── tests/              Vitest + Supertest; globalSetup crea/siembra black_iron_test
@@ -62,7 +62,10 @@ src/
 
 - `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto`, `activo` (el personal que se muestra en la web)
 - `usuarios`: `id`, `usuario` (único), `contrasena` (hash bcrypt), `rol` (`admin` | `barbero`), `barbero_id` (nulo para el admin), `activo`
-- `servicios`: `id`, `nombre`, `duracion_min`, `precio` (solo barbería)
+- `categorias`: `id`, `nombre` (único), `slug` (único), `orden` (orden de aparición)
+- `servicios`: `id`, `nombre` (único; distingue mayúsculas), `descripcion`, `duracion_min` (> 0), `precio` (>= 0; 0 se muestra como "Gratis"), `tipo` (`original` | `elite` | `vip`), `categoria_id` (→ `categorias`), `activo` (solo barbería)
+  - Los servicios **nunca se borran**: los del catálogo anterior (ids 1–6) quedan con `activo = false` para conservar el historial de citas. La API pública y la reserva solo ven los activos.
+  - `categoria_id`, `tipo` y `descripcion` admiten NULL solo por las filas anteriores a este cambio; todo servicio activo los tiene.
 - `citas`: `id`, `cliente`, `correo`, `servicio_id`, `barbero_id`, `fecha` (DATE), `hora` (TIME), `estado` (`pendiente` | `completada` | `cancelada`), `creada_en`; `UNIQUE (barbero_id, fecha, hora)`
 
 ## Autenticación y roles
@@ -79,7 +82,8 @@ src/
 |---|---|---|
 | POST | `/api/auth/login` | público |
 | PATCH | `/api/auth/contrasena` | JWT |
-| GET | `/api/barberos`, `/api/servicios`, `/api/disponibilidad` | público |
+| GET | `/api/barberos`, `/api/disponibilidad` | público |
+| GET | `/api/servicios`, `/api/servicios/:id`, `/api/categorias` | público (ver detalle abajo) |
 | POST | `/api/citas` | público |
 | GET | `/api/citas` | JWT; barbero ve solo las suyas, admin ve todas |
 | PATCH | `/api/citas/:id` | JWT; barbero solo si la cita es suya, admin cualquiera |
@@ -87,12 +91,32 @@ src/
 | POST | `/api/admin/usuarios` | solo admin |
 | PATCH | `/api/admin/usuarios/:id` | solo admin |
 
+### Catálogo de servicios
+
+- `GET /api/servicios`: solo servicios activos, cada uno con `id`, `nombre`, `descripcion`, `precio`, `duracion_min`, `tipo` y `categoria` (`{ id, nombre, slug }`).
+  - Filtros (todos opcionales y combinables): `categoria` (slug), `tipo` (`original` | `elite` | `vip`), `q` (búsqueda por nombre, máx. 100 caracteres; `%`, `_` y `\` se escapan).
+  - Orden: `ordenar` (`precio` | `duracion` | `nombre`) y `direccion` (`asc` | `desc`, requiere `ordenar`). Por defecto: categoría, precio y nombre.
+  - `agrupar=categoria` devuelve `[{ categoria, servicios }]` en el orden de las categorías; las categorías sin resultados no aparecen.
+- `GET /api/servicios/:id`: un servicio activo. 400 si el id no es numérico; 404 si no existe o está inactivo.
+- `GET /api/categorias`: `id`, `nombre`, `slug`, `orden` y `total_servicios` (solo activos), en orden.
+- Errores: 400 (con `error`) ante parámetros desconocidos, repetidos (`?tipo=a&tipo=b`, `?tipo[]=`) o con valor inválido, y ante una categoría que no existe.
+- `POST /api/citas` y `GET /api/disponibilidad` responden **400 con `codigo: "SERVICIO_NO_DISPONIBLE"`** si el servicio no existe o está inactivo (`/api/disponibilidad` mantiene 404 para un id que no existe). El front usa ese `codigo` para devolver al cliente al paso Servicio.
+
+### Seed del catálogo
+
+- `npm run seed` es idempotente: hace **upsert por nombre** (`ON CONFLICT (nombre)`) de las categorías y los 39 servicios de `backend/db/data/servicios.js` y `descripciones.js` (son la fuente del catálogo; el `id` de esos archivos solo sirve para casar cada servicio con su descripción).
+- Los ids reales los asigna la secuencia, así que hay **huecos** y no coinciden con los de los archivos. No usar esos ids como referencia.
+- El mismo seed desactiva (`activo = false`) los 6 servicios del catálogo anterior. Se puede correr las veces que haga falta sin duplicar nada.
+
 ## Convenciones de código
 
 - **No** importar `React` en componentes (React 19 no lo necesita).
 - Importar **solo** de `react-router-dom`, nunca de `react-router`.
 - Ningún dato repetido a mano en JSX: 3+ elementos similares van como array en `src/data/` (o vienen de la API) y se renderizan con `.map()`.
-- Los servicios (nombre, precio, duración) tienen **una sola fuente de verdad**: la API.
+- Los servicios (nombre, descripción, precio, duración, tipo, categoría) tienen **una sola fuente de verdad**: la API. El front ya no deduce nada por nombre (se eliminaron `categoriasServicios.js` y `descripcionesServicios.js`).
+- Precios siempre con `formatearPrecio` (`src/utils/formato.js`): da `$18.000` y "Gratis" si el precio es 0. Nunca formatear a mano.
+- Catálogo y paso 1 de la reserva comparten `FiltrosServicios`, `useFiltroServicios`, `InsigniaTipo` (Original / Élite / VIP) y `TarjetaServicio`. Los filtros son botones con `aria-pressed` dentro de `role="group"` (no `role="tab"`); la lista se carga una vez y se filtra en el cliente. Los errores de carga usan `ErrorCarga` (`role="alert"` + "Reintentar").
+- Responsive: en un contenedor `grid` que tenga hijos con scroll interno (`overflow-x-auto`), usar `grid-cols-1` y `min-w-0` en el hijo. Sin eso, la columna automática se estira al ancho del contenido y desborda la página en móvil. Medir con `scrollWidth` vs `clientWidth` en 360–414 px.
 - Todas las llamadas HTTP pasan por `src/services/api.js`.
 - Toda imagen lleva `alt` descriptivo, nunca `alt=""`.
 - Todo input tiene `<label htmlFor>` enlazado a su `id`.
@@ -117,10 +141,12 @@ src/
 
 - Front-end conectado a la API (login, reserva, paneles de barbero y admin) y back-end completo (auth, citas, admin).
 - Rutas públicas: `/`, `/cortes`, `/reservar-corte` y `/acceso`. Se eliminaron las páginas de carta de bebidas, ubicación y la sección `Descripcion` del inicio (`/ubicacion` y `/carta-bebidas` muestran la 404); la dirección y el horario salen de `src/data/negocio.js`.
-- `Cortes.jsx` y `Galeria.jsx` sin JSX repetido: `Cortes.jsx` lee de `GET /api/servicios`, `Galeria.jsx` usa `src/data/galeria.js` + `.map()`.
+- `Cortes.jsx` y `Galeria.jsx` sin JSX repetido: `Cortes.jsx` lee de `GET /api/servicios` (catálogo con filtros por categoría y tipo), `Galeria.jsx` usa `src/data/galeria.js` + `.map()`.
 - ESLint en 0 errores/warnings; `App.jsx` eliminado; todo unificado en `react-router-dom`.
 - Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.
 - Tests (front y back) y CI en GitHub Actions ya configurados.
+- Catálogo de 39 servicios en 6 categorías con tipos original/élite/VIP; `/cortes` y el paso 1 de `/reservar-corte` lo muestran con filtros (el paso 1 añade buscador). La sección de servicios ya no está en el inicio, que enlaza a `/cortes`.
+- Pendiente (fuera de este trabajo): CRUD de servicios para el admin y las asesorías gratuitas.
 - Pendiente: desplegar a producción (ver sección "Después: despliegue" en `checklist-sesiones.md`); revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
 - El plan completo por sesiones está en `checklist-sesiones.md`.
 

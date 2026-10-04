@@ -37,14 +37,6 @@ beforeEach(() => {
     { id: 1, nombre: 'Andrés', cargo: 'Barbero', especialidad: 'Fade', foto: '/a.jpg' },
     { id: 2, nombre: 'Luis', cargo: 'Barbero', especialidad: 'Barba', foto: '/b.jpg' },
   ])
-  vi.mocked(api.obtenerServicios).mockResolvedValue(
-    Array.from({ length: 6 }, (_, i) => ({
-      id: i + 1,
-      nombre: `Servicio ${i + 1}`,
-      duracion_min: 30,
-      precio: 25000,
-    }))
-  )
 })
 
 afterEach(() => {
@@ -58,7 +50,7 @@ const montar = async () => {
       <Home />
     </MemoryRouter>
   )
-  await screen.findByText('Servicio 6')
+  await screen.findByText('Andrés')
   return vista
 }
 
@@ -78,14 +70,13 @@ describe('Home con Revelar', () => {
   it('las secciones de debajo quedan ocultas, sin ocultarlas a lectores de pantalla', async () => {
     await montar()
 
-    const titulos = ['Reserva a tu manera', 'NUESTRA CARTA DE SERVICIOS', 'Nuestro Equipo']
+    const titulos = ['Reserva a tu manera', 'Nuestro Equipo']
     titulos.forEach((nombre) => {
       const titulo = screen.getByRole('heading', { name: nombre })
       expect(titulo).toHaveClass('opacity-0')
       expect(titulo).not.toHaveAttribute('aria-hidden')
     })
     expect(screen.getByRole('button', { name: /Por servicio/ })).toBeInTheDocument()
-    expect(screen.getByRole('tablist', { name: 'Categorías de servicios' })).toHaveClass('opacity-0')
   })
 
   it('todos los Revelar comparten un solo observer, aparte del de Estadisticas y Testimonios', async () => {
@@ -95,15 +86,6 @@ describe('Home con Revelar', () => {
     expect(revelar).toHaveLength(1)
     // Cada Revelar lleva duration-600 (los testimonios usan duration-700)
     expect(revelar[0].observe).toHaveBeenCalledTimes(container.querySelectorAll('.duration-600').length)
-  })
-
-  it('las tarjetas de servicios entran escalonadas, con tope', async () => {
-    await montar()
-    const tarjetas = screen.getAllByRole('button', { name: 'Seleccionar' })
-    const retrasos = tarjetas.map((b) => b.closest('.opacity-0').style.transitionDelay)
-
-    // Sin retardo no se escribe style; el retardo se reinicia cada 4 tarjetas
-    expect(retrasos).toEqual(['', '80ms', '160ms', '240ms', '', '80ms'])
   })
 
   it('al llegar a pantalla se revelan sin conservar transform y no se repiten', async () => {

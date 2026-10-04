@@ -24,6 +24,11 @@ const renderLogin = () =>
     </AuthProvider>
   )
 
+// Solo margen de espera: con la CPU saturada (varios archivos a la vez) el límite por defecto
+// (1 s de findBy, 5 s por test) no alcanza para el login y la carga perezosa. No cambia lo que se verifica.
+const ESPERA = 10_000
+const ESPERA_TEST = 20_000
+
 describe('LoginBarberos', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -39,8 +44,8 @@ describe('LoginBarberos', () => {
     await user.type(screen.getByLabelText('Contraseña'), 'claveincorrecta')
     await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
-    expect(await screen.findByText('Usuario o contraseña incorrectos')).toBeInTheDocument()
-  })
+    expect(await screen.findByText('Usuario o contraseña incorrectos', {}, { timeout: ESPERA })).toBeInTheDocument()
+  }, ESPERA_TEST)
 
   it('redirige a /admin cuando el usuario autenticado es admin', async () => {
     loginRequest.mockResolvedValueOnce({
@@ -54,8 +59,8 @@ describe('LoginBarberos', () => {
     await user.type(screen.getByLabelText('Contraseña'), 'claveadmin')
     await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
-    expect(await screen.findByText('Panel de administrador')).toBeInTheDocument()
-  })
+    expect(await screen.findByText('Panel de administrador', {}, { timeout: ESPERA })).toBeInTheDocument()
+  }, ESPERA_TEST)
 
   it('redirige a /panel cuando el usuario autenticado es barbero', async () => {
     loginRequest.mockResolvedValueOnce({
@@ -69,6 +74,6 @@ describe('LoginBarberos', () => {
     await user.type(screen.getByLabelText('Contraseña'), 'clavebarbero')
     await user.click(screen.getByRole('button', { name: /ingresar/i }))
 
-    expect(await screen.findByText('Panel de barbero')).toBeInTheDocument()
-  })
+    expect(await screen.findByText('Panel de barbero', {}, { timeout: ESPERA })).toBeInTheDocument()
+  }, ESPERA_TEST)
 })

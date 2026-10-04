@@ -42,9 +42,9 @@ const LoginBarberos = () => {
   return (
     <>
     <NoIndex />
-    <div className='flex flex-col justify-center items-center  bg-[#000000]'>
-        <img src="/Login/logo.jpg" alt="Logo de Black Iron Barbers" className='flex justify-center items-center w-80 md:w-100'/>
-        <div>
+    <div className='flex flex-col justify-center items-center px-4 bg-[#000000]'>
+        <img src="/Login/logo.jpg" alt="Logo de Black Iron Barbers" className='flex justify-center items-center w-full max-w-80 md:max-w-100'/>
+        <div className='w-full max-w-sm md:w-auto md:max-w-none'>
             <h1 className='p-5 flex justify-center font-bold text-5xl text-white mb-10'>Agenda Barberos</h1>
             <div >
                 <form onSubmit={handleSubmit} className='flex flex-col justify-center gap-3'>

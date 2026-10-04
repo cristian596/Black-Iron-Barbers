@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { reservaReducer, estadoInicialReserva } from '../components/sections/reserva/reservaReducer'
+import {
+  reservaReducer,
+  estadoInicialReserva,
+  MENSAJE_SERVICIO_NO_DISPONIBLE,
+} from '../components/sections/reserva/reservaReducer'
 
 describe('reservaReducer', () => {
   it('estadoInicialReserva usa "Cualquier barbero" (null) por defecto', () => {
@@ -59,5 +63,61 @@ describe('reservaReducer', () => {
     const nuevo = reservaReducer(estado, { type: 'REINICIAR' })
 
     expect(nuevo).toEqual(estadoInicialReserva())
+  })
+})
+
+describe('reservaReducer — SERVICIO_NO_DISPONIBLE', () => {
+  const estadoAvanzado = {
+    ...estadoInicialReserva(7, 2),
+    paso: 'confirmar',
+    fecha: '2030-06-15',
+    hora: '10:00',
+    recargaHoras: 3,
+  }
+
+  it('vuelve al paso Servicio, vacía servicio, fecha y hora, y deja el aviso', () => {
+    const nuevo = reservaReducer(estadoAvanzado, { type: 'SERVICIO_NO_DISPONIBLE' })
+
+    expect(nuevo.paso).toBe('servicio')
+    expect(nuevo.servicioId).toBe('')
+    expect(nuevo.fecha).toBe('')
+    expect(nuevo.hora).toBe('')
+    expect(nuevo.errorGlobal).toBe('Ese servicio ya no está disponible. Elige otro de la lista.')
+    expect(nuevo.errorGlobal).toBe(MENSAJE_SERVICIO_NO_DISPONIBLE)
+  })
+
+  it('no toca el barbero elegido ni el resto del estado', () => {
+    const nuevo = reservaReducer(estadoAvanzado, { type: 'SERVICIO_NO_DISPONIBLE' })
+
+    expect(nuevo.barberoId).toBe(2)
+    expect(nuevo.recargaHoras).toBe(3)
+    expect(nuevo.resumen).toBeNull()
+  })
+
+  it('funciona igual desde cualquier paso (modal abierto, fecha-hora o el propio paso Servicio)', () => {
+    ;['confirmar', 'fecha-hora', 'servicio'].forEach((paso) => {
+      const nuevo = reservaReducer({ ...estadoAvanzado, paso }, { type: 'SERVICIO_NO_DISPONIBLE' })
+      expect(nuevo.paso).toBe('servicio')
+      expect(nuevo.servicioId).toBe('')
+    })
+  })
+
+  it('el aviso es de una sola vez: elegir otro servicio lo limpia e invalida fecha y hora como siempre', () => {
+    const tras = reservaReducer(estadoAvanzado, { type: 'SERVICIO_NO_DISPONIBLE' })
+    const elegido = reservaReducer(
+      { ...tras, fecha: '2030-06-16', hora: '11:00' },
+      { type: 'SELECCIONAR_SERVICIO', servicioId: 4 }
+    )
+
+    expect(elegido.errorGlobal).toBe('')
+    expect(elegido.servicioId).toBe(4)
+    expect(elegido.fecha).toBe('')
+    expect(elegido.hora).toBe('')
+  })
+
+  it('no muta el estado anterior', () => {
+    const copia = structuredClone(estadoAvanzado)
+    reservaReducer(estadoAvanzado, { type: 'SERVICIO_NO_DISPONIBLE' })
+    expect(estadoAvanzado).toEqual(copia)
   })
 })
