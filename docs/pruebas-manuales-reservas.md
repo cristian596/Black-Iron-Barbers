@@ -163,6 +163,8 @@ curl -X PATCH "$API/citas/ID_CITA_DE_OTRO_BARBERO" \
 
 Resultado esperado: `404`, `{"error":"Cita no encontrada"}` (no revela que la cita existe, solo que no es suya).
 
+> **Completar una cita solo es posible si su fecha es hoy o anterior (hora de Bogotá).** Una cita futura (por ejemplo, las que se crean con esta guía, que son de fechas por venir) responde `400` con `{"error":"No se puede completar una cita de una fecha futura","codigo":"CITA_FUTURA"}`, tanto para el admin como para su barbero; cancelarla o reasignarla sí funciona. Para ver el `200` al completar, usa una cita de hoy. El caso anterior (cita de otro barbero) sigue dando `404` aunque sea futura: primero se comprueba que la cita sea tuya.
+
 ## 10. Rate limiting
 
 En producción, `POST /api/citas` está limitado a 20 solicitudes cada 15 minutos por IP. Para comprobarlo hay que superar ese umbral con solicitudes reales (horas distintas para que lo que limite sea el rate limit y no un 409 de negocio); al superarlo, la respuesta es `429` con `{"error":"Demasiadas solicitudes de reserva, intenta más tarde"}`. En la suite automatizada (`backend/tests/rateLimit.test.js`) esto se prueba con un límite bajo forzado solo para esa prueba, sin esperar 15 minutos reales.

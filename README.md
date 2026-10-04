@@ -46,7 +46,8 @@ docker compose up --build
 | Comando | Qué hace |
 |---|---|
 | `npm start` | Levanta el servidor (necesita Postgres) |
-| `npm run seed` | Siembra barberos, el catálogo de servicios (upsert por nombre) y el admin inicial; se puede repetir sin duplicar |
+| `npm run seed` | Siembra barberos, el admin inicial y **solo inserta** lo que falte del catálogo (nunca pisa, reactiva ni desactiva lo que el admin edite); se puede repetir. `-- --restablecer-catalogo [--confirmar]` vuelve el catálogo a los datos de los archivos (solo desarrollo; sin `--confirmar` solo muestra qué sobrescribiría) |
+| `npm run seed:demo` | Citas de demostración, **solo desarrollo**: simula por defecto; `-- --confirmar` las crea y `-- --limpiar --confirmar` borra únicamente las marcadas `[demo]` |
 | `npm test` | Tests con Vitest + Supertest contra una base de pruebas aislada |
 
 Para correr `npm test` en local, copia `backend/.env.test.example` a
@@ -58,8 +59,10 @@ esquema y la limpian antes de cada corrida, sin tocar la base real.
 ## Catálogo de servicios
 
 39 servicios en 6 categorías, con tipo `original`, `elite` o `vip`, descripción, duración y precio (0 se muestra como "Gratis").
-La fuente del catálogo está en `backend/db/data/` y el seed la aplica por nombre, sin borrar nada: los 6 servicios del catálogo
-anterior quedan inactivos para conservar el historial de citas, y los ids de los nuevos los asigna la secuencia.
+El catálogo inicial está en `backend/db/data/` (cada categoría y servicio lleva una `clave` estable, que se guarda en `clave_seed`).
+El seed **solo inserta lo que falta**: lo que el admin edite desde `/admin/servicios` (precio, nombre, activo…) nunca se pisa, y los
+servicios que él cree no los toca. Los 6 servicios del catálogo anterior se desactivan una sola vez (paso registrado en
+`migraciones_aplicadas`) para conservar el historial de citas, y los ids de los nuevos los asigna la secuencia.
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -75,8 +78,19 @@ responde 400 con `codigo: "SERVICIO_NO_DISPONIBLE"`. Hay ejemplos con `curl` en
 ## Rutas principales
 
 `/`, `/cortes`, `/reservar-corte`, `/acceso` (login de barberos/admin, sin enlaces
-públicos y con `noindex`), `/panel` (barbero) y `/admin`
-(administrador).
+públicos y con `noindex`), `/panel` (barbero) y el panel del administrador:
+
+| Ruta | Qué muestra |
+|---|---|
+| `/admin` | Resumen: indicadores con comparación, gráfico de ingresos, servicios más pedidos y citas recientes |
+| `/admin/citas` | Todas las citas: pestañas, búsqueda, barbero, rango de fechas, paginación de 15 y acciones (todo en la URL) |
+| `/admin/servicios` | Servicios y categorías: crear, editar y activar o desactivar (sin borrar). Tabla con panel lateral en escritorio; tarjetas y panel a pantalla completa en móvil |
+| `/admin/reportes` | Provisional (próxima fase) |
+| `/admin/empleados` | Usuarios de los barberos (provisional) |
+
+Endpoints del admin (`/api/admin/*`, solo rol admin): `estadisticas`, `estadisticas/ingresos`,
+`estadisticas/servicios-top`, `citas`, `servicios` y `categorias` (GET, POST y PATCH; no hay DELETE) y `usuarios`. Una cita solo se puede completar si su fecha es hoy
+(hora de Bogotá) o anterior; si no, la API responde 400 con `codigo: "CITA_FUTURA"`.
 
 ## Más contexto
 

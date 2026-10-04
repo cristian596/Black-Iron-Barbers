@@ -40,7 +40,7 @@ src/
 ├── components/{layout,sections,ui}
 ├── context/            AuthContext
 ├── data/               datos estáticos (siempre arrays + .map())
-├── pages/              una página por ruta (incluye Panel y Admin)
+├── pages/              una página por ruta (Panel; y pages/admin/ con AdminLayout + una página por sección)
 ├── routes/             AppRouter (con React.lazy + Suspense), ProtectedRoute, RoleRoute
 ├── services/api.js     único lugar con llamadas HTTP
 └── tests/              Vitest + React Testing Library (mockean src/services/api.js)
@@ -57,15 +57,18 @@ src/
 | `cd backend && npm start` | Levanta el backend (necesita Postgres) |
 | `cd backend && npm test` | Tests del back (Vitest + Supertest, usa `backend/.env.test`, nunca la base de desarrollo) |
 | `docker compose up --build` | Backend + Postgres juntos |
+| `cd backend && npm run seed:demo` | Citas de demostración (solo desarrollo): simula; con `-- --confirmar` crea; `-- --limpiar --confirmar` borra solo las `[demo]` |
 
 ## Modelo de datos
 
 - `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto`, `activo` (el personal que se muestra en la web)
 - `usuarios`: `id`, `usuario` (único), `contrasena` (hash bcrypt), `rol` (`admin` | `barbero`), `barbero_id` (nulo para el admin), `activo`
-- `categorias`: `id`, `nombre` (único), `slug` (único), `orden` (orden de aparición)
-- `servicios`: `id`, `nombre` (único; distingue mayúsculas), `descripcion`, `duracion_min` (> 0), `precio` (>= 0; 0 se muestra como "Gratis"), `tipo` (`original` | `elite` | `vip`), `categoria_id` (→ `categorias`), `activo` (solo barbería)
+- `categorias`: `id`, `nombre` (único), `slug` (único; se genera del nombre al crear y no se edita), `orden` (orden de aparición), `activo` (una categoría inactiva no aparece en la web), `clave_seed` (nulo = creada por el admin)
+- `servicios`: `id`, `nombre` (único; distingue mayúsculas), `descripcion`, `duracion_min` (> 0), `precio` (>= 0; 0 se muestra como "Gratis"), `tipo` (`original` | `elite` | `vip`), `categoria_id` (→ `categorias`), `activo`, `clave_seed` (solo barbería)
   - Los servicios **nunca se borran**: los del catálogo anterior (ids 1–6) quedan con `activo = false` para conservar el historial de citas. La API pública y la reserva solo ven los activos.
-  - `categoria_id`, `tipo` y `descripcion` admiten NULL solo por las filas anteriores a este cambio; todo servicio activo los tiene.
+  - `categoria_id`, `tipo` y `descripcion` admiten NULL solo por las filas anteriores a este cambio; todo servicio activo los tiene (el admin debe completarlos para reactivar uno del catálogo anterior).
+  - `clave_seed` (único, nullable): identificador estable de las filas que vienen de `backend/db/data`. El seed y la migración casan por él, no por el nombre. Nulo = creado por el admin; el seed no lo toca jamás.
+- `migraciones_aplicadas`: `clave` (PK), `aplicada_en`. Registro de los pasos de datos que se ejecutan una sola vez (`catalogo-claves-seed-v1`, `catalogo-legado-desactivado-v1`).
 - `citas`: `id`, `cliente`, `correo`, `servicio_id`, `barbero_id`, `fecha` (DATE), `hora` (TIME), `estado` (`pendiente` | `completada` | `cancelada`), `creada_en`; `UNIQUE (barbero_id, fecha, hora)`
 
 ## Autenticación y roles
@@ -86,8 +89,16 @@ src/
 | GET | `/api/servicios`, `/api/servicios/:id`, `/api/categorias` | público (ver detalle abajo) |
 | POST | `/api/citas` | público |
 | GET | `/api/citas` | JWT; barbero ve solo las suyas, admin ve todas |
-| PATCH | `/api/citas/:id` | JWT; barbero solo si la cita es suya, admin cualquiera |
-| GET | `/api/admin/resumen` | solo admin |
+| PATCH | `/api/citas/:id` | JWT; barbero solo si la cita es suya, admin cualquiera. Completar solo si la fecha ≤ hoy (Bogotá): si no, 400 `codigo: "CITA_FUTURA"` |
+| GET | `/api/admin/estadisticas?periodo=hoy\|7d\|30d\|mes` | solo admin |
+| GET | `/api/admin/estadisticas/ingresos?agrupar=dia\|mes` | solo admin |
+| GET | `/api/admin/estadisticas/servicios-top?periodo=&limite=` | solo admin |
+| GET | `/api/admin/citas?pestana=&q=&desde=&hasta=&barbero=&pagina=&limite=` | solo admin |
+| GET, POST | `/api/admin/servicios` | solo admin (el GET incluye inactivos; filtros `activo`, `categoria`, `q`) |
+| PATCH | `/api/admin/servicios/:id` | solo admin (campos y `activo`; sin DELETE) |
+| GET, POST | `/api/admin/categorias` | solo admin |
+| PATCH | `/api/admin/categorias/:id` | solo admin (`nombre`, `orden`, `activo`; el slug no se edita; sin DELETE) |
+| GET | `/api/admin/usuarios` | solo admin |
 | POST | `/api/admin/usuarios` | solo admin |
 | PATCH | `/api/admin/usuarios/:id` | solo admin |
 
@@ -102,11 +113,24 @@ src/
 - Errores: 400 (con `error`) ante parámetros desconocidos, repetidos (`?tipo=a&tipo=b`, `?tipo[]=`) o con valor inválido, y ante una categoría que no existe.
 - `POST /api/citas` y `GET /api/disponibilidad` responden **400 con `codigo: "SERVICIO_NO_DISPONIBLE"`** si el servicio no existe o está inactivo (`/api/disponibilidad` mantiene 404 para un id que no existe). El front usa ese `codigo` para devolver al cliente al paso Servicio.
 
+### Dashboard del administrador
+
+- **Rutas** (`AppRouter`: `/admin` es un layout con rutas hijas lazy; el guard `ProtectedRoute` + `RoleRoute rol="admin"` está una sola vez en el padre): `/admin` (Resumen), `/admin/citas`, `/admin/servicios` (catálogo y categorías), `/admin/reportes` (aún provisional), `/admin/empleados` (provisional: usuarios de barberos). Cualquier otra ruta bajo `/admin` vuelve a `/admin`. El buscador de la barra superior lleva a `/admin/citas?q=`.
+- **Estadísticas** (todo bajo `/api/admin`, parámetros desconocidos/repetidos/inválidos → 400): "hoy" lo decide Node con `hoyISO()` de `backend/utils/fechas.js` (Bogotá), nunca `CURRENT_DATE`/`NOW()`. Ingresos = `SUM(citas.precio)` de las completadas (precio guardado en la cita). Las canceladas no suman y se cuentan aparte. El ticket promedio excluye las completadas de precio 0. Las series usan `generate_series(0, n)` sumado a una fecha (no dependen de la zona de la sesión de Postgres). `/estadisticas/ingresos` devuelve 30 días (o 12 meses) y los 30 (12) anteriores. Las consultas SQL viven en `backend/db/estadisticas.js`.
+- **Lista de citas del admin** (`GET /api/admin/citas`): pestañas `proximas` (pendientes que aún no empiezan, las más cercanas primero), `todas` y `canceladas` (más recientes primero). Las pendientes de un día/hora pasados llevan `vencida: true` y no entran en `proximas`. Paginada: `limite` por defecto 10, máximo 50 (la pantalla pide 15). `q` busca en cliente, servicio y barbero (escapa `%`, `_` y `\`). `fecha`/`hora` salen como texto.
+- **Catálogo del admin** (`adminCatalogoController.js`): sin DELETE (se activa o desactiva). Servicio: `nombre` 1–150 y único sin distinguir mayúsculas (solo se valida al crear o al cambiar el nombre, para no afectar filas ya existentes como "Exfoliación Facial"/"Exfoliación facial"), `precio` entero ≥ 0, `duracion_min` entero 1–600, `tipo` original/elite/vip, `categoria_id` existente y **activa**, `descripcion` obligatoria (máx. 500); campos desconocidos → 400; PATCH exige al menos un campo. Activar un servicio exige categoría activa, tipo y descripción (`SERVICIO_INCOMPLETO`). Categoría: slug generado del nombre (con sufijo `-2`, `-3`… si choca); desactivar una con servicios activos → 409 `CATEGORIA_CON_SERVICIOS`. Todos los errores llevan `codigo` estable (`DATOS_INVALIDOS` con `campo`, `NOMBRE_DUPLICADO`, `CATEGORIA_NO_DISPONIBLE`, `SERVICIO_INCOMPLETO`, `CATEGORIA_CON_SERVICIOS`, `SLUG_NO_EDITABLE`, `*_NO_ENCONTRADO`, `ID_INVALIDO`). Editar precio o duración no altera las citas ya creadas (guardan su propio precio y duración). `/api/servicios` y `/api/categorias` (públicas) solo muestran lo activo y nada de una categoría inactiva.
+- **Completar citas**: solo si `fecha` ≤ hoy en Bogotá (admin y barbero); una cita futura se puede cancelar o reasignar, no completar.
+- **`/admin/citas`**: todo el estado vive en la URL (`?pestana=&q=&desde=&hasta=&barbero=&pagina=`); un valor inválido se ignora. Cualquier filtro reinicia la página; una página inexistente lleva a la última válida; 15 citas por página; tras completar, cancelar o reasignar la lista se recarga conservando página y filtros.
+- **Datos de demostración**: `seed:demo` marca a los clientes con `[demo] `, se niega con `NODE_ENV=production` o contra una base con "test" en el nombre, y solo escribe con `--confirmar`.
+
 ### Seed del catálogo
 
-- `npm run seed` es idempotente: hace **upsert por nombre** (`ON CONFLICT (nombre)`) de las categorías y los 39 servicios de `backend/db/data/servicios.js` y `descripciones.js` (son la fuente del catálogo; el `id` de esos archivos solo sirve para casar cada servicio con su descripción).
+- `npm run seed` **solo inserta lo que falta** (`INSERT … ON CONFLICT DO NOTHING`): nunca hace UPDATE, nunca reactiva y nunca desactiva. Lo que el admin edite (precio, nombre, descripción, `activo`…) sobrevive a cualquier seed, y los servicios del admin (`clave_seed` nulo) no se tocan jamás. Las categorías y los 39 servicios salen de `backend/db/data/servicios.js` y `descripciones.js`; el `id` de esos archivos solo sirve para casar cada servicio con su descripción.
+- Cada categoría y servicio de los datos lleva una `clave` **estable** (se guarda en `clave_seed`): `validarCatalogo` exige claves únicas y no vacías. Nunca cambies una clave publicada; así un servicio que el admin renombró no se vuelve a crear. Un servicio nuevo en el catálogo = una clave nueva.
+- Pasos únicos (`backend/db/migracionesCatalogo.js`, registrados en `migraciones_aplicadas`, se ejecutan al arrancar el backend y al correr el seed): (1) asignar `clave_seed` a las filas existentes que coinciden con el catálogo (servicios por nombre, categorías por slug); (2) desactivar los 6 servicios del catálogo anterior, solo cuando el catálogo nuevo ya está en la base. Si ya estaban inactivos solo se registra; si el admin reactiva uno, nada lo vuelve a apagar.
+- `npm run seed -- --restablecer-catalogo [--confirmar]` (solo desarrollo; se niega con `NODE_ENV=production`): vuelve las filas del catálogo a los datos de los archivos. Sin `--confirmar` solo muestra qué sobrescribiría.
 - Los ids reales los asigna la secuencia, así que hay **huecos** y no coinciden con los de los archivos. No usar esos ids como referencia.
-- El mismo seed desactiva (`activo = false`) los 6 servicios del catálogo anterior. Se puede correr las veces que haga falta sin duplicar nada.
+- Se puede correr las veces que haga falta sin duplicar ni pisar nada.
 
 ## Convenciones de código
 
@@ -118,6 +142,10 @@ src/
 - Catálogo y paso 1 de la reserva comparten `FiltrosServicios`, `useFiltroServicios`, `InsigniaTipo` (Original / Élite / VIP) y `TarjetaServicio`. Los filtros son botones con `aria-pressed` dentro de `role="group"` (no `role="tab"`); la lista se carga una vez y se filtra en el cliente. Los errores de carga usan `ErrorCarga` (`role="alert"` + "Reintentar").
 - Responsive: en un contenedor `grid` que tenga hijos con scroll interno (`overflow-x-auto`), usar `grid-cols-1` y `min-w-0` en el hijo. Sin eso, la columna automática se estira al ancho del contenido y desborda la página en móvil. Medir con `scrollWidth` vs `clientWidth` en 360–414 px.
 - Todas las llamadas HTTP pasan por `src/services/api.js`.
+- "Hoy" en el front es siempre `hoyISO()` de `src/utils/fechas.js` (America/Bogota); no usar `new Date().toISOString()`.
+- Totales de dinero (ingresos, ticket promedio) con `formatearDinero` (muestra `$0`); `formatearPrecio` es solo para el precio de un servicio (0 = "Gratis"). Las variaciones con `formatearDelta` (devuelve "—" sin base, nunca NaN ni ∞).
+- Gráficos del dashboard: SVG propio, sin librerías, con colores y trazos en clases de Tailwind (`fill-oro`, `stroke-zinc-600`). Cada gráfico lleva `role="img"` + `aria-label` y una tabla de datos dentro de un `div` `sr-only` (una `<table>` suelta con `sr-only` ensancha la página).
+- Listados del admin: el estado (pestaña, búsqueda, fechas, página) va en la URL con `useSearchParams`; los datos se piden con `useCarga` (conserva los datos mientras llegan los nuevos y descarta respuestas viejas).
 - Toda imagen lleva `alt` descriptivo, nunca `alt=""`.
 - Todo input tiene `<label htmlFor>` enlazado a su `id`.
 - Usar `<Link>` / `<NavLink>` para navegar, nunca `<a href>` interno.
@@ -146,7 +174,9 @@ src/
 - Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.
 - Tests (front y back) y CI en GitHub Actions ya configurados.
 - Catálogo de 39 servicios en 6 categorías con tipos original/élite/VIP; `/cortes` y el paso 1 de `/reservar-corte` lo muestran con filtros (el paso 1 añade buscador). La sección de servicios ya no está en el inicio, que enlaza a `/cortes`.
-- Pendiente (fuera de este trabajo): CRUD de servicios para el admin y las asesorías gratuitas.
+- Dashboard del admin (en curso, por fases): hecho el layout con rutas hijas, el Resumen (indicadores con comparación, gráficos SVG, citas recientes) y `/admin/citas` (paginada, con filtros en la URL). También hecho: `/admin/servicios` (CRUD de servicios y categorías sin DELETE) y el seed que solo inserta. Faltan empleados y el reporte diario.
+- Pendiente (fuera de este trabajo): las asesorías gratuitas.
+- Pendiente: Al terminar el dashboard: borrar las citas demo con seed:demo -- --limpiar.
 - Pendiente: desplegar a producción (ver sección "Después: despliegue" en `checklist-sesiones.md`); revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
 - El plan completo por sesiones está en `checklist-sesiones.md`.
 
