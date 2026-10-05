@@ -16,8 +16,6 @@ export const ordenarEmpleados = (empleados) =>
 
 const sinTildes = (texto) => texto.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
 
-export const ESTADOS_EMPLEADO = ['activos', 'inactivos', 'todos']
-
 export const filtrarEmpleados = (empleados, { estado = 'activos', busqueda = '' } = {}) => {
   const texto = sinTildes(busqueda.trim())
   return empleados.filter((e) => {
@@ -31,7 +29,7 @@ export const filtrarEmpleados = (empleados, { estado = 'activos', busqueda = '' 
 export const textoCitasPendientes = (cantidad) =>
   cantidad === 1 ? '1 cita pendiente' : `${cantidad} citas pendientes`
 
-export const validarContrasena = (contrasena) => {
+const validarContrasena = (contrasena) => {
   const { contrasenaMin, contrasenaMax } = LIMITES_EMPLEADO
   return contrasena.length >= contrasenaMin && contrasena.length <= contrasenaMax
     ? ''

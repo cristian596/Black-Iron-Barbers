@@ -110,6 +110,8 @@ Reloj de Bogotá: entre las 7 pm y la medianoche, `periodo=hoy` debe seguir most
 ### J. Datos de demostración (`seed:demo`) — solo desarrollo
 
 > No se ejecuta solo ni en los tests normales. **Antes de usarlo, haz un respaldo de tu base de desarrollo** (`pg_dump`).
+>
+> **Estado actual:** al cerrar el dashboard las citas demo se borraron de la base de desarrollo (quedan solo las citas reales). Si quieres repetir las pruebas con volumen (paginación de 29 páginas, gráficos con datos), vuelve a generarlas con `npm run seed:demo -- --confirmar`; las cifras de las secciones siguientes (p. ej. "435 citas = 29 páginas") suponen que están generadas.
 
 ```bash
 cd backend

@@ -82,7 +82,12 @@ describe('generarCitasDemo (función pura)', () => {
   });
 
   it('no hay solapamientos entre citas del mismo barbero y día', () => {
-    const grupos = Map.groupBy(citas, (c) => `${c.barbero_id}|${c.fecha}`);
+    const grupos = new Map();
+    for (const c of citas) {
+      const clave = `${c.barbero_id}|${c.fecha}`;
+      if (!grupos.has(clave)) grupos.set(clave, []);
+      grupos.get(clave).push(c);
+    }
     for (const lista of grupos.values()) {
       for (let i = 0; i < lista.length; i += 1) {
         for (let j = i + 1; j < lista.length; j += 1) {

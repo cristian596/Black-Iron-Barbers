@@ -130,7 +130,7 @@ src/
 - **Reporte diario** (`adminReportesController.js`): un solo día, sin desglose por barbero, con las mismas reglas que las estadísticas (reutiliza `resumenPeriodo` y `serviciosTop` de `db/estadisticas.js`). Respuesta: `fecha`, `total_cortes` (completadas), `ingresos` (SUM de `citas.precio` de las completadas: el precio de la cita, no el actual del servicio), `ticket_promedio` (excluye precio 0), `canceladas` (aparte, no suman), `pendientes_sin_cerrar` (todas las `pendiente` de ese día) y `servicios_mas_pedidos` (hasta 10, con `nombre`, `cantidad` e `ingresos`). Un día sin citas da ceros y lista vacía. Errores con `codigo`: `FECHA_INVALIDA` (formato o fecha inexistente como 2026-02-31), `FECHA_FUTURA` (se compara contra `hoyISO()` de Bogotá, calculado en Node) y `PARAMETRO_INVALIDO` (parámetro desconocido o repetido). El CSV (`utils/csv.js`) usa `;`, BOM UTF-8, CRLF, comillas dobles escapadas duplicándolas y neutraliza fórmulas (si una celda de texto empieza con `=`, `+`, `-`, `@`, tabulación o retorno se le antepone `'`); `Content-Type: text/csv; charset=utf-8` y `Content-Disposition: attachment; filename="reporte-diario-AAAA-MM-DD.csv"`.
 - **Completar citas**: solo si `fecha` ≤ hoy en Bogotá (admin y barbero); una cita futura se puede cancelar o reasignar, no completar.
 - **`/admin/citas`**: todo el estado vive en la URL (`?pestana=&q=&desde=&hasta=&barbero=&pagina=`); un valor inválido se ignora. Cualquier filtro reinicia la página; una página inexistente lleva a la última válida; 15 citas por página; tras completar, cancelar o reasignar la lista se recarga conservando página y filtros.
-- **Datos de demostración**: `seed:demo` marca a los clientes con `[demo] `, se niega con `NODE_ENV=production` o contra una base con "test" en el nombre, y solo escribe con `--confirmar`.
+- **Datos de demostración**: se pueden crear y borrar a voluntad (ver Estado actual). `seed:demo` marca a los clientes con `[demo] `, se niega con `NODE_ENV=production` o contra una base con "test" en el nombre, y solo escribe con `--confirmar`.
 
 ### Seed del catálogo
 
@@ -187,10 +187,13 @@ src/
 - Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.
 - Tests (front y back) y CI en GitHub Actions ya configurados.
 - Catálogo de 39 servicios en 6 categorías con tipos original/élite/VIP; `/cortes` y el paso 1 de `/reservar-corte` lo muestran con filtros (el paso 1 añade buscador). La sección de servicios ya no está en el inicio, que enlaza a `/cortes`.
-- Dashboard del admin (en curso, por fases): hecho el layout con rutas hijas, el Resumen (indicadores con comparación, gráficos SVG, citas recientes) y `/admin/citas` (paginada, con filtros en la URL). También hecho: `/admin/servicios` (CRUD de servicios y categorías sin DELETE), el seed que solo inserta `/admin/empleados` (crear, editar, activar/desactivar y restablecer contraseña) y `/admin/reportes` (reporte diario con selector de día, CSV e impresión). El dashboard está completo.
-- Pendiente (fuera de este trabajo): las asesorías gratuitas.
-- Pendiente: Al terminar el dashboard: borrar las citas demo con seed:demo -- --limpiar.
-- Pendiente: desplegar a producción (ver sección "Después: despliegue" en `checklist-sesiones.md`); revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
+- **Dashboard del admin: COMPLETO** (fases 1a, 1b, 1c, 2, 3 y 4): layout con rutas hijas y barra lateral; Resumen (indicadores con comparación, gráficos SVG, servicios más pedidos, citas recientes); `/admin/citas` (paginada, filtros en la URL); `/admin/servicios` (CRUD de servicios y categorías sin DELETE) con el seed que solo inserta; `/admin/empleados` (crear, editar, activar/desactivar y restablecer contraseña); `/admin/reportes` (reporte diario con selector de día, CSV e impresión).
+- Las citas demo ya se borraron de la base de desarrollo. Se pueden volver a generar con `cd backend && npm run seed:demo -- --confirmar` (antes haz un `pg_dump`) y borrar con `npm run seed:demo -- --limpiar --confirmar`, que solo toca las de clientes `[demo] `.
+- Pendiente: página de la asesoría gratis (el botón de "Reserva a tu manera" ya existe y apunta a `RUTA_ASESORIA` en `src/data/negocio.js`, provisional).
+- Pendiente: `backend/tests/globalSetup.js` inserta barberos y servicios con id fijo sin avanzar la secuencia; sembrar con `RESTART IDENTITY` o hacer `setval` ahí (hoy cada prueba nueva lo hace por su cuenta).
+- Pendiente: notificaciones por email/WhatsApp.
+- Pendiente: checklist de despliegue (ver "Después: despliegue" en `checklist-sesiones.md`).
+- Pendiente: revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
 - El plan completo por sesiones está en `checklist-sesiones.md`.
 
 ## Cómo trabajar en este repo

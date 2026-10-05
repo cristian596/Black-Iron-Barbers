@@ -1,5 +1,5 @@
 // CSV para abrir en Excel en español: separador `;`, BOM UTF-8 al inicio y saltos de línea CRLF.
-export const SEPARADOR_CSV = ';';
+const SEPARADOR_CSV = ';';
 const BOM = '\uFEFF';
 
 // Una celda de texto que empieza con = + - @ (o tabulación / retorno) la interpretaría una hoja de cálculo como
