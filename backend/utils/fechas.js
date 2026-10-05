@@ -34,6 +34,9 @@ export const esHoraValida = (hora) => typeof hora === 'string' && REGEX_HORA.tes
 // 'en-CA' da directamente el formato AAAA-MM-DD.
 export const hoyISO = () => formateadorFecha.format(new Date());
 
+// Fecha de calendario (AAAA-MM-DD) de un instante cualquiera, vista desde Bogotá.
+export const fechaBogota = (instante) => formateadorFecha.format(instante);
+
 export const horaActualBogota = () => {
   const [horas, minutos] = formateadorHora.format(new Date()).split(':').map(Number);
   return horas * 60 + minutos;

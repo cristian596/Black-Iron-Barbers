@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { aplicarMigracionesCatalogo, MIGRACION_CLAVES, MIGRACION_LEGADO } from '../db/migracionesCatalogo.js';
+import { estadoContrasena } from '../utils/contrasenas.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -294,6 +295,39 @@ describe('Migración de esquema: gestión del catálogo (clave_seed, categorias.
       const otra = await aplicarMigracionesCatalogo(bd);
       expect(otra.claves.aplicada).toBe(false);
       expect(otra.legado.aplicada).toBe(false);
+    } finally {
+      await bd.end();
+    }
+  });
+});
+
+describe('Migración de la caducidad de contraseñas (contrasena_cambiada_en)', () => {
+  it('los usuarios que ya existían quedan con la fecha de la migración (nadie caduca de golpe) y repetirla no la mueve', async () => {
+    await recrearBasePrueba();
+    const bd = conectarseABasePrueba();
+
+    try {
+      await bd.query(ESQUEMA_PREVIO); // usuarios sin la columna
+      await bd.query(`INSERT INTO barberos (id, nombre) VALUES (1, 'Barbero Previo')`);
+      await bd.query(
+        `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id) VALUES ('barbero_previo', 'hash', 'barbero', 1), ('admin_previo', 'hash', 'admin', NULL)`
+      );
+
+      const antes = Date.now();
+      await bd.query(schemaCompleto);
+      const { rows } = await bd.query('SELECT usuario, contrasena_cambiada_en FROM usuarios ORDER BY id');
+
+      expect(rows).toHaveLength(2);
+      for (const fila of rows) {
+        const marca = fila.contrasena_cambiada_en.getTime();
+        expect(marca).toBeGreaterThanOrEqual(antes - 5000);
+        expect(marca).toBeLessThanOrEqual(Date.now() + 5000);
+        expect(estadoContrasena(fila.contrasena_cambiada_en)).toMatchObject({ estado: 'vigente', dias_restantes: 60 });
+      }
+
+      await bd.query(schemaCompleto); // arranque siguiente: idempotente, no toca la fecha
+      const { rows: despues } = await bd.query('SELECT contrasena_cambiada_en FROM usuarios ORDER BY id');
+      expect(despues.map((f) => f.contrasena_cambiada_en.getTime())).toEqual(rows.map((f) => f.contrasena_cambiada_en.getTime()));
     } finally {
       await bd.end();
     }

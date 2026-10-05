@@ -6,6 +6,13 @@ export const setUnauthorizedHandler = (fn) => {
   unauthorizedHandler = fn;
 };
 
+// Un 403 CONTRASENA_CADUCADA no cierra la sesión: lleva a la pantalla de cambio obligatorio.
+let contrasenaCaducadaHandler = null;
+
+export const setContrasenaCaducadaHandler = (fn) => {
+  contrasenaCaducadaHandler = fn;
+};
+
 const request = async (path, options = {}) => {
   let res;
   try {
@@ -30,6 +37,10 @@ const request = async (path, options = {}) => {
   if (!res.ok) {
     if (res.status === 401 && options.headers?.Authorization && unauthorizedHandler) {
       unauthorizedHandler();
+    }
+
+    if (res.status === 403 && data?.codigo === 'CONTRASENA_CADUCADA' && options.headers?.Authorization && contrasenaCaducadaHandler) {
+      contrasenaCaducadaHandler();
     }
 
     const error = new Error(data?.error || 'Error en la solicitud');
@@ -59,6 +70,9 @@ export const cambiarContrasena = (token, actual, nueva) =>
     headers: authHeader(token),
     body: JSON.stringify({ actual, nueva }),
   });
+
+// Quién es el usuario de la sesión y el estado de su contraseña ({ usuario, vigencia }; vigencia es null para el admin).
+export const obtenerSesion = (token) => request('/auth/sesion', { headers: authHeader(token) });
 
 export const obtenerBarberos = () => request('/barberos');
 

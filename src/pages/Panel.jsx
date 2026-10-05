@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { obtenerCitas, actualizarCita } from '../services/api'
+import { obtenerCitas, actualizarCita, obtenerSesion } from '../services/api'
 import TablaCitas from '../components/dashboard/TablaCitas'
 import FiltrosCitas from '../components/dashboard/FiltrosCitas'
-import CambiarContrasena from '../components/dashboard/CambiarContrasena'
+import AvisoCaducidad from '../components/dashboard/AvisoCaducidad'
+import CambioObligatorio from '../components/dashboard/CambioObligatorio'
+import CargandoPagina from '../components/ui/CargandoPagina'
 import NoIndex from '../components/ui/NoIndex'
 import { hoyISO } from '../utils/fechas'
 
-const Panel = () => {
-  const { usuario, token, logout } = useAuth()
+const ContenidoPanel = () => {
+  const { usuario, token, logout, vigencia, actualizarVigencia } = useAuth()
   const navigate = useNavigate()
+  const [contrasenaCambiada, setContrasenaCambiada] = useState(false)
   const hoy = hoyISO()
 
   const [citasHoy, setCitasHoy] = useState([])
@@ -92,6 +95,11 @@ const Panel = () => {
     navigate('/acceso')
   }
 
+  const alCambiarContrasena = (respuesta) => {
+    actualizarVigencia(respuesta.vigencia)
+    setContrasenaCambiada(true)
+  }
+
   const pendientes = citas.filter((c) => c.estado === 'pendiente')
   const completadas = citas.filter((c) => c.estado === 'completada')
   const canceladas = citas.filter((c) => c.estado === 'cancelada')
@@ -114,6 +122,13 @@ const Panel = () => {
             Cerrar sesión
           </button>
         </header>
+
+        {vigencia?.estado === 'por_vencer' && (
+          <AvisoCaducidad vigencia={vigencia} token={token} alCambiada={alCambiarContrasena} />
+        )}
+        <p className="rounded-lg bg-green-900/40 p-3 text-green-300 empty:hidden" role="status">
+          {contrasenaCambiada ? 'Contraseña actualizada. La nueva vale 60 días.' : ''}
+        </p>
 
         {errorAccion && (
           <p className="rounded-lg bg-red-900/40 p-3 text-red-300" role="alert">
@@ -197,11 +212,48 @@ const Panel = () => {
           )}
         </section>
 
-        <CambiarContrasena token={token} />
       </div>
     </div>
     </>
   )
+}
+
+// Decide qué ve el barbero según el estado de su contraseña: caducada → pantalla obligatoria de cambio (sin acceso
+// al resto del panel); en cualquier otro caso, el panel (con un aviso si está por vencer). Tras recargar la página
+// el estado no se conoce (vigencia undefined): se consulta a /auth/sesion antes de mostrar nada.
+const Panel = () => {
+  const { token, vigencia, actualizarVigencia, logout } = useAuth()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    if (vigencia !== undefined) return undefined
+    let activo = true
+    obtenerSesion(token)
+      .then((datos) => activo && actualizarVigencia(datos.vigencia))
+      // Sin respuesta, se muestra el panel: el back-end sigue bloqueando todo si la contraseña está caducada
+      // y ese 403 lleva igualmente a la pantalla obligatoria.
+      .catch(() => activo && actualizarVigencia(null))
+    return () => {
+      activo = false
+    }
+  }, [token, vigencia, actualizarVigencia])
+
+  if (vigencia === undefined) return <CargandoPagina />
+
+  if (vigencia?.estado === 'caducada') {
+    return (
+      <CambioObligatorio
+        token={token}
+        alCambiada={(respuesta) => actualizarVigencia(respuesta.vigencia)}
+        alCerrarSesion={() => {
+          logout()
+          navigate('/acceso')
+        }}
+      />
+    )
+  }
+
+  return <ContenidoPanel />
 }
 
 export default Panel

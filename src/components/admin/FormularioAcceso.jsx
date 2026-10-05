@@ -48,6 +48,7 @@ const FormularioAcceso = ({ empleado, alGuardar, alCancelar }) => {
         {creando
           ? `${empleado.nombre} todavía no tiene acceso al panel. Crea su usuario y contraseña.`
           : `Define una contraseña nueva para el usuario «${empleado.usuario.usuario}» de ${empleado.nombre}. La actual dejará de servir.`}
+        {` La contraseña vale 60 días desde este momento.`}
       </p>
       {errorGeneral && <p role="alert" className="rounded-lg bg-red-900/40 p-3 text-sm text-red-300">{errorGeneral}</p>}
 

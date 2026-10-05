@@ -1,112 +1,104 @@
 import { useState } from 'react'
 import { cambiarContrasena } from '../../services/api'
+import CampoContrasena from '../admin/CampoContrasena'
+import { LIMITES_EMPLEADO } from '../../utils/empleados'
 
 // `variante`: "panel" (por defecto, panel del barbero: botón crema) o "admin" (dashboard del admin: botón dorado).
+// `alExito(respuesta)`: se llama tras cambiarla (el back-end devuelve la nueva `vigencia` del barbero).
 const BOTON = {
-  panel: 'bg-amber-50 hover:bg-amber-200',
+  panel: 'bg-amber-50 hover:bg-amber-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-50',
   admin: 'bg-oro hover:bg-oro/80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro',
 }
 
-const CambiarContrasena = ({ token, variante = 'panel' }) => {
+const { contrasenaMin, contrasenaMax } = LIMITES_EMPLEADO
+
+const CambiarContrasena = ({ token, variante = 'panel', alExito, titulo = 'Cambiar contraseña' }) => {
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
   const [confirmar, setConfirmar] = useState('')
   const [cargando, setCargando] = useState(false)
+  const [errores, setErrores] = useState({})
   const [error, setError] = useState('')
   const [mensaje, setMensaje] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setErrores({})
     setError('')
     setMensaje('')
 
-    if (nueva.length < 8) {
-      setError('La nueva contraseña debe tener al menos 8 caracteres')
-      return
+    const nuevos = {}
+    if (nueva.length < contrasenaMin || nueva.length > contrasenaMax) {
+      nuevos.nueva = `La nueva contraseña debe tener entre ${contrasenaMin} y ${contrasenaMax} caracteres`
+    } else if (nueva === actual) {
+      nuevos.nueva = 'La nueva contraseña debe ser distinta de la actual'
     }
-    if (nueva !== confirmar) {
-      setError('La confirmación no coincide con la nueva contraseña')
+    if (nueva !== confirmar) nuevos.confirmar = 'La confirmación no coincide con la nueva contraseña'
+    if (Object.keys(nuevos).length > 0) {
+      setErrores(nuevos)
       return
     }
 
     setCargando(true)
     try {
-      await cambiarContrasena(token, actual, nueva)
+      const respuesta = await cambiarContrasena(token, actual, nueva)
       setMensaje('Contraseña actualizada correctamente')
       setActual('')
       setNueva('')
       setConfirmar('')
+      alExito?.(respuesta)
     } catch (err) {
-      setError(err.message)
+      // El back-end indica el campo (actual / nueva) cuando el error es de un campo; si no, va como aviso general.
+      if (err.campo === 'actual' || err.campo === 'nueva') setErrores({ [err.campo]: err.message })
+      else setError(err.message)
     } finally {
       setCargando(false)
     }
   }
 
   return (
-    <section aria-labelledby="titulo-contrasena" className="max-w-md">
+    <section aria-labelledby="titulo-contrasena" className="min-w-0 max-w-md">
       <h2 id="titulo-contrasena" className="mb-3 text-2xl font-semibold">
-        Cambiar contraseña
+        {titulo}
       </h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="actual" className="text-sm font-medium text-gray-300">
-            Contraseña actual
-          </label>
-          <input
-            id="actual"
-            name="actual"
-            type="password"
-            value={actual}
-            onChange={(e) => setActual(e.target.value)}
-            className="rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="nueva" className="text-sm font-medium text-gray-300">
-            Nueva contraseña (mínimo 8 caracteres)
-          </label>
-          <input
-            id="nueva"
-            name="nueva"
-            type="password"
-            value={nueva}
-            onChange={(e) => setNueva(e.target.value)}
-            className="rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
-            minLength={8}
-            required
-          />
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label htmlFor="confirmar" className="text-sm font-medium text-gray-300">
-            Confirmar nueva contraseña
-          </label>
-          <input
-            id="confirmar"
-            name="confirmar"
-            type="password"
-            value={confirmar}
-            onChange={(e) => setConfirmar(e.target.value)}
-            className="rounded-lg border border-white/20 bg-[#1a1a1a] p-2 text-white"
-            minLength={8}
-            required
-          />
-        </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <CampoContrasena
+          id="actual"
+          etiqueta="Contraseña actual"
+          valor={actual}
+          alCambiar={(e) => setActual(e.target.value)}
+          error={errores.actual}
+          autoComplete="current-password"
+        />
+        <CampoContrasena
+          id="nueva"
+          etiqueta="Nueva contraseña"
+          ayuda={`Entre ${contrasenaMin} y ${contrasenaMax} caracteres`}
+          valor={nueva}
+          alCambiar={(e) => setNueva(e.target.value)}
+          error={errores.nueva}
+        />
+        <CampoContrasena
+          id="confirmar"
+          etiqueta="Confirmar nueva contraseña"
+          valor={confirmar}
+          alCambiar={(e) => setConfirmar(e.target.value)}
+          error={errores.confirmar}
+        />
 
         {error && (
           <p className="text-red-400" role="alert">
             {error}
           </p>
         )}
-        {mensaje && <p className="text-green-400">{mensaje}</p>}
+        <p className="text-green-400" role="status">
+          {mensaje}
+        </p>
 
         <button
           type="submit"
           disabled={cargando}
-          className={`mt-2 w-fit cursor-pointer rounded-xl p-2 px-4 font-medium text-black duration-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${BOTON[variante]}`}
+          className={`min-h-11 w-fit cursor-pointer rounded-xl px-4 font-medium text-black duration-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 ${BOTON[variante]}`}
         >
           {cargando ? 'Guardando...' : 'Guardar contraseña'}
         </button>

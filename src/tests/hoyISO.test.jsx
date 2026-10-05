@@ -8,7 +8,7 @@ import { obtenerCitas } from '../services/api'
 
 vi.mock('../services/api')
 vi.mock('../context/AuthContext', () => ({
-  useAuth: () => ({ usuario: { usuario: 'leo', rol: 'barbero' }, token: 't', logout: vi.fn() }),
+  useAuth: () => ({ usuario: { usuario: 'leo', rol: 'barbero' }, token: 't', logout: vi.fn(), vigencia: null, actualizarVigencia: vi.fn() }),
 }))
 
 // 22:00 en Bogotá (UTC-5) del 4 de octubre = 03:00 UTC del 5 de octubre.

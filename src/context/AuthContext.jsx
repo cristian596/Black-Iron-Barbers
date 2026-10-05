@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
-import { setUnauthorizedHandler } from '../services/api'
+import { setUnauthorizedHandler, setContrasenaCaducadaHandler } from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -18,18 +18,23 @@ const tokenVencido = (payload) => {
   return payload.exp * 1000 <= Date.now()
 }
 
+// `vigencia`: estado de la contraseña del barbero ({ estado, dias_restantes, vence_en }). `undefined` = aún no se
+// sabe (sesión restaurada del navegador: el panel la consulta a /auth/sesion); `null` = no aplica (admin).
+const SIN_SESION = { token: null, usuario: null, vigencia: null }
+
 const restaurarSesion = () => {
   const tokenGuardado = localStorage.getItem('token')
-  if (!tokenGuardado) return { token: null, usuario: null }
+  if (!tokenGuardado) return SIN_SESION
 
   const payload = decodificarToken(tokenGuardado)
   if (!payload || tokenVencido(payload)) {
     localStorage.removeItem('token')
-    return { token: null, usuario: null }
+    return SIN_SESION
   }
 
   return {
     token: tokenGuardado,
+    vigencia: payload.rol === 'barbero' ? undefined : null,
     usuario: { id: payload.id, usuario: payload.usuario, rol: payload.rol, barbero_id: payload.barbero_id },
   }
 }
@@ -40,7 +45,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     localStorage.removeItem('token')
-    setSesion({ token: null, usuario: null })
+    setSesion(SIN_SESION)
+  }, [])
+
+  const actualizarVigencia = useCallback((vigencia) => {
+    setSesion((actual) => ({ ...actual, vigencia }))
   }, [])
 
   const login = useCallback((data) => {
@@ -53,6 +62,7 @@ export const AuthProvider = ({ children }) => {
         rol: data.usuario.rol,
         barbero_id: data.usuario.barbero_id,
       },
+      vigencia: data.vigencia ?? null,
     })
   }, [])
 
@@ -61,9 +71,20 @@ export const AuthProvider = ({ children }) => {
     return () => setUnauthorizedHandler(null)
   }, [logout])
 
+  useEffect(() => {
+    setContrasenaCaducadaHandler(() =>
+      setSesion((actual) =>
+        actual.usuario?.rol === 'barbero'
+          ? { ...actual, vigencia: { estado: 'caducada', dias_restantes: 0, vence_en: null } }
+          : actual
+      )
+    )
+    return () => setContrasenaCaducadaHandler(null)
+  }, [])
+
   return (
     <AuthContext.Provider
-      value={{ token: sesion.token, usuario: sesion.usuario, cargando, login, logout }}
+      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, actualizarVigencia, cargando, login, logout }}
     >
       {children}
     </AuthContext.Provider>

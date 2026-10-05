@@ -159,7 +159,7 @@ Entre las 7 pm y la medianoche "hoy" sigue siendo el día de Bogotá: una cita d
 
 ### M. Contraseña propia del admin
 
-En el menú de usuario → **Cambiar contraseña**, el botón "Guardar contraseña" es dorado (token `oro`). En el panel del barbero (`/panel`) el botón sigue crema, como antes.
+En el menú de usuario → **Cambiar contraseña**, el botón "Guardar contraseña" es dorado (token `oro`). El panel del barbero (`/panel`) ya no tiene este menú: ver "Dashboard del barbero, fase 1" más abajo (el barbero solo cambia su contraseña cuando está por vencer o caducada, con el botón crema).
 
 ---
 
@@ -303,3 +303,46 @@ CSV: la respuesta lleva `Content-Type: text/csv; charset=utf-8` y `Content-Dispo
 6. **Imprimir:** el botón abre el diálogo de impresión. En la vista previa deben desaparecer la barra lateral, la barra superior, el selector de día y los botones; el fondo es blanco, el texto negro, y arriba sale "Black Iron Barbers · Reporte diario" con la fecha.
 7. **Responsive:** a 360–414 px las cifras van en una columna, el selector y los botones caben sin desplazar la página y los controles miden al menos 44 px. Un nombre de servicio muy largo se parte en vez de ensanchar la página.
 8. **Teclado y lector de pantalla:** todos los controles se alcanzan con Tab con foco visible; los botones tienen nombre ("Día anterior", "Día siguiente"); la tabla tiene título, encabezados y la primera columna como encabezado de fila.
+
+---
+
+## Dashboard del barbero, fase 1 — caducidad de contraseñas
+
+Las contraseñas de los barberos duran 60 días; el admin está exento. Los pasos con "reloj" cambian la fecha guardada en tu base de desarrollo, así que no hace falta esperar. **Haz un `pg_dump` antes** y usa un barbero de prueba (por ejemplo `prueba_uno`), no uno real.
+
+### V. Migración y endpoints (curl)
+
+```bash
+API=http://localhost:5001/api
+ADMIN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"admin_blackiron","contrasena":"..."}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+curl -s -X POST $API/admin/empleados -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' -d '{"nombre":"Prueba Uno","usuario":"prueba_uno","contrasena":"clave-segura-1"}'
+BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"prueba_uno","contrasena":"clave-segura-1"}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+```
+
+| Qué haces | Qué debe pasar |
+|---|---|
+| Al arrancar el back-end por primera vez con este cambio | Todos tus usuarios quedan con `contrasena_cambiada_en` = ese momento (nadie caduca de golpe). Reiniciar de nuevo no la mueve |
+| Login del admin | `"vigencia": null` |
+| Login de `prueba_uno` recién creado | `"vigencia": {"estado":"vigente","dias_restantes":60,"vence_en":"…"}` |
+| `curl -X PATCH $API/auth/contrasena -H "Authorization: Bearer $BARBERO" -H 'Content-Type: application/json' -d '{"actual":"clave-segura-1","nueva":"otra-clave-2"}'` con la contraseña vigente | `403` con `codigo: "CAMBIO_NO_PERMITIDO"` |
+| Lo mismo con el token del admin | `200` (el admin cambia la suya cuando quiere; devuélvela después) |
+| Simula "por vencer": `UPDATE usuarios SET contrasena_cambiada_en = now() - interval '58 days' WHERE usuario = 'prueba_uno';` y consulta `GET $API/auth/sesion` | `vigencia.estado = "por_vencer"`, `dias_restantes = 2` |
+| El cambio de arriba, ahora | `200`; la fecha vuelve a "ahora" (`vigente`, 60 días) |
+| Cambio con `actual` equivocada | `400` `CONTRASENA_ACTUAL_INCORRECTA` (no 401) |
+| Cambio con `nueva` igual a `actual`, o de 7 o 73 caracteres | `400` `CONTRASENA_IGUAL` / `DATOS_INVALIDOS` |
+| 6 intentos fallidos seguidos | el sexto responde `429` `DEMASIADOS_INTENTOS` (espera 15 min o reinicia el back-end) |
+| Simula "caducada": `… now() - interval '60 days'`. Login | `200` con `vigencia.estado = "caducada"` |
+| `curl $API/citas -H "Authorization: Bearer $BARBERO"` | `403` `CONTRASENA_CADUCADA`. Igual con cualquier otra ruta protegida |
+| `GET $API/auth/sesion` y el cambio de contraseña con ese mismo token | funcionan; tras el cambio, `GET $API/citas` vuelve a dar `200` |
+| Con el barbero caducado, el admin hace `PATCH $API/admin/usuarios/<id>` con `{"contrasena":"clave-nueva-3"}` | `200`; el barbero entra con la nueva, `vigente` con 60 días y sin obligación de cambiarla |
+| `GET $API/admin/empleados` | cada `usuario` lleva `vigencia` (sin hashes) |
+| Desactiva a `prueba_uno` y usa su token | `401` `SESION_INVALIDA` (sigue igual, aunque esté caducada) |
+
+### W. Pantallas
+
+1. **Vigente:** en `/panel` no hay aviso ni formulario de contraseña; tampoco existe la opción de cambiarla.
+2. **Por vencer (2 días o menos):** arriba del panel sale "Tu contraseña caduca en N días. Cámbiala ahora." con el botón **Cambiar contraseña**, que despliega el formulario (contraseña actual, nueva y confirmación, con botón para mostrar/ocultar). Al guardar, el aviso desaparece y sale "Contraseña actualizada. La nueva vale 60 días." Un lector de pantalla anuncia el aviso.
+3. **Caducada:** al entrar (o al recargar) solo ves "Tu contraseña caducó" con el formulario y **Cerrar sesión**; no hay citas ni nada más. Si estabas dentro y la contraseña caduca (cambia la fecha en la base y pulsa cualquier acción), la siguiente llamada te lleva a esa pantalla, no al login. Tras cambiarla entras al panel con normalidad.
+4. **`/admin/empleados`:** cada barbero con acceso muestra un indicador discreto: "Vigente", "Caduca en N días" (ámbar) o "Caducada" (rojo), tanto en la tabla (escritorio) como en las tarjetas (móvil). Tras restablecer una contraseña desde **Contraseña**, el indicador vuelve a "Vigente". El formulario de restablecer avisa de que la nueva vale 60 días.
+5. **Responsive:** a 360, 375, 414, 768, 1024 y 1440 px el aviso (cerrado y con el formulario abierto), la pantalla obligatoria y `/admin/empleados` no tienen scroll horizontal (`scrollWidth` = `clientWidth`).
+6. **Limpieza:** desactiva o borra tu barbero de prueba y restaura la contraseña del admin si la cambiaste.

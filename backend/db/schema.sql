@@ -153,3 +153,9 @@ CREATE TABLE IF NOT EXISTS migraciones_aplicadas (
   clave VARCHAR(100) PRIMARY KEY,
   aplicada_en TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+-- Caducidad de contraseñas de los barberos (60 días; el admin está exento). Al añadir la columna con DEFAULT now(),
+-- Postgres rellena las filas existentes con el momento de la migración: nadie caduca de golpe. Es idempotente
+-- (en los arranques siguientes la columna ya existe y no se toca nada). Se actualiza desde Node (no con NOW()) cada
+-- vez que se fija una contraseña: cambio propio, restablecimiento del admin, alta de empleado o de acceso.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena_cambiada_en TIMESTAMPTZ NOT NULL DEFAULT now();

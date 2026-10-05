@@ -3,6 +3,7 @@ import { FiEdit2, FiKey } from 'react-icons/fi'
 import AvatarBarbero from '../ui/AvatarBarbero'
 import { enlaceCitasPendientes } from '../../utils/empleados'
 import InterruptorActivo from './InterruptorActivo'
+import IndicadorVigencia from './IndicadorVigencia'
 
 const BOTON =
   'inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/15 px-3 text-sm font-medium text-zinc-200 hover:border-white/40 hover:text-white focus-visible:outline-2 focus-visible:outline-oro'
@@ -70,6 +71,11 @@ const Tarjeta = ({ empleado, alEditar, alAcceso, alCambiarActivo, guardando }) =
       </div>
     </div>
     <p className="mt-2 wrap-anywhere text-xs text-zinc-500">{textoUsuario(empleado)}</p>
+    {empleado.usuario?.vigencia && (
+      <p className="mt-1">
+        <IndicadorVigencia vigencia={empleado.usuario.vigencia} />
+      </p>
+    )}
     <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
       <div className="rounded-lg bg-white/5 p-2">
         <dt className="text-xs text-zinc-400">Cortes este mes</dt>
@@ -115,6 +121,11 @@ const Tabla = ({ empleados, alEditar, alAcceso, alCambiarActivo, idGuardando }) 
                     {!empleado.activo && <EtiquetaInactivo />}
                   </span>
                   <span className="block text-xs font-normal text-zinc-500">{textoUsuario(empleado)}</span>
+                  {empleado.usuario?.vigencia && (
+                    <span className="mt-1 block">
+                      <IndicadorVigencia vigencia={empleado.usuario.vigencia} />
+                    </span>
+                  )}
                 </span>
               </span>
             </th>

@@ -7,14 +7,13 @@ import { pool } from '../db/connection.js';
 import { ahoraBogota, hoyISO } from '../utils/fechas.js';
 import { primerDiaDelMes, sumarMeses } from '../utils/periodos.js';
 import { validarParametros } from '../utils/parametrosQuery.js';
+import { estadoContrasena, MIN_CONTRASENA, MAX_CONTRASENA } from '../utils/contrasenas.js';
 
 const ID_MAXIMO_INT = 2147483647;
 const MAX_NOMBRE = 100;
 const MAX_CARGO = 100;
 const MAX_ESPECIALIDAD = 150;
 const MAX_USUARIO = 50;
-const MIN_CONTRASENA = 8;
-const MAX_CONTRASENA = 72; // bcrypt solo lee los primeros 72 bytes
 
 const fallo = (res, estado, codigo, error, extra = {}) => res.status(estado).json({ error, codigo, ...extra });
 const datoInvalido = (res, campo, mensaje) => fallo(res, 400, 'DATOS_INVALIDOS', mensaje, { campo });
@@ -65,7 +64,7 @@ const leerCampos = (cuerpo, reglas) => {
 // no hay ninguno activo el más reciente. `usuarios_total` deja ver que existen más.
 const SELECT_EMPLEADOS = `
   SELECT b.id, b.nombre, b.cargo, b.especialidad, b.foto, b.activo,
-         u.id AS usuario_id, u.usuario AS usuario_nombre, u.activo AS usuario_activo,
+         u.id AS usuario_id, u.usuario AS usuario_nombre, u.activo AS usuario_activo, u.contrasena_cambiada_en,
          (SELECT COUNT(*)::int FROM usuarios WHERE barbero_id = b.id AND rol = 'barbero') AS usuarios_total,
          (SELECT COUNT(*)::int FROM citas c
            WHERE c.barbero_id = b.id AND c.estado = 'completada' AND c.fecha >= $1::date AND c.fecha < $2::date) AS cortes_mes,
@@ -73,7 +72,7 @@ const SELECT_EMPLEADOS = `
            WHERE c.barbero_id = b.id AND c.estado = 'pendiente' AND (c.fecha + c.hora) >= $3::timestamp) AS citas_pendientes
   FROM barberos b
   LEFT JOIN LATERAL (
-    SELECT id, usuario, activo FROM usuarios
+    SELECT id, usuario, activo, contrasena_cambiada_en FROM usuarios
     WHERE barbero_id = b.id AND rol = 'barbero'
     ORDER BY activo DESC, id DESC
     LIMIT 1
@@ -86,7 +85,15 @@ const aEmpleado = (f) => ({
   especialidad: f.especialidad,
   foto: f.foto,
   activo: f.activo,
-  usuario: f.usuario_id === null ? null : { id: f.usuario_id, usuario: f.usuario_nombre, activo: f.usuario_activo },
+  usuario:
+    f.usuario_id === null
+      ? null
+      : {
+          id: f.usuario_id,
+          usuario: f.usuario_nombre,
+          activo: f.usuario_activo,
+          vigencia: estadoContrasena(f.contrasena_cambiada_en), // estado, dias_restantes, vence_en (nunca el hash)
+        },
   usuarios_total: f.usuarios_total,
   cortes_mes: f.cortes_mes,
   citas_pendientes: f.citas_pendientes,
@@ -151,8 +158,8 @@ export const crearEmpleado = async (req, res, next) => {
     );
     const barberoId = rows[0].id;
     await cliente.query(
-      `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id) VALUES ($1, $2, 'barbero', $3)`,
-      [datos.usuario, hash, barberoId]
+      `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id, contrasena_cambiada_en) VALUES ($1, $2, 'barbero', $3, $4)`,
+      [datos.usuario, hash, barberoId, new Date()]
     );
     await cliente.query('COMMIT');
 

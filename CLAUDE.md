@@ -62,7 +62,7 @@ src/
 ## Modelo de datos
 
 - `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto` (nula en los creados desde el admin: la web muestra un avatar con iniciales), `activo` (el personal que se muestra en la web)
-- `usuarios`: `id`, `usuario` (único), `contrasena` (hash bcrypt), `rol` (`admin` | `barbero`), `barbero_id` (nulo para el admin), `activo`
+- `usuarios`: `id`, `usuario` (único), `contrasena` (hash bcrypt), `rol` (`admin` | `barbero`), `barbero_id` (nulo para el admin), `activo`, `contrasena_cambiada_en` (TIMESTAMPTZ NOT NULL DEFAULT now(): último momento en que se fijó la contraseña; base de la caducidad de 60 días de los barberos; se escribe siempre desde Node, nunca con `NOW()`)
 - `categorias`: `id`, `nombre` (único), `slug` (único; se genera del nombre al crear y no se edita), `orden` (orden de aparición), `activo` (una categoría inactiva no aparece en la web), `clave_seed` (nulo = creada por el admin)
 - `servicios`: `id`, `nombre` (único; distingue mayúsculas), `descripcion`, `duracion_min` (> 0), `precio` (>= 0; 0 se muestra como "Gratis"), `tipo` (`original` | `elite` | `vip`), `categoria_id` (→ `categorias`), `activo`, `clave_seed` (solo barbería)
   - Los servicios **nunca se borran**: los del catálogo anterior (ids 1–6) quedan con `activo = false` para conservar el historial de citas. La API pública y la reserva solo ven los activos.
@@ -79,14 +79,22 @@ src/
 - Los usuarios se **desactivan** (`activo = false`), nunca se borran, para conservar el historial de citas.
 - `verificarToken` no se fía solo del JWT: en cada petición consulta `usuarios` (y `barberos` si es barbero) y responde 401 `SESION_INVALIDA` si el usuario o su barbero están inactivos o ya no existen. Así, desactivar a un empleado invalida su token al instante (si no, seguiría valiendo hasta 8 h). El `rol` y el `barbero_id` de `req.usuario` salen de la base, no del token. Costo: una consulta por clave primaria por petición.
 - Un empleado es un barbero más su usuario, y **siempre en el mismo estado**: crear, desactivar y reactivar tocan ambos en una transacción. Puede haber varios usuarios ligados al mismo barbero (datos de prueba antiguos); el listado muestra uno (el activo, o el más reciente) y `usuarios_total`.
-- El barbero puede cambiar su propia contraseña (`PATCH /api/auth/contrasena`).
+- **Caducidad de contraseñas (solo barberos; el admin está exento y cambia la suya cuando quiera).** Constantes en un solo lugar: `backend/utils/contrasenas.js` (`VIGENCIA_DIAS = 60`, `AVISO_DIAS = 2`, longitud 8–72) junto con `estadoContrasena()`.
+  - Estado = `{ estado, dias_restantes, vence_en }`. `vence_en` = fecha de Bogotá del último cambio + 60 días (el primer día en que la contraseña ya no sirve); `dias_restantes` = días de **calendario** entre hoy (Bogotá) y `vence_en`. Se cuenta por fecha y no por bloques de 24 h para que el número no dependa de la hora del cambio ni de la zona del servidor (a las 22:00 de Bogotá ya es "mañana" en UTC). `vigente`: ≥ 3 · `por_vencer`: 1 o 2 · `caducada`: 0 o menos (día 57 vigente, 58 por_vencer, 60 caducada, contando el día del cambio como 0). Se calcula en Node (`fechaBogota()` de `utils/fechas.js`).
+  - **El barbero no puede cambiar su contraseña cuando quiera**: solo con `por_vencer` o `caducada`; si no, 403 `CAMBIO_NO_PERMITIDO` (se aplica en el back-end, no solo ocultando el botón).
+  - El administrador puede restablecer la contraseña de un barbero en cualquier momento (`PATCH /api/admin/usuarios/:id`). Eso, y crear un empleado o un acceso, deja `contrasena_cambiada_en` en "ahora" (reinicia los 60 días). Cambiar solo `activo` no lo toca. El barbero no está obligado a cambiarla al entrar.
+  - Con la contraseña `caducada` el barbero **puede iniciar sesión**, pero `verificarToken` responde 403 `CONTRASENA_CADUCADA` en todo lo demás. Solo `GET /api/auth/sesion` y `PATCH /api/auth/contrasena` usan `verificarTokenPermitiendoCaducada`. Un usuario desactivado sigue dando 401 `SESION_INVALIDA` antes que cualquier otro bloqueo.
+  - `PATCH /api/auth/contrasena` exige `actual` y `nueva` (8–72) distinta de la actual. Errores (todos con `codigo`): 403 `CAMBIO_NO_PERMITIDO`, 403 `CONTRASENA_CADUCADA` (otros endpoints), 400 `CONTRASENA_ACTUAL_INCORRECTA` (400 y no 401: un 401 con token cierra la sesión en el front), 400 `CONTRASENA_IGUAL`, 400 `DATOS_INVALIDOS` (con `campo`), 429 `DEMASIADOS_INTENTOS`. Tiene limitador propio: 5 intentos **fallidos** por usuario cada 15 min (los cambios correctos no cuentan), porque quien robe un token podría adivinar la contraseña actual a golpe de intentos. Como el de citas, se omite bajo `NODE_ENV=test` salvo `FORZAR_RATE_LIMIT_PRUEBA=true` (el login también).
+  - El login devuelve `vigencia` (estado de la contraseña del barbero, `null` para el admin). `GET /api/admin/empleados` añade `usuario.vigencia` (nunca hashes). El campo se llama `vigencia` (y no "contraseña") para que ninguna respuesta lleve la palabra `contrasena`.
+  - Front: `AuthContext` guarda `vigencia` (`undefined` = aún no se sabe tras recargar: `Panel` consulta `/auth/sesion`; `null` = no aplica). `/panel`: `por_vencer` → `AvisoCaducidad` (formulario solo desde ahí); `caducada` → `CambioObligatorio` (sin el resto del panel, con cerrar sesión). Un 403 `CONTRASENA_CADUCADA` en cualquier llamada lleva a esa pantalla (`setContrasenaCaducadaHandler` en `api.js`), no al login. El panel del barbero ya no tiene el cambio libre; el admin lo conserva en su menú de usuario. `/admin/empleados` muestra `IndicadorVigencia` (vigente, "Caduca en N días", caducada).
 
 ## API
 
 | Método | Ruta | Acceso |
 |---|---|---|
 | POST | `/api/auth/login` | público |
-| PATCH | `/api/auth/contrasena` | JWT |
+| GET | `/api/auth/sesion` | JWT (también con la contraseña caducada): `{ usuario, vigencia }` |
+| PATCH | `/api/auth/contrasena` | JWT (también caducada). Barbero: solo `por_vencer` o `caducada` (si no, 403 `CAMBIO_NO_PERMITIDO`); admin: libre |
 | GET | `/api/barberos`, `/api/disponibilidad` | público |
 | GET | `/api/servicios`, `/api/servicios/:id`, `/api/categorias` | público (ver detalle abajo) |
 | POST | `/api/citas` | público |
@@ -191,6 +199,7 @@ src/
 - Las citas demo ya se borraron de la base de desarrollo. Se pueden volver a generar con `cd backend && npm run seed:demo -- --confirmar` (antes haz un `pg_dump`) y borrar con `npm run seed:demo -- --limpiar --confirmar`, que solo toca las de clientes `[demo] `.
 - Pendiente: página de la asesoría gratis (el botón de "Reserva a tu manera" ya existe y apunta a `RUTA_ASESORIA` en `src/data/negocio.js`, provisional).
 - Pendiente: `backend/tests/globalSetup.js` inserta barberos y servicios con id fijo sin avanzar la secuencia; sembrar con `RESTART IDENTITY` o hacer `setval` ahí (hoy cada prueba nueva lo hace por su cuenta).
+- **Dashboard del barbero (en curso).** Fase 1 hecha: caducidad de contraseñas (ver Autenticación y roles). Pendiente (fases siguientes, por definir con el desarrollador): rediseño del panel `/panel` (layout con navegación y rutas hijas como el del admin), resumen propio del barbero, mejoras de su lista de citas y sus cifras.
 - Pendiente: notificaciones por email/WhatsApp.
 - Pendiente: checklist de despliegue (ver "Después: despliegue" en `checklist-sesiones.md`).
 - Pendiente: revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).

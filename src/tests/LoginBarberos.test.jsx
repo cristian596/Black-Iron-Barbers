@@ -9,6 +9,7 @@ import { login as loginRequest } from '../services/api'
 vi.mock('../services/api', () => ({
   login: vi.fn(),
   setUnauthorizedHandler: vi.fn(),
+  setContrasenaCaducadaHandler: vi.fn(),
 }))
 
 const renderLogin = () =>

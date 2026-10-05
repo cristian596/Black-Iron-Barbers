@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../db/connection.js';
+import { longitudContrasenaValida, MIN_CONTRASENA, MAX_CONTRASENA } from '../utils/contrasenas.js';
 
 export const listarUsuarios = async (req, res, next) => {
   try {
@@ -24,8 +25,8 @@ export const crearUsuario = async (req, res, next) => {
     if (!usuario || typeof usuario !== 'string' || usuario.trim().length === 0) {
       return res.status(400).json({ error: 'El usuario es obligatorio' });
     }
-    if (!contrasena || typeof contrasena !== 'string' || contrasena.length < 8) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    if (!longitudContrasenaValida(contrasena)) {
+      return res.status(400).json({ error: `La contraseña debe tener entre ${MIN_CONTRASENA} y ${MAX_CONTRASENA} caracteres` });
     }
 
     const barberoId = Number(barbero_id);
@@ -44,10 +45,10 @@ export const crearUsuario = async (req, res, next) => {
     const hash = await bcrypt.hash(contrasena, 10);
 
     const { rows } = await pool.query(
-      `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id)
-       VALUES ($1, $2, 'barbero', $3)
+      `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id, contrasena_cambiada_en)
+       VALUES ($1, $2, 'barbero', $3, $4)
        RETURNING id, usuario, rol, barbero_id, activo`,
-      [usuario.trim(), hash, barberoId]
+      [usuario.trim(), hash, barberoId, new Date()]
     );
 
     res.status(201).json(rows[0]);
@@ -72,8 +73,8 @@ export const actualizarUsuario = async (req, res, next) => {
     if (contrasena === undefined && activo === undefined) {
       return res.status(400).json({ error: 'Debes enviar contrasena o activo' });
     }
-    if (contrasena !== undefined && (typeof contrasena !== 'string' || contrasena.length < 8)) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    if (contrasena !== undefined && !longitudContrasenaValida(contrasena)) {
+      return res.status(400).json({ error: `La contraseña debe tener entre ${MIN_CONTRASENA} y ${MAX_CONTRASENA} caracteres` });
     }
     if (activo !== undefined && typeof activo !== 'boolean') {
       return res.status(400).json({ error: 'El campo activo debe ser booleano' });
@@ -95,10 +96,11 @@ export const actualizarUsuario = async (req, res, next) => {
     const { rows } = await pool.query(
       `UPDATE usuarios
        SET contrasena = COALESCE($1, contrasena),
-           activo = COALESCE($2, activo)
+           activo = COALESCE($2, activo),
+           contrasena_cambiada_en = COALESCE($4, contrasena_cambiada_en)
        WHERE id = $3
        RETURNING id, usuario, rol, barbero_id, activo`,
-      [hash, activo ?? null, usuarioId]
+      [hash, activo ?? null, usuarioId, hash ? new Date() : null] // fijar una contraseña reinicia los 60 días
     );
 
     if (rows.length === 0) {
