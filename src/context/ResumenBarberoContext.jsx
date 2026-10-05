@@ -3,7 +3,7 @@ import { obtenerResumenBarbero, obtenerCitasPorConfirmar } from '../services/api
 
 const ResumenBarberoContext = createContext(null)
 
-export const INTERVALO_REFRESCO_MS = 60_000
+const INTERVALO_REFRESCO_MS = 60_000
 
 // Estado compartido del panel del barbero: UNA sola petición a /api/barbero/resumen (y a citas-por-confirmar, en
 // paralelo) que usan la ventana de bienvenida, el aviso persistente y la pantalla Resumen. Se vuelve a pedir:

@@ -5,14 +5,12 @@ import { fechaLegible, soloHora } from '../../utils/formato'
 const TablaCitas = ({
   citas,
   mostrarBarbero = false,
-  onCompletar,
-  onCancelar,
   onReasignar,
   barberosActivos,
 }) => {
   if (citas.length === 0) return null
 
-  const hayAcciones = Boolean(onCompletar || onCancelar || onReasignar)
+  const hayAcciones = Boolean(onReasignar)
 
   return (
     <>
@@ -43,24 +41,6 @@ const TablaCitas = ({
                   <td className="py-2 pr-3">
                     {cita.estado === 'pendiente' && (
                       <div className="flex flex-wrap items-center gap-2">
-                        {onCompletar && (
-                          <button
-                            type="button"
-                            onClick={() => onCompletar(cita)}
-                            className="min-h-11 cursor-pointer rounded-lg bg-green-600 px-3 text-xs font-medium text-white duration-200 hover:bg-green-500 active:scale-95"
-                          >
-                            Completar
-                          </button>
-                        )}
-                        {onCancelar && (
-                          <button
-                            type="button"
-                            onClick={() => onCancelar(cita)}
-                            className="min-h-11 cursor-pointer rounded-lg bg-red-600 px-3 text-xs font-medium text-white duration-200 hover:bg-red-500 active:scale-95"
-                          >
-                            Cancelar
-                          </button>
-                        )}
                         {onReasignar && barberosActivos && (
                           <label className="flex items-center gap-1 text-xs text-gray-300">
                             <span className="sr-only">Reasignar barbero de la cita de {cita.cliente}</span>
@@ -94,8 +74,6 @@ const TablaCitas = ({
             key={cita.id}
             cita={cita}
             mostrarBarbero={mostrarBarbero}
-            onCompletar={onCompletar}
-            onCancelar={onCancelar}
             onReasignar={onReasignar}
             barberosActivos={barberosActivos}
           />

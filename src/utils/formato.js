@@ -14,7 +14,7 @@ export const formatearDelta = (actual, previo) => {
     : { texto: `${Math.abs(porcentaje)}%`, direccion: 'baja' }
 }
 
-export const soloFecha = (fecha) => (typeof fecha === 'string' ? fecha.slice(0, 10) : '')
+const soloFecha = (fecha) => (typeof fecha === 'string' ? fecha.slice(0, 10) : '')
 
 export const soloHora = (hora) => (typeof hora === 'string' ? hora.slice(0, 5) : '')
 

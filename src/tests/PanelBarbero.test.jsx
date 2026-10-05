@@ -73,7 +73,6 @@ beforeEach(() => {
   vi.mocked(api.obtenerResumenBarbero).mockImplementation(async () => structuredClone(servidor.resumen))
   vi.mocked(api.obtenerCitasPorConfirmar).mockImplementation(async () => structuredClone(servidor.porConfirmar))
   vi.mocked(api.obtenerAgendaHoy).mockImplementation(async () => structuredClone(servidor.agenda))
-  vi.mocked(api.obtenerCitas).mockResolvedValue([])
   vi.mocked(api.actualizarCita).mockResolvedValue({})
 })
 

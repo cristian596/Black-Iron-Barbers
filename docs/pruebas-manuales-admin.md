@@ -394,6 +394,8 @@ BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d
 
 ## Dashboard del barbero, fase 3 — layout, Resumen, bienvenida y aviso persistente
 
+> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: con la base limpia verás listas y gráficos casi vacíos (es correcto: comprueba los estados vacíos). Para regenerarlas: `pg_dump`, `cd backend && npm run seed:demo -- --confirmar`; para borrarlas: `npm run seed:demo -- --limpiar --confirmar`. Los barberos de prueba se reactivan desde `/admin/empleados` (o crea uno nuevo y restablece su contraseña).
+
 Solo front-end. Necesitas citas: haz un `pg_dump`, corre `cd backend && npm run seed:demo` (simulación) y luego `npm run seed:demo -- --confirmar`. Entra como un barbero con usuario (el admin puede restablecer la contraseña de uno de prueba). Las citas demo se borran al final de todo el dashboard.
 
 ### AA. Layout (`/panel`)
@@ -435,6 +437,8 @@ A 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal (`scrollWidth` = `
 
 ## Dashboard del barbero, fase 4 — Mis citas (`/panel/citas`)
 
+> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: p. ej. "Mostrando 1–15 de 28" es un ejemplo, no lo que verás. Regenera las citas con `seed:demo` (ver la fase 3).
+
 No cambia el esquema. Necesitas citas (ver la fase 3: `seed:demo`). Entra con un barbero que tenga varias.
 
 ### AF. Endpoint (curl)
@@ -470,6 +474,8 @@ curl -s "$API/barbero/citas?pestana=completadas&limite=5&pagina=2" -H "Authoriza
 ---
 
 ## Dashboard del barbero, fase 5 — Mi rendimiento (`/panel/rendimiento`) y Mi cuenta (`/panel/cuenta`)
+
+> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: los totales que devuelva `curl` dependen de las citas que haya. Con la base limpia, un barbero sin citas debe ver ceros ($0) y los mensajes de vacío; es parte de la prueba.
 
 No cambia el esquema. Necesitas citas completadas del barbero (ver la fase 3: `seed:demo`).
 

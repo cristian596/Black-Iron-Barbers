@@ -4,13 +4,11 @@ import { fechaLegible, soloHora } from '../../utils/formato'
 const TarjetaCita = ({
   cita,
   mostrarBarbero = false,
-  onCompletar,
-  onCancelar,
   onReasignar,
   barberosActivos,
 }) => {
   const puedeGestionar =
-    cita.estado === 'pendiente' && (onCompletar || onCancelar || onReasignar)
+    cita.estado === 'pendiente' && onReasignar
 
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a1a1a] p-4 text-white shadow">
@@ -30,24 +28,6 @@ const TarjetaCita = ({
 
       {puedeGestionar && (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {onCompletar && (
-            <button
-              type="button"
-              onClick={() => onCompletar(cita)}
-              className="min-h-11 cursor-pointer rounded-lg bg-green-600 px-4 text-sm font-medium text-white duration-200 hover:bg-green-500 active:scale-95"
-            >
-              Completar
-            </button>
-          )}
-          {onCancelar && (
-            <button
-              type="button"
-              onClick={() => onCancelar(cita)}
-              className="min-h-11 cursor-pointer rounded-lg bg-red-600 px-4 text-sm font-medium text-white duration-200 hover:bg-red-500 active:scale-95"
-            >
-              Cancelar
-            </button>
-          )}
           {onReasignar && barberosActivos && (
             <label className="flex items-center gap-1 text-sm text-gray-300">
               <span className="sr-only">Reasignar barbero de la cita de {cita.cliente}</span>

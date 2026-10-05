@@ -52,7 +52,6 @@ beforeEach(() => {
   localStorage.clear()
   sesion('admin')
   fijarEscritorio(true)
-  vi.mocked(api.obtenerCitas).mockResolvedValue([])
   vi.mocked(api.obtenerBarberos).mockResolvedValue([])
   vi.mocked(api.obtenerEmpleados).mockResolvedValue([])
   vi.mocked(api.obtenerReporteDiario).mockResolvedValue({

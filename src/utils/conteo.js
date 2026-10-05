@@ -1,6 +1,6 @@
 // Funciones puras del conteo animado.
 
-export const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
 
 // Valor del conteo para un progreso lineal t (0 a 1): 0 al inicio y el valor
 // exacto al final, con curva de salida suave entre medias.

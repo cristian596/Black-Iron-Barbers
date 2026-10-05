@@ -104,13 +104,6 @@ export const crearCita = (cita) =>
     body: JSON.stringify(cita),
   });
 
-export const obtenerCitas = (token, filtros = {}) => {
-  const params = new URLSearchParams(filtros).toString();
-  return request(`/citas${params ? `?${params}` : ''}`, {
-    headers: authHeader(token),
-  });
-};
-
 export const actualizarCita = (token, id, cambios) =>
   request(`/citas/${id}`, {
     method: 'PATCH',

@@ -226,16 +226,17 @@ src/
 - Tests (front y back) y CI en GitHub Actions ya configurados.
 - Catálogo de 39 servicios en 6 categorías con tipos original/élite/VIP; `/cortes` y el paso 1 de `/reservar-corte` lo muestran con filtros (el paso 1 añade buscador). La sección de servicios ya no está en el inicio, que enlaza a `/cortes`.
 - **Dashboard del admin: COMPLETO** (fases 1a, 1b, 1c, 2, 3 y 4): layout con rutas hijas y barra lateral; Resumen (indicadores con comparación, gráficos SVG, servicios más pedidos, citas recientes); `/admin/citas` (paginada, filtros en la URL); `/admin/servicios` (CRUD de servicios y categorías sin DELETE) con el seed que solo inserta; `/admin/empleados` (crear, editar, activar/desactivar y restablecer contraseña); `/admin/reportes` (reporte diario con selector de día, CSV e impresión).
-- Las citas demo ya se borraron de la base de desarrollo. Se pueden volver a generar con `cd backend && npm run seed:demo -- --confirmar` (antes haz un `pg_dump`) y borrar con `npm run seed:demo -- --limpiar --confirmar`, que solo toca las de clientes `[demo] `.
-- Pendiente: página de la asesoría gratis (el botón de "Reserva a tu manera" ya existe y apunta a `RUTA_ASESORIA` en `src/data/negocio.js`, provisional).
-- Pendiente: `backend/tests/globalSetup.js` inserta barberos y servicios con id fijo sin avanzar la secuencia; sembrar con `RESTART IDENTITY` o hacer `setval` ahí (hoy cada prueba nueva lo hace por su cuenta).
-- **Dashboard del barbero: COMPLETO** (fases 1 a 5): caducidad de contraseñas, el admin ya no completa ni cancela (endpoints `/api/barbero/*`), layout de `/panel` con Resumen, ventana de bienvenida y aviso persistente, Mis citas (`GET /api/barbero/citas`), Mi rendimiento (`/api/barbero/estadisticas*`) y Mi cuenta. Tareas finales pendientes:
-  - Borrar las citas demo (`cd backend && npm run seed:demo -- --limpiar --confirmar`) y desactivar los barberos de prueba (`Prueba Fase3 A/B/C`, usuarios `prueba_f3a`, `prueba_f3b`, `prueba_f3c`, y los `prueba-responsive-*`).
-  - Limpiar las props sin uso de `TablaCitas` y `TarjetaCita` (`onCompletar`/`onCancelar`: nadie las usa desde que el admin solo reasigna).
-  - Revisar el estado de la rama `feat/dashboard-barberos` antes de integrarla.
-  - Idea futura (NO implementada): guardar la fecha/hora de cierre de cada cita (cuándo se completó o canceló) para medir la puntualidad de las confirmaciones.
+- **Dashboard del barbero: COMPLETO** (fases 1 a 5): caducidad de contraseñas, el admin ya no completa ni cancela (endpoints `/api/barbero/*`), layout de `/panel` con Resumen, ventana de bienvenida y aviso persistente, Mis citas (`GET /api/barbero/citas`), Mi rendimiento (`/api/barbero/estadisticas*`) y Mi cuenta.
+- **Cierre del dashboard: HECHO.** Se borraron las citas demo de la base de desarrollo, se desactivaron los barberos de prueba `Prueba Fase3 A/B/C` (por la API de admin), se quitaron las props `onCompletar`/`onCancelar` de `TablaCitas`/`TarjetaCita` y el código muerto del front (`obtenerCitas` de `api.js` y exports sin uso). Las citas demo se regeneran con `cd backend && npm run seed:demo -- --confirmar` (antes haz un `pg_dump`) y se borran con `-- --limpiar --confirmar`, que solo toca las de clientes `[demo] `. Datos propios del desarrollador que NO se tocan: barbero "Camilo", servicio "Keratina premium antifrizz", categoría "Cejaz" y las citas reales (ids 1, 15, 16, 17, 449 y 450).
+- Pendiente: usuarios `curltest_danny` y `curltest_davinson` (restos de una prueba con curl del 1 de octubre; son hoy el único usuario activo de Danny y de Davinson): decidir si se conservan, se les restablece la contraseña o se desactivan.
+- Pendiente: página de la asesoría gratis. El botón "Descubre tu mejor versión con una ASESORÍA…" de `ReservaATuManera` es un `<Link to={RUTA_ASESORIA}>` (`'/asesoria'` en `src/data/negocio.js`) con `preventDefault`: hoy **no hace nada** al pulsarlo (la ruta no existe; sin el `preventDefault` caería en la 404). Al crear la página hay que registrar la ruta y quitar el `preventDefault`.
+- Pendiente: `backend/tests/globalSetup.js` inserta barberos y servicios con id fijo sin avanzar la secuencia; sembrar con `RESTART IDENTITY` (o hacer `setval`) para que la secuencia de barberos siga a los ids fijos (hoy cada prueba nueva lo hace por su cuenta).
 - Pendiente: notificaciones por email/WhatsApp.
-- Pendiente: checklist de despliegue (ver "Después: despliegue" en `checklist-sesiones.md`).
+- Pendiente: checklist de despliegue (ver "Después: despliegue" en `checklist-sesiones.md`). Además:
+  - La base de desarrollo NO se migra a producción: en producción se crean un admin y usuarios nuevos (con `ADMIN_USER`/`ADMIN_PASSWORD` del `.env` de producción y `POST /api/admin/empleados`).
+  - Los limitadores de intentos (login, cambio de contraseña, citas) viven en memoria del proceso: con varias instancias hay que moverlos a un almacén compartido (p. ej. Redis).
+  - Subir Node del CI (`.github/workflows/ci.yml`) de 20 a 22.
+- Pendiente (idea futura, NO implementada): guardar la fecha/hora de cierre de cada cita (cuándo se completó o canceló) para medir la puntualidad de las confirmaciones.
 - Pendiente: revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
 - El plan completo por sesiones está en `checklist-sesiones.md`.
 
