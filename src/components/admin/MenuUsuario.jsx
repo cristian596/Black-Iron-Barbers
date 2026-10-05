@@ -6,7 +6,7 @@ import Modal from '../ui/Modal'
 const iniciales = (nombre) => nombre.trim().slice(0, 2).toUpperCase()
 
 // Avatar con iniciales (solo CSS) que abre un panel con las opciones de la cuenta.
-// Admin (por defecto): puede cambiar su contraseña. Barbero (`conCambioContrasena={false}` + `alCerrarSesion`): solo
+// Admin (por defecto): cambiar contraseña y cerrar sesión. Barbero (`conCambioContrasena={false}`): solo
 // ofrece "Cerrar sesión" (su contraseña solo se cambia cuando está por caducar, desde el aviso del panel).
 const MenuUsuario = ({ usuario, token, etiquetaRol = 'Administrador', conCambioContrasena = true, alCerrarSesion }) => {
   const nombre = usuario?.usuario ?? etiquetaRol
@@ -86,7 +86,7 @@ const MenuUsuario = ({ usuario, token, etiquetaRol = 'Administrador', conCambioC
               type="button"
               onClick={() => {
                 setAbierto(false)
-                alCerrarSesion()
+                alCerrarSesion(botonRef.current) // el foco vuelve a este botón si se cancela
               }}
               className="mt-1 flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-sm text-zinc-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-oro"
             >

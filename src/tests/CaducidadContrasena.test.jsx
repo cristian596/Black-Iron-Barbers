@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import PanelLayout from '../pages/panel/PanelLayout'
@@ -120,6 +120,8 @@ describe('Panel del barbero según la caducidad de su contraseña', () => {
   it('caducada: se puede cerrar sesión y lleva al acceso', async () => {
     montarPanel(CADUCADA)
     await userEvent.click(await screen.findByRole('button', { name: 'Cerrar sesión' }))
+    expect(logout).not.toHaveBeenCalled()
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
     expect(logout).toHaveBeenCalled()
     expect(screen.getByText('Pantalla de acceso')).toBeInTheDocument()
   })

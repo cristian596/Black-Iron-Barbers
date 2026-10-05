@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { FiCheckCircle, FiLogOut } from 'react-icons/fi'
 import { useAuth } from '../../context/AuthContext'
 import { useResumenBarbero } from '../../context/ResumenBarberoContext'
+import { useConfirmarCierreSesion } from '../../hooks/useConfirmarCierreSesion'
 import { formatearFechaLegible } from '../../utils/fechas'
 import { textoDias } from '../../utils/vigencia'
 import AvatarBarbero from '../../components/ui/AvatarBarbero'
@@ -17,15 +17,10 @@ const DATOS = [
 // formulario solo aparece cuando está por vencer (y el back-end lo exige igual con 403 CAMBIO_NO_PERMITIDO). La
 // caducada la cubre la pantalla obligatoria del layout, que bloquea todo /panel.
 const MiCuenta = () => {
-  const { token, usuario, vigencia, actualizarVigencia, logout } = useAuth()
+  const { token, usuario, vigencia, actualizarVigencia } = useAuth()
   const { barbero } = useResumenBarbero()
-  const navigate = useNavigate()
+  const { pedirCierreSesion, dialogoCierreSesion } = useConfirmarCierreSesion()
   const [cambiada, setCambiada] = useState(false)
-
-  const cerrarSesion = () => {
-    logout()
-    navigate('/acceso')
-  }
 
   const alCambiar = (respuesta) => {
     actualizarVigencia(respuesta.vigencia)
@@ -95,13 +90,14 @@ const MiCuenta = () => {
       <div>
         <button
           type="button"
-          onClick={cerrarSesion}
+          onClick={pedirCierreSesion}
           className="flex min-h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-white/20 px-5 font-medium text-white duration-300 hover:bg-white hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro active:scale-95 sm:w-auto"
         >
           <FiLogOut aria-hidden="true" />
           Cerrar sesión
         </button>
       </div>
+      {dialogoCierreSesion}
     </div>
   )
 }

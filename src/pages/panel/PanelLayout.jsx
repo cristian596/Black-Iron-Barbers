@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ResumenBarberoProvider, useResumenBarbero } from '../../context/ResumenBarberoContext'
 import { useBarberosActivos } from '../../hooks/useBarberosActivos'
+import { useConfirmarCierreSesion } from '../../hooks/useConfirmarCierreSesion'
 import { obtenerSesion } from '../../services/api'
 import { SECCIONES_BARBERO } from '../../data/menuBarbero'
 import { bienvenidaYaMostrada, marcarBienvenidaMostrada } from '../../utils/bienvenida'
@@ -18,9 +19,9 @@ import CargandoPagina from '../../components/ui/CargandoPagina'
 // Parte del layout que ya tiene el resumen compartido: ventana de bienvenida (una vez por inicio de sesión) y aviso
 // persistente de citas por confirmar. Solo existen dentro de /panel (este componente solo se monta ahí).
 const ContenidoPanel = () => {
-  const { token, logout, vigencia, actualizarVigencia } = useAuth()
+  const { token, vigencia, actualizarVigencia } = useAuth()
   const { resumen, porConfirmar, barbero } = useResumenBarbero()
-  const navigate = useNavigate()
+  const { pedirCierreSesion, dialogoCierreSesion, cierreAbierto } = useConfirmarCierreSesion()
   // En /panel/cuenta el aviso (con su formulario) va dentro de la propia página: así nunca hay dos formularios a la vez.
   const enCuenta = useLocation().pathname === '/panel/cuenta'
   const [contrasenaCambiada, setContrasenaCambiada] = useState(false)
@@ -32,11 +33,6 @@ const ContenidoPanel = () => {
   useEffect(() => {
     if (verBienvenida) marcarBienvenidaMostrada()
   }, [verBienvenida])
-
-  const cerrarSesion = () => {
-    logout()
-    navigate('/acceso')
-  }
 
   const alCambiarContrasena = (respuesta) => {
     actualizarVigencia(respuesta.vigencia)
@@ -55,13 +51,15 @@ const ContenidoPanel = () => {
   )
 
   return (
+    <>
     <LayoutPanel
       secciones={SECCIONES_BARBERO}
       tarjeta={<PerfilBarbero barbero={barbero} />}
       derechaBarra={
-        <MenuUsuario usuario={{ usuario: barbero.nombre }} etiquetaRol="Barbero" conCambioContrasena={false} alCerrarSesion={cerrarSesion} />
+        <MenuUsuario usuario={{ usuario: barbero.nombre }} etiquetaRol="Barbero" conCambioContrasena={false} alCerrarSesion={pedirCierreSesion} />
       }
-      alCerrarSesion={cerrarSesion}
+      alCerrarSesion={pedirCierreSesion}
+      cajonPausado={cierreAbierto}
       encabezado={encabezado}
       espacioInferior={porConfirmarAhora > 0}
       superpuestos={
@@ -73,6 +71,8 @@ const ContenidoPanel = () => {
         </>
       }
     />
+    {dialogoCierreSesion}
+    </>
   )
 }
 
@@ -82,8 +82,8 @@ const ContenidoPanel = () => {
 //   3. contenido.
 // Tras recargar la página la vigencia no se conoce (undefined): se consulta /auth/sesion antes de mostrar nada.
 const PanelLayout = () => {
-  const { usuario, token, vigencia, actualizarVigencia, logout } = useAuth()
-  const navigate = useNavigate()
+  const { usuario, token, vigencia, actualizarVigencia } = useAuth()
+  const { pedirCierreSesion, dialogoCierreSesion } = useConfirmarCierreSesion()
   const { barberosActivos } = useBarberosActivos()
 
   useEffect(() => {
@@ -103,14 +103,10 @@ const PanelLayout = () => {
 
   if (vigencia?.estado === 'caducada') {
     return (
-      <CambioObligatorio
-        token={token}
-        alCambiada={(respuesta) => actualizarVigencia(respuesta.vigencia)}
-        alCerrarSesion={() => {
-          logout()
-          navigate('/acceso')
-        }}
-      />
+      <>
+        <CambioObligatorio token={token} alCambiada={(respuesta) => actualizarVigencia(respuesta.vigencia)} alCerrarSesion={pedirCierreSesion} />
+        {dialogoCierreSesion}
+      </>
     )
   }
 

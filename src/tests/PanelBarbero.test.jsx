@@ -115,6 +115,8 @@ describe('Layout de /panel', () => {
     expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cerrar sesión'])
     expect(screen.queryByText(/cambiar contraseña/i)).toBeNull()
     await userEvent.click(within(menu).getByRole('button', { name: 'Cerrar sesión' }))
+    expect(ruta()).not.toBe('/acceso')
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
     await waitFor(() => expect(ruta()).toBe('/acceso'))
     expect(localStorage.getItem('token')).toBeNull()
   })
@@ -457,6 +459,7 @@ describe('Ventana de bienvenida', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /Menú de usuario/ }))
     await userEvent.click(within(document.getElementById('menu-usuario')).getByRole('button', { name: 'Cerrar sesión' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
     await waitFor(() => expect(ruta()).toBe('/acceso'))
     expect(sessionStorage.getItem('bienvenida-barbero-vista')).toBeNull()
 
@@ -644,4 +647,111 @@ describe('Estado compartido y refresco', () => {
     expect(screen.getByRole('region', { name: 'Cifras de hoy y del mes' })).toBeInTheDocument()
     expect(screen.queryByText('No pudimos cargar tu resumen.')).toBeNull()
   }, ESPERA_TEST)
+})
+
+describe('Confirmación al cerrar sesión (barbero)', () => {
+  const dialogo = () => screen.getByRole('dialog', { name: '¿Cerrar sesión?' })
+  const abrirDesdeMenu = async () => {
+    const disparador = await screen.findByRole('button', { name: /Menú de usuario/ })
+    await userEvent.click(disparador)
+    await userEvent.click(within(document.getElementById('menu-usuario')).getByRole('button', { name: 'Cerrar sesión' }))
+    return disparador
+  }
+
+  it('el menú de usuario abre el diálogo (título, mensaje, foco en Cancelar) sin cerrar la sesión', async () => {
+    sinBienvenida()
+    montar()
+    await esperarPanel()
+    await abrirDesdeMenu()
+
+    expect(dialogo()).toHaveAttribute('aria-modal', 'true')
+    expect(within(dialogo()).getByText('Tendrás que volver a iniciar sesión para entrar al panel.')).toBeInTheDocument()
+    expect(within(dialogo()).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    expect(localStorage.getItem('token')).not.toBeNull()
+    expect(ruta()).toBe('/panel')
+  })
+
+  it('Cancelar y Escape cierran el diálogo, mantienen la sesión y devuelven el foco al botón del menú', async () => {
+    sinBienvenida()
+    montar()
+    await esperarPanel()
+    let disparador = await abrirDesdeMenu()
+    await userEvent.click(within(dialogo()).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(disparador).toHaveFocus()
+
+    disparador = await abrirDesdeMenu()
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(disparador).toHaveFocus()
+    expect(localStorage.getItem('token')).not.toBeNull()
+  })
+
+  it('el clic fuera del diálogo lo cancela', async () => {
+    sinBienvenida()
+    montar()
+    await esperarPanel()
+    await abrirDesdeMenu()
+    await userEvent.pointer({ keys: '[MouseLeft]', target: dialogo().parentElement })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(localStorage.getItem('token')).not.toBeNull()
+  })
+
+  it('queda por encima del aviso persistente de por confirmar (z-50 frente a z-20)', async () => {
+    sinBienvenida()
+    conPorConfirmar([vencida(1)])
+    montar()
+    await esperarPanel()
+    await screen.findByText(/No has confirmado 1 cita/, {}, { timeout: ESPERA })
+    await abrirDesdeMenu()
+    expect(dialogo().parentElement).toHaveClass('z-50')
+    expect(screen.getByText(/No has confirmado 1 cita/).closest('.z-20')).not.toBeNull()
+  })
+
+  it('en el cajón móvil: abre por encima, Cancelar devuelve el foco al botón del cajón y confirmar cierra la sesión', async () => {
+    sinBienvenida()
+    fijarEscritorio(false)
+    montar()
+    await esperarPanel()
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menú' }))
+    const botonCajon = within(screen.getByRole('dialog', { name: 'Menú de navegación' })).getByRole('button', { name: 'Cerrar sesión' })
+    await userEvent.click(botonCajon)
+
+    expect(dialogo()).toBeInTheDocument()
+    expect(within(dialogo()).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    await userEvent.tab()
+    expect(dialogo().contains(document.activeElement)).toBe(true) // el cajón no le roba el foco
+
+    await userEvent.click(within(dialogo()).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog', { name: '¿Cerrar sesión?' })).toBeNull()
+    expect(botonCajon).toHaveFocus()
+    expect(localStorage.getItem('token')).not.toBeNull()
+
+    await userEvent.click(botonCajon)
+    await userEvent.click(within(dialogo()).getByRole('button', { name: 'Cerrar sesión' }))
+    await waitFor(() => expect(ruta()).toBe('/acceso'))
+    expect(localStorage.getItem('token')).toBeNull()
+  })
+
+  it('Escape en el cajón móvil cierra solo el diálogo de confirmación, no el cajón', async () => {
+    sinBienvenida()
+    fijarEscritorio(false)
+    montar()
+    await esperarPanel()
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menú' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: 'Menú de navegación' })).getByRole('button', { name: 'Cerrar sesión' }))
+    await userEvent.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog', { name: '¿Cerrar sesión?' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Menú de navegación' })).toBeInTheDocument()
+  })
+
+  it('un token vencido NO muestra el diálogo: va al acceso con "Tu sesión expiró"', async () => {
+    const vencido = { id: 1, usuario: 'leo', rol: 'barbero', barbero_id: 2, exp: Math.floor(Date.now() / 1000) - 60 }
+    localStorage.setItem('token', `x.${btoa(JSON.stringify(vencido))}.y`)
+    montar()
+    await waitFor(() => expect(ruta()).toBe('/acceso'))
+    expect(screen.queryByRole('dialog', { name: '¿Cerrar sesión?' })).toBeNull()
+    expect(await screen.findByText(/Tu sesión expiró/, {}, { timeout: ESPERA })).toBeInTheDocument()
+  })
 })

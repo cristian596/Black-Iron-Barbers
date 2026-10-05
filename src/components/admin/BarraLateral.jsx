@@ -6,10 +6,11 @@ import { useAtraparFoco } from '../../hooks/useAtraparFoco'
 
 // Escritorio (lg+): columna fija. Móvil: cajón que entra desde la izquierda; mientras está abierto
 // actúa como diálogo (foco atrapado, Escape y clic en el fondo lo cierran) y cerrado queda `inert`.
+// `pausado`: hay otro diálogo encima (confirmar cierre de sesión): el cajón deja de atrapar el foco y de ser modal.
 // `secciones`: entradas del menú (data/menuAdmin.js, data/menuBarbero.js). `tarjeta`: bloque opcional bajo el logo.
-const BarraLateral = ({ secciones = SECCIONES_ADMIN, tarjeta = null, modal, abierta, alCerrar, alCerrarSesion }) => {
+const BarraLateral = ({ secciones = SECCIONES_ADMIN, tarjeta = null, modal, abierta, alCerrar, alCerrarSesion, pausado = false }) => {
   const ref = useRef(null)
-  const comoDialogo = modal && abierta
+  const comoDialogo = modal && abierta && !pausado
   useAtraparFoco(ref, comoDialogo, alCerrar)
 
   return (

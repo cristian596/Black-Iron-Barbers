@@ -12,6 +12,8 @@ import NoIndex from '../ui/NoIndex'
 //   tarjeta        bloque opcional bajo el logo (p. ej. la tarjeta del barbero)
 //   centroBarra    contenido central de la barra superior (p. ej. el buscador del admin)
 //   derechaBarra   contenido a la derecha de la barra superior (menú de usuario)
+//   alCerrarSesion pide confirmar el cierre de sesión (useConfirmarCierreSesion)
+//   cajonPausado   true mientras ese diálogo está abierto: el cajón suelta su trampa de foco
 //   encabezado     contenido sobre las rutas hijas (avisos propios del dashboard)
 //   superpuestos   elementos fijos o modales del dashboard (quedan dentro de la zona `inert` si el cajón está abierto)
 //   espacioInferior  reserva espacio al final del contenido (hay un aviso fijo abajo)
@@ -21,6 +23,7 @@ const LayoutPanel = ({
   centroBarra,
   derechaBarra,
   alCerrarSesion,
+  cajonPausado = false,
   encabezado,
   superpuestos,
   espacioInferior = false,
@@ -44,6 +47,7 @@ const LayoutPanel = ({
           abierta={esEscritorio || cajonAbierto}
           alCerrar={() => setAbiertoEn(null)}
           alCerrarSesion={alCerrarSesion}
+          pausado={cajonPausado}
         />
         <div className="min-w-0" inert={cajonAbierto}>
           <BarraSuperior alAbrirMenu={() => setAbiertoEn(location.key)} menuAbierto={cajonAbierto} centro={centroBarra} derecha={derechaBarra} />

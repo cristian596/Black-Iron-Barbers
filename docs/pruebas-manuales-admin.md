@@ -22,7 +22,7 @@ Las partes se amplían a medida que se entregan. Marca cada caso en los anchos 3
 1. Está fija a la izquierda con: Resumen, Citas, Servicios, Empleados, Reportes y, abajo, Cerrar sesión. No hay sección de clientes.
 2. La sección actual aparece resaltada en dorado y solo una a la vez (Resumen no queda marcada cuando estás en Citas).
 3. Con Tab recorres los enlaces y se ve el contorno dorado del foco.
-4. **Cerrar sesión** te lleva a `/acceso`; al volver atrás (botón del navegador) no recuperas el panel.
+4. **Cerrar sesión** abre antes el diálogo "¿Cerrar sesión?" (ver "Confirmación al cerrar sesión"); al confirmar te lleva a `/acceso`; al volver atrás (botón del navegador) no recuperas el panel.
 
 ### C. Menú móvil (< 1024 px)
 
@@ -519,7 +519,7 @@ Para ver el estado "por vencer" sin esperar 58 días: `UPDATE usuarios SET contr
 2. **Contraseña vigente:** "Tu contraseña está vigente. Vence el <fecha>; faltan N días." y "Solo el administrador puede restablecer tu contraseña antes de que venza". No hay formulario ni botón de cambiar contraseña.
 3. **Por vencer** (2 días o menos): aviso ámbar con **Cambiar contraseña**; al abrirlo aparece UN solo formulario (el del layout no se repite en esta ruta). Cámbiala: "Contraseña actualizada. La nueva vale 60 días." y la página pasa a "vigente".
 4. **Caducada:** aparece la pantalla obligatoria "Tu contraseña caducó" en lugar del panel.
-5. **Cerrar sesión** (botón de la página) cierra la sesión y lleva a `/acceso`.
+5. **Cerrar sesión** (botón de la página) pide confirmación; al confirmar cierra la sesión y lleva a `/acceso`.
 6. Una ruta desconocida como `/panel/cuenta/otra` vuelve a `/panel`; sin sesión, `/panel/cuenta` lleva a `/acceso`, y el admin no entra.
 7. **Responsive (API real):** a 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal en ninguno de los cuatro períodos (con datos y con un barbero vacío), ni en Mi cuenta (vigente, por vencer y con el formulario abierto); los controles miden al menos 44 px.
 
@@ -540,3 +540,17 @@ Requisitos: backend y front arriba. Marca cada caso en 360, 375, 414, 768, 1024 
 9. **Sesión expirada:** inicia sesión, abre DevTools → Application → Local Storage y cambia el `token` por texto basura o desactiva al usuario desde el admin y recarga una página del panel. Esperado: vuelves a `/acceso` con "Tu sesión expiró. Vuelve a iniciar sesión". Si en cambio pulsas "Cerrar sesión", ese aviso NO aparece.
 10. **Redirecciones:** admin → `/admin`; barbero → `/panel`; barbero con la contraseña caducada → pantalla "Tu contraseña caducó"; con sesión activa, abrir `/acceso` te lleva a tu panel.
 11. **Móvil con teclado:** en DevTools reduce la altura a ~320 px (teclado abierto): el formulario sigue accesible haciendo scroll y no hay scroll horizontal. Con "Reducir movimiento" activado no hay animaciones de entrada.
+
+## Confirmación al cerrar sesión
+
+El cierre de sesión **voluntario** siempre pide confirmación; el automático (token vencido o invalidado, 401, contraseña caducada que redirige) no. Hay cinco puntos de cierre voluntario, todos con el mismo diálogo (`useConfirmarCierreSesion` + `ModalConfirmar`): barra lateral / cajón móvil (admin y barbero), menú de usuario del admin (junto a "Cambiar contraseña"), menú de usuario del barbero, "Cerrar sesión" de **Mi cuenta** y la pantalla obligatoria "Tu contraseña caducó".
+
+1. En cada punto, pulsa **Cerrar sesión**: NO se cierra la sesión; aparece el diálogo "¿Cerrar sesión?" con "Tendrás que volver a iniciar sesión para entrar al panel." y los botones **Cancelar** y **Cerrar sesión**. El foco inicial está en **Cancelar**.
+2. **Cancelar**, **Escape** y el clic fuera del diálogo lo cierran sin cerrar la sesión (el panel sigue igual y el token sigue en Local Storage). El foco vuelve al control que abrió el diálogo (desde cualquier menú de usuario, admin o barbero, al botón del avatar; el menú se cierra al abrir el diálogo).
+3. Con Tab y Shift+Tab el foco se queda dentro del diálogo.
+4. **Cerrar sesión** (del diálogo) cierra la sesión, borra el token y lleva a `/acceso`; el siguiente inicio de sesión del barbero vuelve a mostrar la ventana de bienvenida. En `/acceso` NO aparece "Tu sesión expiró".
+5. **Cajón móvil** (< 1024 px): abre el menú, pulsa Cerrar sesión: el diálogo aparece por encima del cajón. Escape cierra solo el diálogo (el cajón sigue abierto); Cancelar devuelve el foco al botón del cajón; confirmar cierra la sesión sin errores.
+6. **Barbero con citas por confirmar:** el diálogo queda por encima del aviso fijo de abajo (no lo tapa ni queda detrás).
+7. **Cierre automático:** cambia el `token` en Local Storage por texto basura (o desactiva al usuario) y recarga o haz una acción: vuelves a `/acceso` con "Tu sesión expiró. Vuelve a iniciar sesión" y **sin** diálogo de confirmación.
+8. **Menú del admin:** el avatar de la barra superior abre un menú con **Cambiar contraseña** y **Cerrar sesión** (el de la barra lateral sigue ahí). Escape o un clic fuera cierran el menú; **Cambiar contraseña** sigue abriendo su formulario. Ambas opciones miden al menos 44 px. El menú del barbero solo trae **Cerrar sesión**.
+9. **Responsive:** con el menú del admin y con el diálogo abiertos, a 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal y los botones miden al menos 44 px de alto.

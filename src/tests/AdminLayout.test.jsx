@@ -112,10 +112,12 @@ describe('AdminLayout: estructura y rutas hijas', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/panel'), { timeout: ESPERA_CARGA })
   }, ESPERA_TEST)
 
-  it('Cerrar sesión borra el token y lleva a /acceso', async () => {
+  it('Cerrar sesión pide confirmación; al confirmar borra el token y lleva a /acceso', async () => {
     const router = montar('/admin')
     await esperarLayout()
     await userEvent.click(within(lateral()).getByRole('button', { name: 'Cerrar sesión' }))
+    expect(localStorage.getItem('token')).not.toBeNull()
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
 
     expect(localStorage.getItem('token')).toBeNull()
     await waitFor(() => expect(router.state.location.pathname).toBe('/acceso'))
@@ -319,5 +321,105 @@ describe('AdminLayout: barra superior', () => {
 
     expect(api.cambiarContrasena).toHaveBeenCalledWith(expect.any(String), 'actual123', 'nueva12345')
     expect(await screen.findByText('Contraseña actualizada correctamente')).toBeInTheDocument()
+  }, ESPERA_TEST)
+})
+
+describe('AdminLayout: confirmación al cerrar sesión', () => {
+  it('Cancelar y Escape no cierran la sesión y devuelven el foco al botón; el foco inicial está en Cancelar', async () => {
+    montar('/admin')
+    await esperarLayout()
+    const boton = within(lateral()).getByRole('button', { name: 'Cerrar sesión' })
+
+    await userEvent.click(boton)
+    const dialogo = screen.getByRole('dialog', { name: '¿Cerrar sesión?' })
+    expect(within(dialogo).getByText('Tendrás que volver a iniciar sesión para entrar al panel.')).toBeInTheDocument()
+    expect(within(dialogo).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(boton).toHaveFocus()
+
+    await userEvent.click(boton)
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(boton).toHaveFocus()
+    expect(localStorage.getItem('token')).not.toBeNull()
+  }, ESPERA_TEST)
+
+  it('en el cajón móvil el diálogo no cierra el cajón al cancelar y confirmar cierra la sesión', async () => {
+    fijarEscritorio(false)
+    const router = montar('/admin')
+    await esperarLayout()
+    await userEvent.click(screen.getByRole('button', { name: 'Abrir menú' }))
+    const boton = within(screen.getByRole('dialog', { name: 'Menú de navegación' })).getByRole('button', { name: 'Cerrar sesión' })
+
+    await userEvent.click(boton)
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.getByRole('dialog', { name: 'Menú de navegación' })).toBeInTheDocument()
+    expect(boton).toHaveFocus()
+
+    await userEvent.click(boton)
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/acceso'))
+    expect(localStorage.getItem('token')).toBeNull()
+  }, ESPERA_TEST)
+})
+
+describe('AdminLayout: Cerrar sesión desde el menú de usuario', () => {
+  const abrirMenu = async () => {
+    const avatar = screen.getByRole('button', { name: /Menú de usuario/ })
+    await userEvent.click(avatar)
+    return avatar
+  }
+
+  it('el menú ofrece Cambiar contraseña y Cerrar sesión, ambos de al menos 44 px (min-h-11)', async () => {
+    montar('/admin')
+    await esperarLayout()
+    await abrirMenu()
+    const menu = document.getElementById('menu-usuario')
+
+    expect(within(menu).getAllByRole('button').map((b) => b.textContent)).toEqual(['Cambiar contraseña', 'Cerrar sesión'])
+    within(menu).getAllByRole('button').forEach((b) => expect(b).toHaveClass('min-h-11'))
+  }, ESPERA_TEST)
+
+  it('Cerrar sesión cierra el menú, abre el diálogo con foco en Cancelar y no cierra la sesión', async () => {
+    montar('/admin')
+    await esperarLayout()
+    const avatar = await abrirMenu()
+    await userEvent.click(within(document.getElementById('menu-usuario')).getByRole('button', { name: 'Cerrar sesión' }))
+
+    const dialogo = screen.getByRole('dialog', { name: '¿Cerrar sesión?' })
+    expect(document.getElementById('menu-usuario')).toBeNull()
+    expect(avatar).toHaveAttribute('aria-expanded', 'false')
+    expect(within(dialogo).getByRole('button', { name: 'Cancelar' })).toHaveFocus()
+    expect(localStorage.getItem('token')).not.toBeNull()
+  }, ESPERA_TEST)
+
+  it('Cancelar y Escape devuelven el foco al avatar', async () => {
+    montar('/admin')
+    await esperarLayout()
+    const avatar = await abrirMenu()
+    await userEvent.click(within(document.getElementById('menu-usuario')).getByRole('button', { name: 'Cerrar sesión' }))
+    await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(avatar).toHaveFocus()
+
+    await abrirMenu()
+    await userEvent.click(within(document.getElementById('menu-usuario')).getByRole('button', { name: 'Cerrar sesión' }))
+    await userEvent.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(avatar).toHaveFocus()
+    expect(localStorage.getItem('token')).not.toBeNull()
+  }, ESPERA_TEST)
+
+  it('confirmar cierra la sesión y lleva a /acceso sin el aviso de sesión expirada', async () => {
+    const router = montar('/admin')
+    await esperarLayout()
+    await abrirMenu()
+    await userEvent.click(within(document.getElementById('menu-usuario')).getByRole('button', { name: 'Cerrar sesión' }))
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/acceso'))
+    expect(localStorage.getItem('token')).toBeNull()
+    expect(screen.queryByText(/Tu sesión expiró/)).toBeNull()
   }, ESPERA_TEST)
 })

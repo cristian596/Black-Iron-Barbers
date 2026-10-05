@@ -305,10 +305,12 @@ describe('Mi cuenta', () => {
     expect(api.obtenerResumenBarbero).not.toHaveBeenCalled()
   }, ESPERA_TEST)
 
-  it('"Cerrar sesión" cierra la sesión y lleva al acceso', async () => {
+  it('"Cerrar sesión" pide confirmación y luego cierra la sesión y lleva al acceso', async () => {
     montar('/panel/cuenta')
     await h1('Mi cuenta')
     await userEvent.click(within(screen.getByRole('main')).getByRole('button', { name: 'Cerrar sesión' }))
+    expect(ruta()).toBe('/panel/cuenta')
+    await userEvent.click(within(screen.getByRole('dialog', { name: '¿Cerrar sesión?' })).getByRole('button', { name: 'Cerrar sesión' }))
     await waitFor(() => expect(ruta()).toBe('/acceso'))
     expect(localStorage.getItem('token')).toBeNull()
   }, ESPERA_TEST)
