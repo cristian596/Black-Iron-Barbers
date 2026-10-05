@@ -17,7 +17,7 @@ const SinResultados = ({
       <button
         type="button"
         onClick={onLimpiar}
-        className={`cursor-pointer rounded-xl border px-5 py-2 font-poppins font-semibold active:scale-95 motion-safe:transition-colors motion-safe:duration-200 ${ESTILOS[variante].boton}`}
+        className={`min-h-11 cursor-pointer rounded-xl border px-5 py-2 font-poppins font-semibold active:scale-95 motion-safe:transition-colors motion-safe:duration-200 ${ESTILOS[variante].boton}`}
       >
         {etiquetaBoton}
       </button>

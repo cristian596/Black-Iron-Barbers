@@ -10,7 +10,9 @@ const Home = lazy(() => import('../pages/Home'));
 const Cortes = lazy(() => import('../pages/Cortes'));
 const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
 const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
-const Panel = lazy(() => import('../pages/Panel'));
+const PanelLayout = lazy(() => import('../pages/panel/PanelLayout'));
+const ResumenBarbero = lazy(() => import('../pages/panel/Resumen'));
+const MisCitas = lazy(() => import('../pages/panel/MisCitas'));
 const AdminLayout = lazy(() => import('../pages/admin/AdminLayout'));
 const Resumen = lazy(() => import('../pages/admin/Resumen'));
 const CitasAdmin = lazy(() => import('../pages/admin/Citas'));
@@ -52,11 +54,17 @@ const AppRouter = createBrowserRouter([
       <Suspense fallback={<CargandoPagina/>}>
         <ProtectedRoute>
           <RoleRoute rol="barbero">
-            <Panel/>
+            <PanelLayout/>
           </RoleRoute>
         </ProtectedRoute>
       </Suspense>
-    )
+    ),
+    // Como /admin: el guard va una sola vez en el padre y cada hija carga con React.lazy (Suspense dentro de LayoutPanel).
+    children: [
+      { index: true, element: <ResumenBarbero /> },
+      { path: 'citas', element: <MisCitas /> },
+      { path: '*', element: <Navigate to="/panel" replace /> },
+    ]
   },
   {
     path: 'admin',

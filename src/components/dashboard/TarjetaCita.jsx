@@ -34,7 +34,7 @@ const TarjetaCita = ({
             <button
               type="button"
               onClick={() => onCompletar(cita)}
-              className="cursor-pointer rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white duration-200 hover:bg-green-500 active:scale-95"
+              className="min-h-11 cursor-pointer rounded-lg bg-green-600 px-4 text-sm font-medium text-white duration-200 hover:bg-green-500 active:scale-95"
             >
               Completar
             </button>
@@ -43,7 +43,7 @@ const TarjetaCita = ({
             <button
               type="button"
               onClick={() => onCancelar(cita)}
-              className="cursor-pointer rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white duration-200 hover:bg-red-500 active:scale-95"
+              className="min-h-11 cursor-pointer rounded-lg bg-red-600 px-4 text-sm font-medium text-white duration-200 hover:bg-red-500 active:scale-95"
             >
               Cancelar
             </button>
@@ -54,7 +54,7 @@ const TarjetaCita = ({
               <select
                 value={cita.barbero_id}
                 onChange={(e) => onReasignar(cita, e.target.value)}
-                className="rounded-lg border border-white/20 bg-[#1a1a1a] p-1.5 text-sm text-white"
+                className="min-h-11 rounded-lg border border-white/20 bg-[#1a1a1a] p-1.5 text-sm text-white"
               >
                 {barberosActivos.map((b) => (
                   <option key={b.id} value={b.id}>

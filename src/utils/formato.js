@@ -28,3 +28,14 @@ export const fechaLegible = (fecha) => {
 // Un servicio de precio 0 se muestra como "Gratis" en vez de "$0" (preparado para asesorías).
 export const formatearPrecio = (precio) =>
   Number(precio) === 0 ? 'Gratis' : `$${Number(precio).toLocaleString('es-CO')}`
+
+// "Hace" corto para el tiempo transcurrido en minutos: "40 min", "3 h", "2 días".
+export const tiempoTranscurrido = (minutos) => {
+  const m = Math.max(0, Math.floor(Number(minutos) || 0))
+  if (m < 60) return `${m} min`
+  if (m < 1440) return `${Math.floor(m / 60)} h`
+  const dias = Math.floor(m / 1440)
+  return `${dias} ${dias === 1 ? 'día' : 'días'}`
+}
+
+export const textoCitas = (n) => `${n} ${n === 1 ? 'cita' : 'citas'}`

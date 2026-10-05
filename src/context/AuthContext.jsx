@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import { setUnauthorizedHandler, setContrasenaCaducadaHandler } from '../services/api'
+import { olvidarBienvenida } from '../utils/bienvenida'
 
 const AuthContext = createContext(null)
 
@@ -45,6 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     localStorage.removeItem('token')
+    olvidarBienvenida() // el siguiente inicio de sesión vuelve a mostrar la ventana de bienvenida
     setSesion(SIN_SESION)
   }, [])
 
@@ -54,6 +56,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback((data) => {
     localStorage.setItem('token', data.token)
+    olvidarBienvenida() // cada inicio de sesión muestra la ventana de bienvenida una vez
     setSesion({
       token: data.token,
       usuario: {

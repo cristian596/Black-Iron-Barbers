@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import Panel from '../pages/Panel'
+import PanelLayout from '../pages/panel/PanelLayout'
 import { AuthProvider, useAuth } from '../context/AuthContext'
 import ListaEmpleados from '../components/admin/ListaEmpleados'
 import * as api from '../services/api'
@@ -13,6 +13,10 @@ vi.mock('../context/AuthContext', async (importOriginal) => {
   return { ...real, useAuth: vi.fn(real.useAuth) }
 })
 
+const RESUMEN_VACIO = {
+  fecha: '2026-10-04', citas_hoy: 0, completadas_hoy: 0, pendientes_hoy: 0, proxima_cita: null,
+  ingresos_hoy: 0, cortes_mes: 0, ingresos_mes: 0, por_confirmar: 0,
+}
 const POR_VENCER = { estado: 'por_vencer', dias_restantes: 2, vence_en: '2026-12-03' }
 const CADUCADA = { estado: 'caducada', dias_restantes: 0, vence_en: '2026-10-04' }
 const VIGENTE = { estado: 'vigente', dias_restantes: 60, vence_en: '2026-12-03' }
@@ -23,7 +27,9 @@ let actualizarVigencia
 const rutasPanel = (
   <MemoryRouter initialEntries={['/panel']}>
     <Routes>
-      <Route path="/panel" element={<Panel />} />
+      <Route path="/panel" element={<PanelLayout />}>
+        <Route index element={<p>Contenido del panel</p>} />
+      </Route>
       <Route path="/acceso" element={<p>Pantalla de acceso</p>} />
     </Routes>
   </MemoryRouter>
@@ -32,7 +38,7 @@ const rutasPanel = (
 const montarPanel = (vigencia) => {
   logout = vi.fn()
   actualizarVigencia = vi.fn()
-  vi.mocked(useAuth).mockReturnValue({ usuario: { usuario: 'leo', rol: 'barbero' }, token: 't', logout, vigencia, actualizarVigencia })
+  vi.mocked(useAuth).mockReturnValue({ usuario: { usuario: 'leo', rol: 'barbero', barbero_id: 2 }, token: 't', logout, vigencia, actualizarVigencia })
   return render(rutasPanel)
 }
 
@@ -44,13 +50,15 @@ const llenarFormulario = async (actual = 'actual123', nueva = 'nueva12345') => {
 }
 
 beforeEach(() => {
-  vi.mocked(api.obtenerCitas).mockResolvedValue([])
+  vi.mocked(api.obtenerBarberos).mockResolvedValue([{ id: 2, nombre: 'Leo', cargo: 'Barbero', foto: null }])
+  vi.mocked(api.obtenerResumenBarbero).mockResolvedValue(RESUMEN_VACIO)
+  vi.mocked(api.obtenerCitasPorConfirmar).mockResolvedValue({ total: 0, tope: 100, items: [] })
 })
 
 describe('Panel del barbero según la caducidad de su contraseña', () => {
   it('vigente: no hay aviso ni opción para cambiar la contraseña (el cambio libre ya no existe)', async () => {
     montarPanel(VIGENTE)
-    expect(await screen.findByRole('heading', { name: 'Citas de hoy' })).toBeInTheDocument()
+    expect(await screen.findByText('Contenido del panel')).toBeInTheDocument()
     expect(screen.queryByText(/caduca en/i)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /cambiar contraseña/i })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Contraseña actual')).not.toBeInTheDocument()
@@ -105,8 +113,8 @@ describe('Panel del barbero según la caducidad de su contraseña', () => {
     montarPanel(CADUCADA)
     expect(await screen.findByRole('heading', { level: 1, name: 'Tu contraseña caducó' })).toHaveFocus()
     expect(screen.getByLabelText('Contraseña actual')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Citas de hoy' })).not.toBeInTheDocument()
-    expect(api.obtenerCitas).not.toHaveBeenCalled()
+    expect(screen.queryByText('Contenido del panel')).not.toBeInTheDocument()
+    expect(api.obtenerResumenBarbero).not.toHaveBeenCalled()
   })
 
   it('caducada: se puede cerrar sesión y lleva al acceso', async () => {
@@ -127,7 +135,7 @@ describe('Panel del barbero según la caducidad de su contraseña', () => {
   it('estado aún desconocido (página recargada): consulta /auth/sesion antes de mostrar nada', async () => {
     vi.mocked(api.obtenerSesion).mockResolvedValue({ usuario: {}, vigencia: POR_VENCER })
     montarPanel(undefined)
-    expect(screen.queryByRole('heading', { name: 'Citas de hoy' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Contenido del panel')).not.toBeInTheDocument()
     await waitFor(() => expect(actualizarVigencia).toHaveBeenCalledWith(POR_VENCER))
     expect(api.obtenerSesion).toHaveBeenCalledWith('t')
   })
@@ -139,7 +147,7 @@ describe('403 CONTRASENA_CADUCADA lleva a la pantalla de cambio, no al login', (
 
   beforeEach(async () => {
     const real = await vi.importActual('../services/api')
-    for (const nombre of ['obtenerSesion', 'obtenerCitas', 'setContrasenaCaducadaHandler', 'setUnauthorizedHandler']) {
+    for (const nombre of ['obtenerSesion', 'obtenerResumenBarbero', 'obtenerCitasPorConfirmar', 'obtenerBarberos', 'setContrasenaCaducadaHandler', 'setUnauthorizedHandler']) {
       vi.mocked(api)[nombre].mockImplementation(real[nombre])
     }
     const payload = { id: 1, usuario: 'leo', rol: 'barbero', barbero_id: 2, exp: Math.floor(Date.now() / 1000) + 3600 }
@@ -159,7 +167,9 @@ describe('403 CONTRASENA_CADUCADA lleva a la pantalla de cambio, no al login', (
       vi.fn(async (url) =>
         String(url).endsWith('/auth/sesion')
           ? respuesta(200, { usuario: {}, vigencia: VIGENTE })
-          : respuesta(403, { error: 'Tu contraseña caducó', codigo: 'CONTRASENA_CADUCADA' })
+          : String(url).endsWith('/barberos')
+            ? respuesta(200, [])
+            : respuesta(403, { error: 'Tu contraseña caducó', codigo: 'CONTRASENA_CADUCADA' })
       )
     )
     render(<AuthProvider>{rutasPanel}</AuthProvider>)

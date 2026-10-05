@@ -78,7 +78,7 @@ responde 400 con `codigo: "SERVICIO_NO_DISPONIBLE"`. Hay ejemplos con `curl` en
 ## Rutas principales
 
 `/`, `/cortes`, `/reservar-corte`, `/acceso` (login de barberos/admin, sin enlaces
-públicos y con `noindex`), `/panel` (barbero) y el panel del administrador:
+públicos y con `noindex`), `/panel` (barbero: Resumen en `/panel`, Mis citas en `/panel/citas`, con pestañas con conteo (Hoy, Próximas, Por confirmar, Completadas, Canceladas, Todas), búsqueda, rango de fechas y paginación; con ventana de bienvenida al iniciar sesión y un aviso fijo mientras tenga citas por confirmar) y el panel del administrador:
 
 | Ruta | Qué muestra |
 |---|---|

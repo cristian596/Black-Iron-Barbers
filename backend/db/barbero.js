@@ -60,3 +60,61 @@ export const agendaDelDia = async (db, barberoId, fecha, ahora, gracia) => {
   );
   return rows;
 };
+
+// ---- Lista paginada de "Mis citas" (GET /api/barbero/citas) ----
+export const PESTANAS_BARBERO = ['hoy', 'proximas', 'por_confirmar', 'completadas', 'canceladas', 'todas'];
+
+// Qué citas entran en cada pestaña. $2 = ahora (Bogotá): "hoy" sale de él (no de CURRENT_DATE) y "próximas" son las
+// pendientes que aún no empiezan. "por confirmar" es la misma condición única de más arriba.
+const PREDICADO_PESTANA = {
+  hoy: "(c.fecha = $2::timestamp::date AND c.estado <> 'cancelada')",
+  proximas: "(c.estado = 'pendiente' AND (c.fecha + c.hora) >= $2::timestamp)",
+  por_confirmar: `(${POR_CONFIRMAR})`,
+  completadas: "(c.estado = 'completada')",
+  canceladas: "(c.estado = 'cancelada')",
+  todas: 'true',
+};
+
+const ORDEN_PESTANA = {
+  hoy: 'c.hora ASC, c.id ASC',
+  proximas: 'c.fecha ASC, c.hora ASC, c.id ASC',
+  por_confirmar: 'c.fecha ASC, c.hora ASC, c.id ASC',
+  completadas: 'c.fecha DESC, c.hora DESC, c.id DESC',
+  canceladas: 'c.fecha DESC, c.hora DESC, c.id DESC',
+  todas: 'c.fecha DESC, c.hora DESC, c.id DESC',
+};
+
+// `filtros`: { q (ya con %…% escapado), desde, hasta } opcionales; se aplican a la lista y también a los conteos de
+// las pestañas (así lo que dice cada pestaña es lo que verás al abrirla). Devuelve { items, total, conteos }.
+export const listarCitasBarbero = async (db, barberoId, { pestana, patron, desde, hasta, limite, offset }, ahora, gracia) => {
+  const valores = [barberoId, ahora, gracia];
+  const condiciones = ['c.barbero_id = $1'];
+  const agregar = (sql, valor) => {
+    valores.push(valor);
+    condiciones.push(sql.replace('?', `$${valores.length}`));
+  };
+  if (patron !== undefined) {
+    valores.push(patron);
+    const p = `$${valores.length}`;
+    condiciones.push(`(c.cliente ILIKE ${p} ESCAPE '\\' OR s.nombre ILIKE ${p} ESCAPE '\\')`);
+  }
+  if (desde !== undefined) agregar('c.fecha >= ?::date', desde);
+  if (hasta !== undefined) agregar('c.fecha <= ?::date', hasta);
+  const donde = condiciones.join(' AND ');
+
+  const conteos = db.query(
+    `SELECT ${PESTANAS_BARBERO.map((p) => `COUNT(*) FILTER (WHERE ${PREDICADO_PESTANA[p]})::int AS ${p}`).join(', ')}
+     ${DESDE} WHERE ${donde}`,
+    valores
+  );
+  const items = db.query(
+    `SELECT c.id, c.cliente, s.nombre AS servicio_nombre, COALESCE(c.duracion_min, s.duracion_min) AS duracion_min,
+            c.fecha::text AS fecha, c.hora::text AS hora, c.estado, c.precio, (${POR_CONFIRMAR}) AS por_confirmar
+     ${DESDE} WHERE ${donde} AND ${PREDICADO_PESTANA[pestana]}
+     ORDER BY ${ORDEN_PESTANA[pestana]}
+     LIMIT $${valores.length + 1} OFFSET $${valores.length + 2}`,
+    [...valores, limite, offset]
+  );
+  const [resConteos, resItems] = await Promise.all([conteos, items]);
+  return { items: resItems.rows, total: resConteos.rows[0][pestana], conteos: resConteos.rows[0] };
+};

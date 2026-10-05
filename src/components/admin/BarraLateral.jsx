@@ -6,7 +6,8 @@ import { useAtraparFoco } from '../../hooks/useAtraparFoco'
 
 // Escritorio (lg+): columna fija. Móvil: cajón que entra desde la izquierda; mientras está abierto
 // actúa como diálogo (foco atrapado, Escape y clic en el fondo lo cierran) y cerrado queda `inert`.
-const BarraLateral = ({ modal, abierta, alCerrar, alCerrarSesion }) => {
+// `secciones`: entradas del menú (data/menuAdmin.js, data/menuBarbero.js). `tarjeta`: bloque opcional bajo el logo.
+const BarraLateral = ({ secciones = SECCIONES_ADMIN, tarjeta = null, modal, abierta, alCerrar, alCerrarSesion }) => {
   const ref = useRef(null)
   const comoDialogo = modal && abierta
   useAtraparFoco(ref, comoDialogo, alCerrar)
@@ -42,9 +43,11 @@ const BarraLateral = ({ modal, abierta, alCerrar, alCerrarSesion }) => {
           </button>
         </div>
 
+        {tarjeta}
+
         <nav aria-label="Secciones del panel" className="flex-1 overflow-y-auto p-3">
           <ul className="flex flex-col gap-1">
-            {SECCIONES_ADMIN.map(({ ruta, etiqueta, icono: Icono, exacta }) => (
+            {secciones.map(({ ruta, etiqueta, icono: Icono, exacta }) => (
               <li key={ruta}>
                 <NavLink
                   to={ruta}

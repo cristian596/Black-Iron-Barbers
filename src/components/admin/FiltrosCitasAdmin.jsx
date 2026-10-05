@@ -1,7 +1,8 @@
 const CAMPO =
   'h-11 w-full min-w-0 rounded-lg border border-white/15 bg-black px-3 text-sm text-white placeholder:text-zinc-500 focus-visible:border-oro focus-visible:outline-2 focus-visible:outline-oro'
 
-// Buscador, barbero y rango de fechas (desde/hasta) de /admin/citas. Es controlado: el estado vive en la URL.
+// Buscador, barbero y rango de fechas (desde/hasta) de las listas de citas. Es controlado: el estado vive en la URL.
+// Sin `barberos` no hay selector de barbero (en /panel/citas todas las citas son del propio barbero).
 const FiltrosCitasAdmin = ({
   texto,
   desde,
@@ -14,8 +15,9 @@ const FiltrosCitasAdmin = ({
   alCambiarHasta,
   alCambiarBarbero,
   alLimpiar,
+  placeholder = 'Cliente, servicio o barbero',
 }) => (
-  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+  <div className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${barberos ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
     <div className="flex min-w-0 flex-col gap-1">
       <label htmlFor="citas-buscar" className="text-sm font-medium text-zinc-300">Buscar</label>
       <input
@@ -24,20 +26,22 @@ const FiltrosCitasAdmin = ({
         value={texto}
         maxLength={100}
         onChange={(e) => alCambiarTexto(e.target.value)}
-        placeholder="Cliente, servicio o barbero"
+        placeholder={placeholder}
         className={CAMPO}
       />
     </div>
 
-    <div className="flex min-w-0 flex-col gap-1">
-      <label htmlFor="citas-barbero" className="text-sm font-medium text-zinc-300">Barbero</label>
-      <select id="citas-barbero" value={barbero} onChange={(e) => alCambiarBarbero(e.target.value)} className={CAMPO}>
-        <option value="">Todos los barberos</option>
-        {barberos.map((b) => (
-          <option key={b.id} value={b.id}>{b.nombre}</option>
-        ))}
-      </select>
-    </div>
+    {barberos && (
+      <div className="flex min-w-0 flex-col gap-1">
+        <label htmlFor="citas-barbero" className="text-sm font-medium text-zinc-300">Barbero</label>
+        <select id="citas-barbero" value={barbero} onChange={(e) => alCambiarBarbero(e.target.value)} className={CAMPO}>
+          <option value="">Todos los barberos</option>
+          {barberos.map((b) => (
+            <option key={b.id} value={b.id}>{b.nombre}</option>
+          ))}
+        </select>
+      </div>
+    )}
 
     <div className="flex min-w-0 flex-col gap-1">
       <label htmlFor="citas-desde" className="text-sm font-medium text-zinc-300">Desde</label>
@@ -64,7 +68,7 @@ const FiltrosCitasAdmin = ({
     </div>
 
     {hayFiltros && (
-      <div className="sm:col-span-2 lg:col-span-4">
+      <div className="sm:col-span-2 lg:col-span-full">
         <button
           type="button"
           onClick={alLimpiar}

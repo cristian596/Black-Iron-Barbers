@@ -1,9 +1,11 @@
 import { PESTANAS_CITAS } from '../../data/periodos'
 
-// Misma convención de los demás filtros: botones con aria-pressed dentro de un role="group".
-const PestanasCitas = ({ valor, alCambiar }) => (
+// Misma convención de los demás filtros: botones con aria-pressed dentro de un role="group" (se alcanzan con Tab y se
+// activan con Enter o Espacio). `pestanas` por defecto son las del admin; `conteos` ({ id: número }) añade el total
+// de cada pestaña (con `destacar`, la insignia resalta cuando es > 0).
+const PestanasCitas = ({ valor, alCambiar, pestanas = PESTANAS_CITAS, conteos }) => (
   <div role="group" aria-label="Filtrar citas" className="flex flex-wrap gap-2">
-    {PESTANAS_CITAS.map(({ id, etiqueta }) => (
+    {pestanas.map(({ id, etiqueta, destacar }) => (
       <button
         key={id}
         type="button"
@@ -16,6 +18,20 @@ const PestanasCitas = ({ valor, alCambiar }) => (
         }`}
       >
         {etiqueta}
+        {conteos && typeof conteos[id] === 'number' && (
+          <span
+            className={`ml-2 rounded-full px-2 py-0.5 text-xs font-semibold ${
+              destacar && conteos[id] > 0
+                ? 'bg-orange-500 text-black'
+                : valor === id
+                  ? 'bg-black/15 text-black'
+                  : 'bg-white/10 text-zinc-300'
+            }`}
+          >
+            <span className="sr-only">: </span>
+            {conteos[id]}
+          </span>
+        )}
       </button>
     ))}
   </div>

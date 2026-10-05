@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { verificarToken } from '../middlewares/verificarToken.js';
 import { requiereRol } from '../middlewares/requiereRol.js';
-import { resumenDelDia, citasPorConfirmar, agendaHoy } from '../controllers/barberoController.js';
+import { resumenDelDia, citasPorConfirmar, agendaHoy, listarMisCitas } from '../controllers/barberoController.js';
 
 const router = Router();
 
@@ -11,5 +11,6 @@ router.use(verificarToken, requiereRol('barbero'));
 router.get('/resumen', resumenDelDia);
 router.get('/citas-por-confirmar', citasPorConfirmar);
 router.get('/agenda-hoy', agendaHoy);
+router.get('/citas', listarMisCitas);
 
 export default router;

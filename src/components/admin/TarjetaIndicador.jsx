@@ -18,19 +18,24 @@ const DESCRIPCION = {
   'sin-base': () => 'Sin base de comparación: el período anterior no tiene datos',
 }
 
-const TarjetaIndicador = ({ etiqueta, valor, actual, previo, invertir = false, className = '' }) => {
+// `nota`: texto libre bajo el valor en lugar de la comparación con el período anterior (panel del barbero).
+const TarjetaIndicador = ({ etiqueta, valor, actual, previo, invertir = false, nota, className = '' }) => {
   const { texto, direccion } = formatearDelta(actual, previo)
 
   return (
     <div className={`min-w-0 rounded-xl border border-white/10 bg-zinc-950 p-4 ${className}`}>
       <p className="truncate text-xs font-medium uppercase tracking-wide text-zinc-400">{etiqueta}</p>
       <p className="mt-1 truncate font-poppins text-2xl font-semibold text-white sm:text-3xl">{valor}</p>
-      <p className={`mt-2 flex items-center gap-1 text-sm font-medium ${estiloDelta(direccion, invertir)}`}>
-        {direccion === 'sube' && <FiArrowUp aria-hidden="true" />}
-        {direccion === 'baja' && <FiArrowDown aria-hidden="true" />}
-        <span aria-hidden="true">{texto}</span>
-        <span className="sr-only">{DESCRIPCION[direccion](texto)}</span>
-      </p>
+      {nota !== undefined ? (
+        <p className="mt-2 wrap-anywhere text-sm text-zinc-400">{nota}</p>
+      ) : (
+        <p className={`mt-2 flex items-center gap-1 text-sm font-medium ${estiloDelta(direccion, invertir)}`}>
+          {direccion === 'sube' && <FiArrowUp aria-hidden="true" />}
+          {direccion === 'baja' && <FiArrowDown aria-hidden="true" />}
+          <span aria-hidden="true">{texto}</span>
+          <span className="sr-only">{DESCRIPCION[direccion](texto)}</span>
+        </p>
+      )}
     </div>
   )
 }

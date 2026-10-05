@@ -389,3 +389,80 @@ BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d
 2. **`/admin/reportes`:** con citas pendientes, el aviso dice "Hay N citas sin cerrar: las cierran los barberos, y el reporte solo cuenta las completadas." y el enlace "Ver las citas de este día" sigue llevando a `/admin/citas` filtrado a ese día.
 3. **Resumen y citas recientes:** siguen de solo lectura.
 4. **Responsive:** a 360, 375, 414, 768, 1024 y 1440 px, `/admin/citas` con citas vencidas y `/admin/reportes` con el aviso no tienen scroll horizontal (`scrollWidth` = `clientWidth`).
+
+---
+
+## Dashboard del barbero, fase 3 — layout, Resumen, bienvenida y aviso persistente
+
+Solo front-end. Necesitas citas: haz un `pg_dump`, corre `cd backend && npm run seed:demo` (simulación) y luego `npm run seed:demo -- --confirmar`. Entra como un barbero con usuario (el admin puede restablecer la contraseña de uno de prueba). Las citas demo se borran al final de todo el dashboard.
+
+### AA. Layout (`/panel`)
+
+1. La barra lateral muestra el avatar (iniciales si no hay foto), el nombre y el cargo del barbero, y solo **Resumen** y **Mis citas**. La barra superior solo trae el menú de usuario con **Cerrar sesión** (sin cambiar contraseña).
+2. `/panel/citas` abre la lista de siempre (completar y cancelar funcionan) dentro del mismo layout. `/panel/lo-que-sea` vuelve a `/panel`. Sin sesión, `/panel` lleva a `/acceso`; un admin que abre `/panel` vuelve a `/admin`.
+3. **Móvil (< 1024 px):** el botón de menú abre un cajón; el foco queda dentro, Tab da la vuelta, Escape o el fondo lo cierran y el foco vuelve al botón.
+4. **Prioridad:** con la contraseña caducada solo ves la pantalla obligatoria de cambio (sin ventana ni datos); con la contraseña por vencer, el aviso de caducidad sigue arriba del contenido.
+5. `/admin` se ve y funciona igual que antes (misma barra lateral, buscador y menú).
+
+### AB. Resumen (`/panel`)
+
+1. "Hola, <nombre>" y la fecha de hoy. Cuatro tarjetas: **Citas hoy** (con las completadas), **Ingresos hoy**, **Cortes del mes** (con sus ingresos) y **Próxima cita** (cliente, servicio y hora; con la fecha si es de otro día; "Sin citas próximas" si no hay). Un total en cero se ve como `$0`, nunca "Gratis".
+2. **Agenda de hoy:** línea de tiempo por hora con estado, servicio, duración y precio, y la insignia **Por confirmar** cuando la cita ya terminó hace más de 2 h y sigue pendiente. Solo las pendientes tienen **Completar** y **Cancelar**.
+3. **Cancelar** abre un diálogo de confirmación propio (no el del navegador). Completar una cita futura muestra el mensaje del back-end en pantalla.
+4. **Por confirmar:** tus vencidas de la más antigua a la más reciente, con "Vencida hace …" y las mismas acciones; si hay más del tope (100) dice "Mostrando N de TOTAL".
+5. Estados: esqueletos al cargar; si apagas el back-end, "No pudimos cargar tu resumen." con **Reintentar**; sin citas, "Hoy no tienes citas agendadas." y "No tienes citas por confirmar. Todo está al día."
+6. **Refresco:** tras completar o cancelar todo se recarga. Con el panel abierto, cambia a otra pestaña y vuelve: se actualiza. También cada 60 s con la pestaña visible (en las herramientas de red verás una sola ronda de `resumen` + `citas-por-confirmar` por ciclo, no una por componente).
+
+### AC. Ventana de bienvenida
+
+1. Al iniciar sesión (después del cambio de contraseña si estaba obligado) sale una ventana: "Tienes N cita(s) para hoy." y la próxima cita, o "Hoy no tienes citas agendadas.". Si tienes por confirmar de días anteriores, aparecen aparte ("Tienes N citas sin confirmar de días anteriores", con la lista) y el botón **Ver citas sin confirmar** te lleva a esa sección con el foco en su título.
+2. **Entendido**, Escape, la X o el fondo la cierran y el foco vuelve a donde estaba.
+3. Sale **una vez por inicio de sesión**: recarga la página (F5) y no vuelve; cierra sesión y entra de nuevo y sí. (En DevTools → Application → Session Storage: clave `bienvenida-barbero-vista`.)
+4. No aparece en `/admin` ni en las páginas públicas.
+
+### AD. Aviso persistente de citas por confirmar
+
+1. Con citas por confirmar, en **todas** las rutas de `/panel` hay un aviso fijo: "No has confirmado N cita(s)" con **Confirmar ahora** (lleva a `/panel#por-confirmar`). No tiene botón de cerrar.
+2. Escritorio: tarjeta abajo a la derecha; móvil: franja inferior. No tapa el menú de usuario, la barra superior ni el menú lateral, y al final de la página el contenido deja espacio libre debajo.
+3. Queda por debajo del cajón y de los diálogos.
+4. Desaparece solo cuando completas o cancelas la última cita por confirmar. Lector de pantalla: se anuncia solo cuando cambia el número.
+
+### AE. Responsive (API real)
+
+A 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal (`scrollWidth` = `clientWidth`) en: Resumen con datos, Resumen vacío, ventana de bienvenida (con y sin por confirmar), aviso persistente (escritorio y móvil), `/panel/citas` y el cajón abierto; y los botones, enlaces, selectores y campos miden al menos 44 px de alto.
+
+---
+
+## Dashboard del barbero, fase 4 — Mis citas (`/panel/citas`)
+
+No cambia el esquema. Necesitas citas (ver la fase 3: `seed:demo`). Entra con un barbero que tenga varias.
+
+### AF. Endpoint (curl)
+
+```bash
+API=http://localhost:5001/api
+BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"prueba_f3a","contrasena":"..."}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+curl -s "$API/barbero/citas?pestana=completadas&limite=5&pagina=2" -H "Authorization: Bearer $BARBERO"
+```
+
+| Qué haces | Qué debe pasar |
+|---|---|
+| `GET $API/barbero/citas` | `200`: pestaña `hoy`, `{ items, pagina: 1, limite: 10, total, conteos }`; cada ítem con `id`, `cliente`, `servicio_nombre`, `duracion_min`, `fecha`, `hora`, `estado`, `precio`, `por_confirmar` y sin correo ni teléfono |
+| `?pestana=proximas` / `por_confirmar` / `completadas` / `canceladas` / `todas` | cada una con su orden (próximas y por confirmar: la más antigua primero; el resto, la más reciente primero) |
+| `?q=ana` (cliente o servicio), `?q=%25` | filtra; `%`, `_` y `\` se toman como texto, no como comodines |
+| `?desde=2026-10-01&hasta=2026-10-03` | rango inclusivo; `desde` posterior a `hasta` o una fecha como `2026-02-31` → `400` `PARAMETRO_INVALIDO` |
+| `?pagina=99` | `200` con `items: []` y el `total` real |
+| `?barbero_id=2`, `?x=1`, `?pestana=hoy&pestana=todas`, `?pestana=otra`, `?limite=51` | `400` `PARAMETRO_INVALIDO` (el barbero nunca se elige desde el cliente) |
+| Sin token / con el token del admin | `401` / `403` |
+| Con la contraseña caducada / usuario desactivado | `403` `CONTRASENA_CADUCADA` / `401` `SESION_INVALIDA` |
+
+### AG. Pantalla `/panel/citas`
+
+1. **Pestañas con conteo:** Hoy, Próximas, Por confirmar, Completadas, Canceladas y Todas. La activa va resaltada; **Por confirmar** lleva una insignia naranja cuando su conteo es mayor que 0. Se recorren con Tab y se activan con Enter o Espacio.
+2. **URL:** al cambiar de pestaña, buscar, elegir fechas o paginar, la URL cambia (`?pestana=&q=&desde=&hasta=&pagina=`); copiar el enlace o recargar (F5) deja la misma vista. Un valor inválido en la URL se ignora; una página inexistente pasa a la última. Cualquier filtro vuelve a la página 1; "Limpiar filtros" los quita. No hay filtro de barbero.
+3. **Escritorio (≥ 1280 px):** tabla con Fecha, Hora, Cliente, Servicio, Duración, Precio, Estado y acciones. **Menos de 1280 px:** tarjetas con la misma información. La insignia **Por confirmar** sale en las pendientes que ya terminaron hace más de 2 h; un precio 0 se ve "Gratis".
+4. **Acciones (solo pendientes):** **Completar** es directo; **Cancelar** abre un diálogo propio de confirmación (no el del navegador). Completar una cita futura muestra el mensaje del back-end. Tras cualquiera, la lista se recarga en la misma página y con los mismos filtros, y el aviso fijo "No has confirmado N citas" se actualiza al instante (y desaparece al llegar a 0).
+5. **Estados:** esqueletos al cargar; "No pudimos cargar tus citas." con **Reintentar** (apaga el back-end para verlo); mensaje vacío distinto por pestaña ("Hoy no tienes citas agendadas.", "No tienes citas por confirmar. Todo está al día.", …) y, con filtros activos, "No hay citas que coincidan con los filtros." con **Limpiar filtros**.
+6. **Paginación:** 15 por página con "Mostrando 1–15 de N"; en móvil, "Anterior · Página 2 de 3 · Siguiente".
+7. **`/admin/citas`** se ve y funciona igual que antes (pestañas sin conteo, filtro de barbero, reasignar).
+8. **Responsive (API real):** a 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal en ninguna pestaña, en el estado vacío, con filtros activos ni con paginación; los controles miden al menos 44 px.

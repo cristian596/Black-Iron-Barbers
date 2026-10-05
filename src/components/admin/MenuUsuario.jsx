@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import { FiLock } from 'react-icons/fi'
+import { FiLock, FiLogOut } from 'react-icons/fi'
 import CambiarContrasena from '../dashboard/CambiarContrasena'
 import Modal from '../ui/Modal'
 
 const iniciales = (nombre) => nombre.trim().slice(0, 2).toUpperCase()
 
 // Avatar con iniciales (solo CSS) que abre un panel con las opciones de la cuenta.
-const MenuUsuario = ({ usuario, token }) => {
-  const nombre = usuario?.usuario ?? 'Administrador'
+// Admin (por defecto): puede cambiar su contraseña. Barbero (`conCambioContrasena={false}` + `alCerrarSesion`): solo
+// ofrece "Cerrar sesión" (su contraseña solo se cambia cuando está por caducar, desde el aviso del panel).
+const MenuUsuario = ({ usuario, token, etiquetaRol = 'Administrador', conCambioContrasena = true, alCerrarSesion }) => {
+  const nombre = usuario?.usuario ?? etiquetaRol
   const [abierto, setAbierto] = useState(false)
   const [verContrasena, setVerContrasena] = useState(false)
   const contenedorRef = useRef(null)
@@ -64,19 +66,34 @@ const MenuUsuario = ({ usuario, token }) => {
         >
           <div className="border-b border-white/10 px-3 py-2">
             <p className="truncate text-sm font-semibold">{nombre}</p>
-            <p className="text-xs text-zinc-400">Administrador</p>
+            <p className="text-xs text-zinc-400">{etiquetaRol}</p>
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              setAbierto(false)
-              setVerContrasena(true)
-            }}
-            className="mt-1 flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-sm text-zinc-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-oro"
-          >
-            <FiLock aria-hidden="true" />
-            Cambiar contraseña
-          </button>
+          {conCambioContrasena && (
+            <button
+              type="button"
+              onClick={() => {
+                setAbierto(false)
+                setVerContrasena(true)
+              }}
+              className="mt-1 flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-sm text-zinc-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-oro"
+            >
+              <FiLock aria-hidden="true" />
+              Cambiar contraseña
+            </button>
+          )}
+          {alCerrarSesion && (
+            <button
+              type="button"
+              onClick={() => {
+                setAbierto(false)
+                alCerrarSesion()
+              }}
+              className="mt-1 flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-sm text-zinc-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-oro"
+            >
+              <FiLogOut aria-hidden="true" />
+              Cerrar sesión
+            </button>
+          )}
         </div>
       )}
 

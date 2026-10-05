@@ -199,3 +199,15 @@ export const actualizarUsuarioBarbero = (token, id, cambios) =>
     headers: authHeader(token),
     body: JSON.stringify(cambios),
   });
+
+// Panel del barbero (solo lectura). El barbero sale del token en el back-end. `signal` permite cancelar la petición.
+export const obtenerResumenBarbero = (token, signal) => request('/barbero/resumen', { headers: authHeader(token), signal });
+
+export const obtenerCitasPorConfirmar = (token, signal) =>
+  request('/barbero/citas-por-confirmar', { headers: authHeader(token), signal });
+
+export const obtenerAgendaHoy = (token, signal) => request('/barbero/agenda-hoy', { headers: authHeader(token), signal });
+
+// Lista paginada de "Mis citas" del barbero: { pestana, q, desde, hasta, pagina, limite } → { items, pagina, limite, total, conteos }.
+export const obtenerMisCitas = (token, filtros, signal) =>
+  request(`/barbero/citas${construirQuery(filtros)}`, { headers: authHeader(token), signal });
