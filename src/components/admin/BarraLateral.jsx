@@ -14,7 +14,7 @@ const BarraLateral = ({ modal, abierta, alCerrar, alCerrarSesion }) => {
   return (
     <>
       {comoDialogo && (
-        <div aria-hidden="true" onClick={alCerrar} className="fixed inset-0 z-30 bg-black/70 lg:hidden" />
+        <div aria-hidden="true" onClick={alCerrar} className="fixed inset-0 z-30 bg-black/70 lg:hidden print:hidden" />
       )}
       <aside
         ref={ref}
@@ -23,7 +23,7 @@ const BarraLateral = ({ modal, abierta, alCerrar, alCerrarSesion }) => {
         role={comoDialogo ? 'dialog' : undefined}
         aria-modal={comoDialogo ? 'true' : undefined}
         aria-label="Menú de navegación"
-        className={`fixed inset-y-0 left-0 z-40 flex w-72 max-w-[85vw] min-w-0 flex-col border-r border-white/10 bg-[#0a0a0a] motion-safe:transition-transform motion-safe:duration-200 lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:max-w-none lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 print:hidden flex w-72 max-w-[85vw] min-w-0 flex-col border-r border-white/10 bg-[#0a0a0a] motion-safe:transition-transform motion-safe:duration-200 lg:sticky lg:top-0 lg:h-screen lg:w-auto lg:max-w-none lg:translate-x-0 ${
           abierta ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

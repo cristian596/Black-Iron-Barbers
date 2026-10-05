@@ -85,11 +85,11 @@ públicos y con `noindex`), `/panel` (barbero) y el panel del administrador:
 | `/admin` | Resumen: indicadores con comparación, gráfico de ingresos, servicios más pedidos y citas recientes |
 | `/admin/citas` | Todas las citas: pestañas, búsqueda, barbero, rango de fechas, paginación de 15 y acciones (todo en la URL) |
 | `/admin/servicios` | Servicios y categorías: crear, editar y activar o desactivar (sin borrar). Tabla con panel lateral en escritorio; tarjetas y panel a pantalla completa en móvil |
-| `/admin/reportes` | Provisional (próxima fase) |
+| `/admin/reportes` | Reporte diario: elige un día (por defecto hoy, el siguiente se bloquea en hoy; queda en la URL con `?fecha=`) y ve cortes, ingresos, ticket promedio, canceladas y servicios más pedidos. Descarga CSV (separador `;`, abre bien en Excel) o imprime (sin menús ni botones, en blanco y negro) |
 | `/admin/empleados` | Empleados: crear (barbero + usuario), editar, activar o desactivar (sin borrar) y restablecer contraseña. Muestra cortes del mes y citas pendientes de cada uno |
 
 Endpoints del admin (`/api/admin/*`, solo rol admin): `estadisticas`, `estadisticas/ingresos`,
-`estadisticas/servicios-top`, `citas`, `servicios` y `categorias`, `empleados` (GET, POST y PATCH; no hay DELETE) y `usuarios`. Desactivar a un empleado desactiva también su usuario, lo saca de la web y de la reserva e invalida su sesión al instante. Una cita solo se puede completar si su fecha es hoy
+`estadisticas/servicios-top`, `citas`, `servicios` y `categorias`, `empleados` (GET, POST y PATCH; no hay DELETE), `reportes/diario` y `reportes/diario.csv` (GET) y `usuarios`. Desactivar a un empleado desactiva también su usuario, lo saca de la web y de la reserva e invalida su sesión al instante. Una cita solo se puede completar si su fecha es hoy
 (hora de Bogotá) o anterior; si no, la API responde 400 con `codigo: "CITA_FUTURA"`.
 
 ## Más contexto

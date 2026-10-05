@@ -4,6 +4,7 @@ import { requiereRol } from '../middlewares/requiereRol.js';
 import { listarUsuarios, crearUsuario, actualizarUsuario } from '../controllers/adminController.js';
 import { obtenerEstadisticas, obtenerIngresos, obtenerServiciosTop } from '../controllers/estadisticasController.js';
 import { listarEmpleados, crearEmpleado, actualizarEmpleado } from '../controllers/adminEmpleadosController.js';
+import { reporteDiario, reporteDiarioCsv } from '../controllers/adminReportesController.js';
 import { listarCitasAdmin } from '../controllers/adminCitasController.js';
 import {
   listarServiciosAdmin,
@@ -21,6 +22,8 @@ router.use(verificarToken, requiereRol('admin'));
 router.get('/estadisticas', obtenerEstadisticas);
 router.get('/estadisticas/ingresos', obtenerIngresos);
 router.get('/estadisticas/servicios-top', obtenerServiciosTop);
+router.get('/reportes/diario', reporteDiario);
+router.get('/reportes/diario.csv', reporteDiarioCsv);
 router.get('/citas', listarCitasAdmin);
 // Catálogo: sin DELETE a propósito (los servicios y categorías se desactivan para conservar el historial).
 router.get('/servicios', listarServiciosAdmin);

@@ -260,3 +260,44 @@ Cortes del mes: se cuentan las citas `completada` del mes en curso **en Bogotá*
 9. **Efecto en la web:** desactiva a un barbero y comprueba que desaparece de "Nuestro Equipo" en `/`, del paso 2 de `/reservar-corte` y de "cualquier barbero"; reactívalo y vuelve. Un barbero nuevo (sin foto) aparece con su avatar de iniciales en `/` y en la reserva.
 10. **Sesión del empleado:** inicia sesión como un barbero en otra ventana, desactívalo desde el admin y recarga su panel: te devuelve al login.
 11. **Estados:** cargando, vacío, error con "Reintentar" (apaga el back-end y recarga).
+
+
+## Fase 4 — Reporte diario (`/admin/reportes`)
+
+Esta fase no cambia el esquema ni los datos (solo lecturas), así que no hace falta respaldo.
+
+### T. Endpoints (curl, con el token del admin)
+
+```bash
+API=http://localhost:5001/api
+H="Authorization: Bearer $TOKEN"        # token del admin, como en la sección R
+curl -s "$API/admin/reportes/diario" -H "$H"                      # hoy (Bogotá)
+curl -s "$API/admin/reportes/diario?fecha=2026-10-03" -H "$H"     # un día concreto
+curl -s -i "$API/admin/reportes/diario.csv?fecha=2026-10-03" -H "$H"        # CSV con cabeceras
+curl -s "$API/admin/reportes/diario.csv?fecha=2026-10-03" -H "$H" -o reporte.csv   # guardarlo
+```
+
+| Caso | Esperado |
+|---|---|
+| `GET $API/admin/reportes/diario?fecha=2026-10-03` | `200` con `fecha`, `total_cortes`, `ingresos`, `ticket_promedio`, `canceladas`, `pendientes_sin_cerrar` y `servicios_mas_pedidos` (`nombre`, `cantidad`, `ingresos`); no hay desglose por barbero |
+| Un día sin citas (`?fecha=2020-01-01`) | `200` con ceros y `servicios_mas_pedidos: []` |
+| `?fecha=2026-02-31`, `?fecha=hoy`, `?fecha=` | `400` `FECHA_INVALIDA` |
+| `?fecha=` de mañana en Bogotá o de 2099 | `400` `FECHA_FUTURA` (a las 7 p. m. de Bogotá ya es "mañana" en UTC: debe seguir aceptando el día de Bogotá) |
+| `?periodo=hoy`, `?fecha=...&fecha=...` | `400` `PARAMETRO_INVALIDO` |
+| Sin token / con token de barbero | `401` / `403` |
+| `curl -X DELETE $API/admin/reportes/diario` (también POST, PATCH) | `404` |
+| Cambia el precio de un servicio y repite el reporte de un día pasado | no cambia: usa el precio guardado en cada cita |
+| Compara con `GET $API/admin/estadisticas?periodo=hoy` | mismos cortes, ingresos, ticket promedio y canceladas |
+
+CSV: la respuesta lleva `Content-Type: text/csv; charset=utf-8` y `Content-Disposition: attachment; filename="reporte-diario-2026-10-03.csv"`. El archivo empieza con el BOM (`xxd reporte.csv | head -1` muestra `efbb bf`), separa con `;` y termina cada línea con CRLF. Ábrelo en Excel: los acentos se ven bien y las columnas quedan separadas. Un servicio cuyo nombre empiece con `=`, `+`, `-` o `@` sale con una comilla delante (no se ejecuta como fórmula).
+
+### U. Pantalla `/admin/reportes`
+
+1. **Día:** por defecto hoy en Bogotá. "Día anterior" y "Día siguiente" cambian de a un día; "Día siguiente" está deshabilitado en hoy y el calendario no deja elegir días futuros (si escribes uno, vuelve a hoy). El día queda en la URL (`?fecha=`): recarga, copia el enlace y ábrelo en otra pestaña. Una fecha inválida o futura en la URL se ignora y muestra hoy.
+2. **Cifras:** total de cortes, ingresos, ticket promedio (no cuenta los cortes gratis) y canceladas (aparte, no suman ingresos). **Servicios más pedidos** en una tabla.
+3. **Aviso de citas sin cerrar:** en un día con citas pendientes (por ejemplo hoy en tu base de demostración) aparece "Hay N citas sin cerrar; el reporte solo cuenta las completadas." con el enlace "Ver las citas de este día", que abre `/admin/citas` filtrado a ese día. Completa una cita y vuelve: el número baja y las cifras suben.
+4. **Estados:** cargando; día sin citas ("No hay citas registradas en este día."); error con "Reintentar" (apaga el back-end y cambia de día).
+5. **Descargar CSV:** el botón baja `reporte-diario-AAAA-MM-DD.csv` del día que ves (el enlace directo no serviría: lleva token). Si falla, muestra el error.
+6. **Imprimir:** el botón abre el diálogo de impresión. En la vista previa deben desaparecer la barra lateral, la barra superior, el selector de día y los botones; el fondo es blanco, el texto negro, y arriba sale "Black Iron Barbers · Reporte diario" con la fecha.
+7. **Responsive:** a 360–414 px las cifras van en una columna, el selector y los botones caben sin desplazar la página y los controles miden al menos 44 px. Un nombre de servicio muy largo se parte en vez de ensanchar la página.
+8. **Teclado y lector de pantalla:** todos los controles se alcanzan con Tab con foco visible; los botones tienen nombre ("Día anterior", "Día siguiente"); la tabla tiene título, encabezados y la primera columna como encabezado de fila.

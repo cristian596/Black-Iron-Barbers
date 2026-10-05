@@ -15,7 +15,7 @@ const BarraSuperior = ({ alAbrirMenu, menuAbierto, usuario, token }) => {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b border-white/10 bg-black/90 px-3 backdrop-blur sm:gap-3 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-20 print:hidden flex h-16 items-center gap-2 border-b border-white/10 bg-black/90 px-3 backdrop-blur sm:gap-3 sm:px-6 lg:px-8">
       <button
         type="button"
         onClick={alAbrirMenu}

@@ -55,6 +55,9 @@ beforeEach(() => {
   vi.mocked(api.obtenerCitas).mockResolvedValue([])
   vi.mocked(api.obtenerBarberos).mockResolvedValue([])
   vi.mocked(api.obtenerEmpleados).mockResolvedValue([])
+  vi.mocked(api.obtenerReporteDiario).mockResolvedValue({
+    fecha: '2026-10-04', total_cortes: 0, ingresos: 0, ticket_promedio: 0, canceladas: 0, pendientes_sin_cerrar: 0, servicios_mas_pedidos: [],
+  })
   // El Resumen carga estadísticas y citas recientes al abrirse
   const periodo = { clave: 'hoy', desde: '2026-10-04', hasta: '2026-10-04' }
   const ceros = { citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0 }
@@ -117,6 +120,18 @@ describe('AdminLayout: estructura y rutas hijas', () => {
 
     expect(localStorage.getItem('token')).toBeNull()
     await waitFor(() => expect(router.state.location.pathname).toBe('/acceso'))
+  }, ESPERA_TEST)
+
+  it('al imprimir se ocultan la barra lateral y la barra superior, y la página queda en blanco y negro (print:)', async () => {
+    montar('/admin/reportes')
+    await esperarLayout()
+    await screen.findByRole('heading', { level: 1, name: 'Reportes' }, { timeout: ESPERA_CARGA })
+
+    expect(lateral()).toHaveClass('print:hidden')
+    const barraSuperior = screen.getAllByRole('banner').find((h) => h.classList.contains('sticky'))
+    expect(barraSuperior).toHaveClass('print:hidden')
+    expect(lateral().parentElement).toHaveClass('print:block', 'print:bg-white', 'print:text-black')
+    expect(screen.getByRole('main')).toHaveClass('print:p-0')
   }, ESPERA_TEST)
 
   it('la meta noindex está presente en el layout', async () => {

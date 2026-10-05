@@ -26,7 +26,7 @@ const AdminLayout = () => {
   return (
     <>
       <NoIndex />
-      <div className="grid min-h-screen grid-cols-1 bg-black font-poppins text-white lg:grid-cols-[16rem_minmax(0,1fr)]">
+      <div className="grid min-h-screen grid-cols-1 bg-black font-poppins text-white lg:grid-cols-[16rem_minmax(0,1fr)] print:block print:min-h-0 print:bg-white print:text-black">
         <BarraLateral
           modal={!esEscritorio}
           abierta={esEscritorio || cajonAbierto}
@@ -40,7 +40,7 @@ const AdminLayout = () => {
             usuario={usuario}
             token={token}
           />
-          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">
+          <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8 print:p-0">
             <div className="mx-auto w-full min-w-0 max-w-6xl">
               <Suspense fallback={<CargandoPagina />}>
                 <Outlet />

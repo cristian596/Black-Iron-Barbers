@@ -108,6 +108,34 @@ export const actualizarCita = (token, id, cambios) =>
 export const obtenerEstadisticas = (token, periodo) =>
   request(`/admin/estadisticas${construirQuery({ periodo })}`, { headers: authHeader(token) });
 
+// Reporte diario (solo admin). `fecha`: AAAA-MM-DD.
+export const obtenerReporteDiario = (token, fecha) =>
+  request(`/admin/reportes/diario${construirQuery({ fecha })}`, { headers: authHeader(token) });
+
+// El CSV exige el token, así que no se puede abrir con un enlace directo: se pide con fetch y se devuelve el blob.
+export const descargarReporteDiarioCsv = async (token, fecha) => {
+  let res;
+  try {
+    res = await fetch(`${API_URL}/admin/reportes/diario.csv${construirQuery({ fecha })}`, { headers: authHeader(token) });
+  } catch {
+    throw new Error('No se pudo conectar con el servidor');
+  }
+  if (!res.ok) {
+    if (res.status === 401 && unauthorizedHandler) unauthorizedHandler();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      // Sin cuerpo JSON
+    }
+    const error = new Error(data?.error || 'No se pudo descargar el reporte');
+    error.status = res.status;
+    if (data?.codigo) error.codigo = data.codigo;
+    throw error;
+  }
+  return { blob: await res.blob(), nombre: `reporte-diario-${fecha}.csv` };
+};
+
 export const obtenerIngresos = (token, agrupar) =>
   request(`/admin/estadisticas/ingresos${construirQuery({ agrupar })}`, { headers: authHeader(token) });
 
