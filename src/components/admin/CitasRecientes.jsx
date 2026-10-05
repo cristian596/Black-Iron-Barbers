@@ -17,7 +17,7 @@ const MENSAJE_VACIO = {
 }
 
 // Citas recientes del Resumen: solo lectura (la cita, su estado y el barbero a cargo). Gestionarlas
-// (completar, cancelar, reasignar) se hace en /admin/citas.
+// (reasignar) se hace en /admin/citas; completar y cancelar son de los barberos.
 const CitasRecientes = ({ token }) => {
   const [pestana, setPestana] = useState('proximas')
   const [texto, setTexto] = useState('')

@@ -244,6 +244,14 @@ export const actualizarCita = async (req, res, next) => {
       return res.status(400).json({ error: 'Estado inválido' });
     }
 
+    // Completar y cancelar es exclusivo de los barberos (cada uno cierra sus citas); el admin solo reasigna.
+    if (estado !== undefined && rol === 'admin') {
+      return res.status(403).json({
+        error: 'Solo el barbero a cargo puede completar o cancelar una cita. El administrador solo puede reasignarla.',
+        codigo: 'SOLO_BARBERO',
+      });
+    }
+
     if (barbero_id !== undefined && rol !== 'admin') {
       return res.status(403).json({ error: 'Solo un administrador puede reasignar el barbero' });
     }
@@ -259,7 +267,7 @@ export const actualizarCita = async (req, res, next) => {
       return res.status(404).json({ error: 'Cita no encontrada' });
     }
 
-    // Una cita solo se puede completar el día en que ocurre o después (hora de Bogotá), para admin y barbero.
+    // Una cita solo se puede completar el día en que ocurre o después (hora de Bogotá).
     // Completar citas futuras inflaría los ingresos del dashboard.
     if (estado === 'completada' && cita.fecha > hoyISO()) {
       return res.status(400).json({

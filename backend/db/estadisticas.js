@@ -10,7 +10,8 @@
 
 const COMPLETADA = "c.estado = 'completada'";
 
-export const resumenPeriodo = async (db, { desde, hasta }) => {
+// `barberoId` (opcional) limita las cifras a las citas de ese barbero; sin él son las de todos (estadísticas del admin).
+export const resumenPeriodo = async (db, { desde, hasta }, barberoId = null) => {
   const { rows } = await db.query(
     `SELECT
        COUNT(*) FILTER (WHERE c.estado <> 'cancelada')::int AS citas,
@@ -19,8 +20,8 @@ export const resumenPeriodo = async (db, { desde, hasta }) => {
        COALESCE(SUM(c.precio) FILTER (WHERE ${COMPLETADA}), 0)::int AS ingresos,
        COALESCE(ROUND(AVG(c.precio) FILTER (WHERE ${COMPLETADA} AND c.precio > 0)), 0)::int AS ticket_promedio
      FROM citas c
-     WHERE c.fecha BETWEEN $1::date AND $2::date`,
-    [desde, hasta]
+     WHERE c.fecha BETWEEN $1::date AND $2::date AND ($3::int IS NULL OR c.barbero_id = $3::int)`,
+    [desde, hasta, barberoId]
   );
   return rows[0];
 };

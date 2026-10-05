@@ -86,7 +86,7 @@ const Citas = () => {
   const filtros = { pestana, q, desde, hasta, barbero, pagina, limite: LIMITE }
   const { datos, cargando, error, recargar } = useCarga(() => obtenerCitasAdmin(token, filtros), JSON.stringify(filtros))
 
-  // Una página que no existe (URL vieja, o la última se vació al cancelar) lleva a la última válida.
+  // Una página que no existe (URL vieja, o la última se vació tras reasignar) lleva a la última válida.
   useEffect(() => {
     if (!datos || datos.pagina !== pagina) return
     const ultima = totalPaginas(datos.total, LIMITE)
@@ -104,7 +104,7 @@ const Citas = () => {
     tablaRef.current?.scrollIntoView?.({ block: 'start' })
   }
 
-  // Las acciones recargan la lista actual: misma página y mismos filtros.
+  // El admin solo reasigna (completar y cancelar son de los barberos). Recarga la lista actual: misma página y filtros.
   const cambiarCita = async (cita, cambios, mensajeError) => {
     setErrorAccion('')
     setAccionCitaId(cita.id)
@@ -115,14 +115,6 @@ const Citas = () => {
       setErrorAccion(mensajeError ? `${mensajeError}: ${err.message}` : err.message)
     } finally {
       setAccionCitaId(null)
-    }
-  }
-
-  const handleCompletar = (cita) => cambiarCita(cita, { estado: 'completada' })
-
-  const handleCancelar = (cita) => {
-    if (window.confirm(`¿Seguro que quieres cancelar la cita de ${cita.cliente}?`)) {
-      cambiarCita(cita, { estado: 'cancelada' })
     }
   }
 
@@ -185,8 +177,6 @@ const Citas = () => {
               <TablaCitas
                 citas={datos.items}
                 mostrarBarbero
-                onCompletar={accionCitaId ? undefined : handleCompletar}
-                onCancelar={accionCitaId ? undefined : handleCancelar}
                 onReasignar={accionCitaId ? undefined : handleReasignar}
                 barberosActivos={barberosActivos}
               />

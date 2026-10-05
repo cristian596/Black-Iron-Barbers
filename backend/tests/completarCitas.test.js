@@ -30,10 +30,7 @@ beforeEach(async () => {
 });
 
 describe('PATCH /api/citas/:id — completar una cita de fecha futura', () => {
-  it.each([
-    ['admin', () => admin],
-    ['barbero dueño de la cita', () => barbero1],
-  ])('%s: 400 con codigo CITA_FUTURA si la cita es de mañana (hora de Bogotá)', async (_rol, token) => {
+  it.each([['barbero dueño de la cita', () => barbero1]])('%s: 400 con codigo CITA_FUTURA si la cita es de mañana (hora de Bogotá)', async (_rol, token) => {
     const id = await insertarCita({ fecha: '2026-10-05', estado: 'pendiente', barbero_id: 1 });
 
     const res = await patch(id, token(), { estado: 'completada' });
@@ -54,32 +51,36 @@ describe('PATCH /api/citas/:id — completar una cita de fecha futura', () => {
     expect(comoBarbero.body.estado).toBe('completada');
   });
 
-  it('una cita de un día pasado se puede completar (admin y barbero)', async () => {
+  it('una cita de un día pasado la completa el barbero; el admin ya no puede (403 SOLO_BARBERO)', async () => {
     const a = await insertarCita({ fecha: '2026-09-20', estado: 'pendiente', barbero_id: 1 });
     const b = await insertarCita({ fecha: '2026-09-21', estado: 'pendiente', barbero_id: 1 });
 
-    expect((await patch(a, admin, { estado: 'completada' })).status).toBe(200);
+    const comoAdmin = await patch(a, admin, { estado: 'completada' });
+    expect(comoAdmin.status).toBe(403);
+    expect(comoAdmin.body.codigo).toBe('SOLO_BARBERO');
     expect((await patch(b, barbero1, { estado: 'completada' })).status).toBe(200);
   });
 
-  it('una cita futura sí se puede cancelar y reasignar (el bloqueo es solo para completar)', async () => {
+  it('una cita futura sí se puede reasignar (admin) y cancelar (barbero dueño); el bloqueo es solo para completar', async () => {
     const id = await insertarCita({ fecha: '2030-06-15', estado: 'pendiente', barbero_id: 1 });
+    const otra = await insertarCita({ fecha: '2030-06-16', estado: 'pendiente', barbero_id: 1 });
 
     const reasignada = await patch(id, admin, { barbero_id: 2 });
     expect(reasignada.status).toBe(200);
     expect(reasignada.body.barbero_id).toBe(2);
 
-    const cancelada = await patch(id, admin, { estado: 'cancelada' });
+    const cancelada = await patch(otra, barbero1, { estado: 'cancelada' });
     expect(cancelada.status).toBe(200);
     expect(cancelada.body.estado).toBe('cancelada');
   });
 
-  it('completar y reasignar a la vez una cita futura también se rechaza y no cambia nada', async () => {
+  it('el admin que manda estado y barbero_id a la vez recibe 403 SOLO_BARBERO y no cambia nada', async () => {
     const id = await insertarCita({ fecha: '2030-06-15', estado: 'pendiente', barbero_id: 1 });
 
     const res = await patch(id, admin, { estado: 'completada', barbero_id: 2 });
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(403);
+    expect(res.body.codigo).toBe('SOLO_BARBERO');
     const { rows } = await pool.query('SELECT estado, barbero_id FROM citas WHERE id = $1', [id]);
     expect(rows[0]).toEqual({ estado: 'pendiente', barbero_id: 1 });
   });

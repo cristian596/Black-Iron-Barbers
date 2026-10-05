@@ -99,7 +99,7 @@ const Reportes = () => {
         <>
           {datos.pendientes_sin_cerrar > 0 && (
             <p role="status" className="min-w-0 rounded-lg border border-oro/40 bg-oro/10 p-3 text-sm text-zinc-100 print:border-zinc-500 print:bg-white print:text-black">
-              Hay {textoCitas(datos.pendientes_sin_cerrar)} sin cerrar; el reporte solo cuenta las completadas.{' '}
+              Hay {textoCitas(datos.pendientes_sin_cerrar)} sin cerrar: las cierran los barberos, y el reporte solo cuenta las completadas.{' '}
               <Link
                 to={`/admin/citas?pestana=todas&desde=${fecha}&hasta=${fecha}`}
                 className="inline-flex min-h-11 items-center font-semibold text-oro underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-oro print:hidden"

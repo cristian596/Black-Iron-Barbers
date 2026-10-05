@@ -44,7 +44,7 @@ Las partes se amplían a medida que se entregan. Marca cada caso en los anchos 3
 ### E. Contenido provisional
 
 - **Resumen, Servicios, Reportes:** muestran un aviso de que la sección llega en una parte posterior.
-- **Citas** y **Empleados:** conservan el comportamiento del panel anterior (resumen por estado/barbero, filtros, completar, cancelar y reasignar; crear usuario de barbero, resetear contraseña, activar y desactivar). Verifica que sigan funcionando igual.
+- **Citas** y **Empleados:** conservan el comportamiento del panel anterior (resumen por estado/barbero, filtros y reasignar (completar y cancelar ya no son del admin: ver la fase 2 del dashboard del barbero); crear usuario de barbero, resetear contraseña, activar y desactivar). Verifica que sigan funcionando igual.
 
 ### F. Corrección de `hoyISO()` (zona horaria)
 
@@ -134,7 +134,7 @@ Comprobaciones: (1) las citas demo tienen el cliente `[demo] Nombre`; (2) tus ci
 | Caso | Comando | Esperado |
 |---|---|---|
 | Resumen viejo retirado | `curl -i -H "Authorization: Bearer $TOKEN" $API/admin/resumen` | `404` (sin token `401`, con token de barbero `403`) |
-| Completar cita futura | `curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"estado":"completada"}' $API/citas/<id de una cita futura>` | `400` `{"error":"No se puede completar una cita de una fecha futura","codigo":"CITA_FUTURA"}`; la cita no cambia. Igual con el token de su barbero |
+| Completar cita futura (token del barbero dueño; el admin ya no puede, ver fase 2) | `curl -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"estado":"completada"}' $API/citas/<id de una cita futura>` | `400` `{"error":"No se puede completar una cita de una fecha futura","codigo":"CITA_FUTURA"}`; la cita no cambia. Igual con el token de su barbero |
 | Completar una de hoy o pasada | mismo comando con una cita de hoy o anterior | `200` |
 | Cancelar / reasignar una futura | `-d '{"estado":"cancelada"}'` o `-d '{"barbero_id":2}'` | `200` (el bloqueo es solo para completar) |
 | Cita de otro barbero | PATCH con token de un barbero sobre la cita de otro | sigue `404` (primero se comprueba que la cita sea suya) |
@@ -154,7 +154,7 @@ Entre las 7 pm y la medianoche "hoy" sigue siendo el día de Bogotá: una cita d
 8. **Rango de fechas:** "Desde" no admite una fecha posterior a "Hasta" (y viceversa). "Limpiar filtros" aparece solo con filtros activos y quita búsqueda, barbero y fechas (conserva la pestaña).
 9. **Estados:** cargando ("Cargando citas..."), vacío (`/admin/citas?q=zzzzzz` → "No hay citas que coincidan con los filtros." con "Limpiar filtros") y error (apaga el back-end y recarga: "No pudimos cargar las citas." con "Reintentar").
 10. **Sin bloque "Resumen"** en esta página (vive en `/admin`). El filtro por barbero sigue.
-11. **Acciones:** estando en la página 3 con un filtro, pulsa **Completar** (en una cita de hoy o pasada), **Cancelar** (pide confirmación) o cambia el barbero: la lista se recarga y sigues en la página 3 con el mismo filtro. En una cita futura, **Completar** muestra el mensaje "No se puede completar una cita de una fecha futura" y no cambia nada. Si cancelas la única cita de la última página, pasas a la anterior.
+11. **Acciones:** estando en la página 3 con un filtro, cambia el barbero de una cita pendiente: la lista se recarga y sigues en la página 3 con el mismo filtro. (Desde la fase 2 el admin ya no tiene **Completar** ni **Cancelar**: solo cambiar el barbero; ver la sección siguiente.)
 12. **Móvil (360–414 px):** las citas son tarjetas (con las acciones, incluido reasignar) y no hay scroll horizontal.
 
 ### M. Contraseña propia del admin
@@ -346,3 +346,46 @@ BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d
 4. **`/admin/empleados`:** cada barbero con acceso muestra un indicador discreto: "Vigente", "Caduca en N días" (ámbar) o "Caducada" (rojo), tanto en la tabla (escritorio) como en las tarjetas (móvil). Tras restablecer una contraseña desde **Contraseña**, el indicador vuelve a "Vigente". El formulario de restablecer avisa de que la nueva vale 60 días.
 5. **Responsive:** a 360, 375, 414, 768, 1024 y 1440 px el aviso (cerrado y con el formulario abierto), la pantalla obligatoria y `/admin/empleados` no tienen scroll horizontal (`scrollWidth` = `clientWidth`).
 6. **Limpieza:** desactiva o borra tu barbero de prueba y restaura la contraseña del admin si la cambiaste.
+
+---
+
+## Dashboard del barbero, fase 2 — el admin no completa ni cancela, y endpoints del barbero
+
+No cambia el esquema ni los datos. Usa un barbero de prueba y citas de prueba; no cierres citas reales con curl.
+
+### X. Completar y cancelar (curl)
+
+```bash
+API=http://localhost:5001/api
+ADMIN=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"admin_blackiron","contrasena":"..."}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"prueba_uno","contrasena":"..."}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+```
+
+| Qué haces | Qué debe pasar |
+|---|---|
+| `curl -X PATCH $API/citas/<id> -H "Authorization: Bearer $ADMIN" -H 'Content-Type: application/json' -d '{"estado":"completada"}'` (también `cancelada`, o con `barbero_id` a la vez) | `403` `codigo: "SOLO_BARBERO"`; la cita no cambia |
+| Lo mismo con `-d '{"barbero_id":2}'` | `200` (el admin sigue reasignando) |
+| Con el token del barbero dueño: `{"estado":"completada"}` en una cita de hoy o anterior; `{"estado":"cancelada"}` en cualquiera | `200` |
+| El barbero sobre la cita de otro barbero | `404` |
+| El barbero con `{"barbero_id":2}` | `403` |
+| Completar una cita futura (barbero dueño) | `400` `CITA_FUTURA` |
+
+### Y. Endpoints del barbero (curl)
+
+| Qué haces | Qué debe pasar |
+|---|---|
+| `curl $API/barbero/resumen -H "Authorization: Bearer $BARBERO"` | `200` con `fecha`, `citas_hoy`, `completadas_hoy`, `pendientes_hoy`, `proxima_cita`, `ingresos_hoy`, `cortes_mes`, `ingresos_mes`, `por_confirmar`: solo las cifras de ese barbero |
+| `curl $API/barbero/citas-por-confirmar …` | `{ total, tope: 100, items }`: sus pendientes cuyo fin + 2 h ya pasó, de la más antigua a la más reciente, con `termino_hace_min` y `vencida_hace_min` |
+| `curl $API/barbero/agenda-hoy …` | `{ fecha, citas }` por hora, con estado, servicio, duración, precio y `por_confirmar` |
+| Cualquier parámetro: `?barbero_id=2`, `?fecha=…`, `?x=1&x=2` | `400` `PARAMETRO_INVALIDO`: el barbero nunca se elige desde el cliente |
+| Sin token / con el token del admin | `401` / `403` |
+| Con la contraseña caducada (ver la fase 1) | `403` `CONTRASENA_CADUCADA` |
+| Con un usuario desactivado | `401` `SESION_INVALIDA` |
+| Regla de las 2 horas: crea una cita pendiente de hoy que terminó hace menos de 2 h y otra que terminó hace más | solo la segunda aparece en `citas-por-confirmar`; al completarla (como barbero) desaparece |
+
+### Z. Pantallas
+
+1. **`/admin/citas`:** ya no hay botones **Completar** ni **Cancelar** (ni diálogo de confirmación). En una cita pendiente solo queda el selector para reasignar. Las pendientes de un día pasado muestran la etiqueta **Vencida**.
+2. **`/admin/reportes`:** con citas pendientes, el aviso dice "Hay N citas sin cerrar: las cierran los barberos, y el reporte solo cuenta las completadas." y el enlace "Ver las citas de este día" sigue llevando a `/admin/citas` filtrado a ese día.
+3. **Resumen y citas recientes:** siguen de solo lectura.
+4. **Responsive:** a 360, 375, 414, 768, 1024 y 1440 px, `/admin/citas` con citas vencidas y `/admin/reportes` con el aviso no tienen scroll horizontal (`scrollWidth` = `clientWidth`).

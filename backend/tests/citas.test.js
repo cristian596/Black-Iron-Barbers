@@ -147,7 +147,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
     const creada = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '10:00' }));
     await request(app)
       .patch(`/api/citas/${creada.body.id}`)
-      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .set('Authorization', `Bearer ${tokenBarbero1}`)
       .send({ estado: 'cancelada' });
 
     const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '10:30' }));
@@ -207,7 +207,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
     const original = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
     await request(app)
       .patch(`/api/citas/${original.body.id}`)
-      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .set('Authorization', `Bearer ${tokenBarbero1}`)
       .send({ estado: 'cancelada' });
 
     // El hueco liberado lo toma otra cita distinta.
@@ -215,7 +215,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
 
     const res = await request(app)
       .patch(`/api/citas/${original.body.id}`)
-      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .set('Authorization', `Bearer ${tokenBarbero1}`)
       .send({ estado: 'pendiente' });
 
     expect(res.status).toBe(409);

@@ -189,12 +189,12 @@ describe('Reportes: contenido', () => {
 })
 
 describe('Reportes: citas sin cerrar', () => {
-  it('avisa cuántas hay, aclara que solo cuenta las completadas y enlaza a /admin/citas filtrado a ese día', async () => {
+  it('avisa cuántas hay, aclara que las cierran los barberos y que solo cuenta las completadas, y enlaza a /admin/citas filtrado a ese día', async () => {
     vi.mocked(api.obtenerReporteDiario).mockResolvedValue(reporte({ pendientes_sin_cerrar: 3 }))
     montar()
     await esperarCarga()
 
-    const aviso = screen.getByText(/Hay 3 citas sin cerrar; el reporte solo cuenta las completadas\./)
+    const aviso = screen.getByText(/Hay 3 citas sin cerrar: las cierran los barberos, y el reporte solo cuenta las completadas\./)
     expect(aviso).toBeInTheDocument()
     expect(within(aviso).getByRole('link', { name: 'Ver las citas de este día' })).toHaveAttribute(
       'href', `/admin/citas?pestana=todas&desde=${HOY}&hasta=${HOY}`

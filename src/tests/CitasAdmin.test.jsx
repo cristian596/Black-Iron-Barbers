@@ -373,33 +373,27 @@ describe('/admin/citas: acciones sobre una cita', () => {
     vi.mocked(api.actualizarCita).mockResolvedValue({})
   })
 
-  it('completar recarga la lista conservando la página y los filtros', async () => {
-    montar('/admin/citas?pestana=proximas&q=ana&barbero=2&pagina=3')
-    await screen.findByText('Mostrando 31–45 de 435')
-    const antes = vi.mocked(api.obtenerCitasAdmin).mock.calls.length
-
-    await userEvent.click(screen.getAllByRole('button', { name: 'Completar' })[0])
-
-    expect(api.actualizarCita).toHaveBeenCalledWith('tok', 31, { estado: 'completada' })
-    await waitFor(() => expect(vi.mocked(api.obtenerCitasAdmin).mock.calls.length).toBe(antes + 1))
-    expect(ultimaConsulta()).toEqual({
-      pestana: 'proximas', q: 'ana', desde: '', hasta: '', barbero: '2', pagina: 3, limite: 15,
-    })
-    expect(parametros().get('pagina')).toBe('3')
-  })
-
-  it('cancelar pide confirmación; si se acepta, cancela y recarga; si no, no hace nada', async () => {
+  it('el admin ya no puede completar ni cancelar: no hay botones ni diálogos, solo la reasignación', async () => {
     const confirmar = vi.spyOn(window, 'confirm')
-    montar()
+    montar('/admin/citas?pestana=proximas')
     await screen.findByText('Mostrando 1–15 de 435')
 
-    confirmar.mockReturnValueOnce(false)
-    await userEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0])
+    expect(screen.queryByRole('button', { name: 'Completar' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Cancelar' })).toBeNull()
+    expect(screen.getAllByLabelText(/Reasignar barbero de la cita de Cliente 1$/).length).toBeGreaterThan(0)
+    expect(confirmar).not.toHaveBeenCalled()
     expect(api.actualizarCita).not.toHaveBeenCalled()
+  })
 
-    confirmar.mockReturnValueOnce(true)
-    await userEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0])
-    expect(api.actualizarCita).toHaveBeenCalledWith('tok', 1, { estado: 'cancelada' })
+  it('las pendientes vencidas se siguen marcando como "Vencida" (informativo: las cierra el barbero)', async () => {
+    vi.mocked(api.obtenerCitasAdmin).mockResolvedValue({
+      items: [cita(1, { vencida: true, fecha: '2026-09-01' }), cita(2)],
+      total: 2, pagina: 1, limite: 15,
+    })
+    montar()
+    await screen.findByText('Mostrando 1–2 de 2')
+    expect(screen.getAllByText('Vencida').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Pendiente').length).toBeGreaterThan(0)
   })
 
   it('reasignar cambia el barbero de la cita y recarga la lista', async () => {
@@ -414,29 +408,15 @@ describe('/admin/citas: acciones sobre una cita', () => {
     expect(ultimaConsulta().pagina).toBe(2)
   })
 
-  it('si el back-end rechaza (por ejemplo completar una cita futura) muestra el mensaje y no recarga', async () => {
-    vi.mocked(api.actualizarCita).mockRejectedValue(new Error('No se puede completar una cita de una fecha futura'))
+  it('si el back-end rechaza la reasignación muestra el mensaje y no recarga', async () => {
+    vi.mocked(api.actualizarCita).mockRejectedValue(new Error('Ese barbero ya tiene una cita que se cruza con ese horario'))
     montar()
     await screen.findByText('Mostrando 1–15 de 435')
     const antes = vi.mocked(api.obtenerCitasAdmin).mock.calls.length
 
-    await userEvent.click(screen.getAllByRole('button', { name: 'Completar' })[0])
+    await userEvent.selectOptions(screen.getAllByLabelText(/Reasignar barbero de la cita de Cliente 1$/)[0], '2')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('No se puede completar una cita de una fecha futura')
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo reasignar la cita: Ese barbero ya tiene una cita que se cruza con ese horario')
     expect(vi.mocked(api.obtenerCitasAdmin).mock.calls.length).toBe(antes)
-  })
-
-  it('si al cancelar se vacía la última página, la lista pasa a la última válida', async () => {
-    let total = 16 // 2 páginas: la segunda tiene 1 cita
-    vi.mocked(api.obtenerCitasAdmin).mockImplementation((t, f) => respuestaPaginada(total)(t, f))
-    montar('/admin/citas?pagina=2')
-    await screen.findByText('Mostrando 16–16 de 16')
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    total = 15
-
-    await userEvent.click(screen.getAllByRole('button', { name: 'Cancelar' })[0])
-
-    expect(await screen.findByText('Mostrando 1–15 de 15')).toBeInTheDocument()
-    expect(parametros().has('pagina')).toBe(false)
   })
 })
