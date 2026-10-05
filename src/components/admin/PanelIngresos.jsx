@@ -12,9 +12,9 @@ const AGRUPACIONES = [
 
 const hayDatos = (datos) => [...datos.puntos, ...datos.anteriores].some((p) => p.ingresos > 0)
 
-const PanelIngresos = ({ token, className = '' }) => {
+const PanelIngresos = ({ token, obtener = obtenerIngresos, className = '' }) => {
   const [agrupar, setAgrupar] = useState('dia')
-  const { datos, cargando, error, recargar } = useCarga(() => obtenerIngresos(token, agrupar), agrupar)
+  const { datos, cargando, error, recargar } = useCarga(() => obtener(token, agrupar), agrupar)
   const { descripcion } = AGRUPACIONES.find((a) => a.id === agrupar)
   // Al cambiar de agrupación hasta que llega la nueva respuesta, los datos viejos no corresponden.
   const vigente = datos && datos.agrupar === agrupar

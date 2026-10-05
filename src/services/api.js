@@ -211,3 +211,13 @@ export const obtenerAgendaHoy = (token, signal) => request('/barbero/agenda-hoy'
 // Lista paginada de "Mis citas" del barbero: { pestana, q, desde, hasta, pagina, limite } → { items, pagina, limite, total, conteos }.
 export const obtenerMisCitas = (token, filtros, signal) =>
   request(`/barbero/citas${construirQuery(filtros)}`, { headers: authHeader(token), signal });
+
+// Estadísticas personales del barbero (mismas formas que las del admin, solo con sus citas; el barbero sale del token).
+export const obtenerMisEstadisticas = (token, periodo, signal) =>
+  request(`/barbero/estadisticas${construirQuery({ periodo })}`, { headers: authHeader(token), signal });
+
+export const obtenerMisIngresos = (token, agrupar, signal) =>
+  request(`/barbero/estadisticas/ingresos${construirQuery({ agrupar })}`, { headers: authHeader(token), signal });
+
+export const obtenerMisServiciosTop = (token, periodo, limite, signal) =>
+  request(`/barbero/estadisticas/servicios-top${construirQuery({ periodo, limite })}`, { headers: authHeader(token), signal });

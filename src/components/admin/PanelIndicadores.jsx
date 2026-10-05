@@ -12,9 +12,12 @@ const FORMATOS = {
   numero: (n) => Number(n).toLocaleString('es-CO'),
 }
 
-// Cinco tarjetas con el período elegido y su comparación con el período anterior (rango visible).
-const PanelIndicadores = ({ token, periodo }) => {
-  const { datos, cargando, error, recargar } = useCarga(() => obtenerEstadisticas(token, periodo), periodo)
+// Tarjetas con el período elegido y su comparación con el período anterior (rango visible). Sin props extra son las
+// cinco del admin; el panel del barbero pasa sus cuatro `indicadores`, su `obtener` y un `mensajeVacio`.
+const COLUMNAS = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5' }
+
+const PanelIndicadores = ({ token, periodo, obtener = obtenerEstadisticas, indicadores = INDICADORES, mensajeVacio }) => {
+  const { datos, cargando, error, recargar } = useCarga(() => obtener(token, periodo), periodo)
   const { comparacion } = PERIODOS.find((p) => p.id === periodo)
 
   if (error) {
@@ -45,8 +48,8 @@ const PanelIndicadores = ({ token, periodo }) => {
           Cargando indicadores...
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          {INDICADORES.map(({ clave, etiqueta, formato, invertir }, i) => (
+        <div className={`grid grid-cols-2 gap-3 ${COLUMNAS[indicadores.length]}`}>
+          {indicadores.map(({ clave, etiqueta, formato, invertir }, i) => (
             <TarjetaIndicador
               key={clave}
               etiqueta={etiqueta}
@@ -54,10 +57,13 @@ const PanelIndicadores = ({ token, periodo }) => {
               actual={datos.actual[clave]}
               previo={datos.previo[clave]}
               invertir={invertir}
-              className={i === INDICADORES.length - 1 ? 'col-span-2 lg:col-span-1' : ''}
+              className={i === indicadores.length - 1 && indicadores.length % 2 === 1 ? 'col-span-2 lg:col-span-1' : ''}
             />
           ))}
         </div>
+      )}
+      {datos && mensajeVacio && datos.actual.completadas === 0 && (
+        <p className="text-sm text-zinc-400">{mensajeVacio}</p>
       )}
     </section>
   )

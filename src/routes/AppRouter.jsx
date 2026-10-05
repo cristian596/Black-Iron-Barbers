@@ -13,6 +13,8 @@ const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
 const PanelLayout = lazy(() => import('../pages/panel/PanelLayout'));
 const ResumenBarbero = lazy(() => import('../pages/panel/Resumen'));
 const MisCitas = lazy(() => import('../pages/panel/MisCitas'));
+const MiRendimiento = lazy(() => import('../pages/panel/MiRendimiento'));
+const MiCuenta = lazy(() => import('../pages/panel/MiCuenta'));
 const AdminLayout = lazy(() => import('../pages/admin/AdminLayout'));
 const Resumen = lazy(() => import('../pages/admin/Resumen'));
 const CitasAdmin = lazy(() => import('../pages/admin/Citas'));
@@ -63,6 +65,8 @@ const AppRouter = createBrowserRouter([
     children: [
       { index: true, element: <ResumenBarbero /> },
       { path: 'citas', element: <MisCitas /> },
+      { path: 'rendimiento', element: <MiRendimiento /> },
+      { path: 'cuenta', element: <MiCuenta /> },
       { path: '*', element: <Navigate to="/panel" replace /> },
     ]
   },

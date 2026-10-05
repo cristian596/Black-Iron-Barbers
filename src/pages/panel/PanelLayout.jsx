@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { ResumenBarberoProvider, useResumenBarbero } from '../../context/ResumenBarberoContext'
 import { useBarberosActivos } from '../../hooks/useBarberosActivos'
@@ -21,6 +21,8 @@ const ContenidoPanel = () => {
   const { token, logout, vigencia, actualizarVigencia } = useAuth()
   const { resumen, porConfirmar, barbero } = useResumenBarbero()
   const navigate = useNavigate()
+  // En /panel/cuenta el aviso (con su formulario) va dentro de la propia página: así nunca hay dos formularios a la vez.
+  const enCuenta = useLocation().pathname === '/panel/cuenta'
   const [contrasenaCambiada, setContrasenaCambiada] = useState(false)
   // La bienvenida sale una vez por inicio de sesión: al montar se lee la marca de sessionStorage (se borra al cerrar
   // sesión), y cuando la ventana se muestra se escribe, así que recargar la página no la repite.
@@ -45,7 +47,7 @@ const ContenidoPanel = () => {
 
   const encabezado = (
     <>
-      {vigencia?.estado === 'por_vencer' && <AvisoCaducidad vigencia={vigencia} token={token} alCambiada={alCambiarContrasena} />}
+      {vigencia?.estado === 'por_vencer' && !enCuenta && <AvisoCaducidad vigencia={vigencia} token={token} alCambiada={alCambiarContrasena} />}
       <p className="rounded-lg bg-green-900/40 p-3 text-green-300 empty:hidden" role="status">
         {contrasenaCambiada ? 'Contraseña actualizada. La nueva vale 60 días.' : ''}
       </p>

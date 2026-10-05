@@ -8,9 +8,9 @@ import SinResultados from '../ui/SinResultados'
 const LIMITE = 5
 
 // Servicios más pedidos del período elegido; solo cuenta citas completadas.
-const PanelServiciosTop = ({ token, periodo, className = '' }) => {
+const PanelServiciosTop = ({ token, periodo, obtener = obtenerServiciosTop, className = '' }) => {
   const { datos, cargando, error, recargar } = useCarga(
-    () => obtenerServiciosTop(token, periodo, LIMITE),
+    () => obtener(token, periodo, LIMITE),
     periodo
   )
   const { etiqueta } = PERIODOS.find((p) => p.id === periodo)

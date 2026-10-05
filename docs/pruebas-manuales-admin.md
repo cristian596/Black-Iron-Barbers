@@ -466,3 +466,53 @@ curl -s "$API/barbero/citas?pestana=completadas&limite=5&pagina=2" -H "Authoriza
 6. **Paginación:** 15 por página con "Mostrando 1–15 de N"; en móvil, "Anterior · Página 2 de 3 · Siguiente".
 7. **`/admin/citas`** se ve y funciona igual que antes (pestañas sin conteo, filtro de barbero, reasignar).
 8. **Responsive (API real):** a 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal en ninguna pestaña, en el estado vacío, con filtros activos ni con paginación; los controles miden al menos 44 px.
+
+---
+
+## Dashboard del barbero, fase 5 — Mi rendimiento (`/panel/rendimiento`) y Mi cuenta (`/panel/cuenta`)
+
+No cambia el esquema. Necesitas citas completadas del barbero (ver la fase 3: `seed:demo`).
+
+### AH. Endpoints de estadísticas (curl)
+
+```bash
+API=http://localhost:5001/api
+BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d '{"usuario":"prueba_f3a","contrasena":"..."}' | node -pe 'JSON.parse(require("fs").readFileSync(0)).token')
+curl -s "$API/barbero/estadisticas?periodo=30d" -H "Authorization: Bearer $BARBERO"
+curl -s "$API/barbero/estadisticas/ingresos?agrupar=dia" -H "Authorization: Bearer $BARBERO"
+curl -s "$API/barbero/estadisticas/servicios-top?periodo=mes&limite=5" -H "Authorization: Bearer $BARBERO"
+```
+
+| Qué haces | Qué debe pasar |
+|---|---|
+| `GET $API/barbero/estadisticas` (sin parámetros) | `200`: período `hoy`, `{ periodo, anterior, actual, previo }` con `citas`, `completadas`, `canceladas`, `ingresos` y `ticket_promedio`, solo del barbero del token |
+| `?periodo=7d` / `30d` / `mes` | el período y el anterior con la misma cantidad de días (`mes`: del 1 al día de hoy contra el mismo tramo del mes anterior) |
+| `/estadisticas/ingresos` y `?agrupar=mes` | 30 días (12 meses) y los 30 (12) anteriores, con ceros incluidos |
+| `/estadisticas/servicios-top?limite=3` | sus servicios más pedidos (solo completadas), con `cantidad` e `ingresos` (el precio de la cita) |
+| Ingresos | suma el precio guardado en la cita; las canceladas no suman y el ticket promedio excluye las de precio 0 |
+| `?barbero_id=2`, `?x=1`, `?periodo=7d&periodo=30d`, `?periodo=ayer`, `?agrupar=semana`, `?limite=21` | `400` `PARAMETRO_INVALIDO` (el barbero nunca se elige desde el cliente) |
+| Sin token / con el token del admin | `401` / `403` |
+| Con la contraseña caducada / usuario desactivado | `403` `CONTRASENA_CADUCADA` / `401` `SESION_INVALIDA` |
+| `POST`, `PATCH`, `DELETE` a estas rutas | `404` |
+| `GET /api/admin/estadisticas` con el token del admin | sigue sumando a todos los barberos y sus 400 no llevan `codigo` |
+
+Para ver el estado "por vencer" sin esperar 58 días: `UPDATE usuarios SET contrasena_cambiada_en = now() - interval '58 days' WHERE usuario = 'prueba_f3c';` (y devuélvelo a `now()` al terminar).
+
+### AI. Pantalla `/panel/rendimiento`
+
+1. El menú lateral tiene cuatro entradas: **Resumen**, **Mis citas**, **Mi rendimiento** y **Mi cuenta**; la actual va marcada.
+2. Elige **Hoy**, **7 días**, **30 días** y **Mes**: las cuatro tarjetas (**Cortes**, **Ingresos**, **Ticket promedio**, **Canceladas**) y los **Servicios más pedidos** cambian; cada tarjeta se compara con el período anterior (flecha y porcentaje; "—" si el anterior no tiene datos).
+3. El gráfico de **Ingresos** (por día o por mes) es solo con tus citas; con el lector de pantalla se anuncia como imagen y tiene su tabla de datos.
+4. Entra con un barbero sin citas completadas (`prueba_f3b`): ceros ($0, 0), "No tienes cortes completados en este período.", "Todavía no hay ingresos en este rango." y "Aún no hay servicios completados en este período." Nunca "NaN" ni "Gratis".
+5. Apaga el back-end y recarga: cada panel muestra su error con **Reintentar**.
+6. Con citas por confirmar, el aviso fijo sigue abajo; con la contraseña por vencer, el aviso de caducidad sigue arriba.
+
+### AJ. Pantalla `/panel/cuenta`
+
+1. Muestra el avatar (iniciales si no hay foto), nombre, cargo, especialidad y usuario, sin campos editables.
+2. **Contraseña vigente:** "Tu contraseña está vigente. Vence el <fecha>; faltan N días." y "Solo el administrador puede restablecer tu contraseña antes de que venza". No hay formulario ni botón de cambiar contraseña.
+3. **Por vencer** (2 días o menos): aviso ámbar con **Cambiar contraseña**; al abrirlo aparece UN solo formulario (el del layout no se repite en esta ruta). Cámbiala: "Contraseña actualizada. La nueva vale 60 días." y la página pasa a "vigente".
+4. **Caducada:** aparece la pantalla obligatoria "Tu contraseña caducó" en lugar del panel.
+5. **Cerrar sesión** (botón de la página) cierra la sesión y lleva a `/acceso`.
+6. Una ruta desconocida como `/panel/cuenta/otra` vuelve a `/panel`; sin sesión, `/panel/cuenta` lleva a `/acceso`, y el admin no entra.
+7. **Responsive (API real):** a 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal en ninguno de los cuatro períodos (con datos y con un barbero vacío), ni en Mi cuenta (vigente, por vencer y con el formulario abierto); los controles miden al menos 44 px.
