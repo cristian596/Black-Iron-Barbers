@@ -522,3 +522,21 @@ Para ver el estado "por vencer" sin esperar 58 días: `UPDATE usuarios SET contr
 5. **Cerrar sesión** (botón de la página) cierra la sesión y lleva a `/acceso`.
 6. Una ruta desconocida como `/panel/cuenta/otra` vuelve a `/panel`; sin sesión, `/panel/cuenta` lleva a `/acceso`, y el admin no entra.
 7. **Responsive (API real):** a 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal en ninguno de los cuatro períodos (con datos y con un barbero vacío), ni en Mi cuenta (vigente, por vencer y con el formulario abierto); los controles miden al menos 44 px.
+
+---
+
+## Login (`/acceso`)
+
+Requisitos: backend y front arriba. Marca cada caso en 360, 375, 414, 768, 1024 y 1440 px.
+
+1. **Diseño:** a ≥ 1024 px hay panel de marca a la izquierda (logo, frase y 3 puntos) y la tarjeta a la derecha; por debajo, una sola columna con la insignia dorada dentro de la tarjeta. No hay menú público, franja de garantía, footer ni botón de WhatsApp. Sin scroll horizontal.
+2. **Foco y teclado:** al abrir, el cursor está en Usuario. Tab recorre Usuario → Contraseña → ojo → Ingresar, con contorno dorado visible. El ojo muestra y oculta la contraseña.
+3. **Texto de ayuda:** "¿Olvidaste tu contraseña? Pídele al administrador que la restablezca" no es un enlace. No hay "Registrarse" ni "Recordarme". "← Volver al sitio" lleva a `/`.
+4. **Bloq Mayús:** con Bloq Mayús activo, al escribir en Contraseña aparece "Bloq Mayús está activado"; se va al desactivarlo o al salir del campo.
+5. **Credenciales:** usuario inexistente, usuario desactivado y contraseña incorrecta dan el mismo mensaje: "Usuario o contraseña incorrectos". Campos vacíos: "Usuario y contraseña son obligatorios" (sin petición).
+6. **Carga:** al enviar, el botón dice "Ingresando..." y está deshabilitado; pulsar Enter varias veces seguidas envía una sola petición (pestaña Red).
+7. **Servidor caído:** detén el backend e intenta entrar: "No pudimos conectar con el servidor...". Con el back-end devolviendo 5xx: "El servidor no está disponible por ahora...".
+8. **Límite de intentos:** con 10 intentos fallidos seguidos, el undécimo muestra "Demasiados intentos. Vuelve a intentarlo en 15 minutos." y el botón queda en "Espera 14:59" y deshabilitado; la cuenta atrás baja y, al llegar a 0, se habilita. En la pestaña Red, la respuesta 429 trae `reintentar_en_seg` en el cuerpo. (Para repetirlo sin esperar, reinicia el backend: el contador vive en memoria.)
+9. **Sesión expirada:** inicia sesión, abre DevTools → Application → Local Storage y cambia el `token` por texto basura o desactiva al usuario desde el admin y recarga una página del panel. Esperado: vuelves a `/acceso` con "Tu sesión expiró. Vuelve a iniciar sesión". Si en cambio pulsas "Cerrar sesión", ese aviso NO aparece.
+10. **Redirecciones:** admin → `/admin`; barbero → `/panel`; barbero con la contraseña caducada → pantalla "Tu contraseña caducó"; con sesión activa, abrir `/acceso` te lleva a tu panel.
+11. **Móvil con teclado:** en DevTools reduce la altura a ~320 px (teclado abierto): el formulario sigue accesible haciendo scroll y no hay scroll horizontal. Con "Reducir movimiento" activado no hay animaciones de entrada.

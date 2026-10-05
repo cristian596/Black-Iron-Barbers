@@ -23,8 +23,12 @@ const request = async (path, options = {}) => {
         ...options.headers,
       },
     });
-  } catch {
-    throw new Error('No se pudo conectar con el servidor');
+  } catch (err) {
+    // Una petición cancelada (AbortController) no es un fallo de red: se propaga tal cual.
+    if (err?.name === 'AbortError') throw err;
+    const error = new Error('No se pudo conectar con el servidor');
+    error.red = true;
+    throw error;
   }
 
   let data = null;
@@ -50,6 +54,8 @@ const request = async (path, options = {}) => {
     // Campo del formulario al que se refiere el error y datos de apoyo (p. ej. cuántos servicios activos tiene una categoría).
     if (data?.campo) error.campo = data.campo;
     if (data?.total_servicios !== undefined) error.total_servicios = data.total_servicios;
+    // Segundos que faltan para poder reintentar (429 del login); viene en el cuerpo porque el CORS no expone Retry-After.
+    if (Number.isFinite(data?.reintentar_en_seg)) error.reintentar_en_seg = data.reintentar_en_seg;
     throw error;
   }
 

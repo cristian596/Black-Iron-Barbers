@@ -41,14 +41,19 @@ const AppRouter = createBrowserRouter([
         element: <ReservaCorte />
       },
       {
-        path: 'acceso',
-        element: <LoginBarberos/>
-      },
-      {
         path: '*',
         element: <NotFound />
       },
     ]
+  },
+  {
+    // Pantalla propia, fuera de Landingpage: sin barra pública, footer ni WhatsApp.
+    path: 'acceso',
+    element: (
+      <Suspense fallback={<CargandoPagina/>}>
+        <LoginBarberos/>
+      </Suspense>
+    )
   },
   {
     path: 'panel',

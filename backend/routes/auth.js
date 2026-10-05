@@ -10,7 +10,16 @@ const limitarLogin = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: 'Demasiados intentos de inicio de sesión, intenta más tarde' },
+  // El cuerpo lleva el tiempo restante: el CORS no expone Retry-After al navegador (otro origen en desarrollo), así
+  // que el front lee `reintentar_en_seg` del JSON en vez de depender de cabeceras.
+  handler: (req, res, next, opciones) => {
+    const reintentarEnSeg = Math.max(1, Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000));
+    res.status(opciones.statusCode).json({
+      error: 'Demasiados intentos de inicio de sesión, intenta más tarde',
+      codigo: 'DEMASIADOS_INTENTOS',
+      reintentar_en_seg: reintentarEnSeg,
+    });
+  },
   // Como en citas: las pruebas inician sesión decenas de veces; FORZAR_RATE_LIMIT_PRUEBA=true lo reactiva.
   skip: () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true',
 });

@@ -88,6 +88,15 @@ src/
   - El login devuelve `vigencia` (estado de la contraseña del barbero, `null` para el admin). `GET /api/admin/empleados` añade `usuario.vigencia` (nunca hashes). El campo se llama `vigencia` (y no "contraseña") para que ninguna respuesta lleve la palabra `contrasena`.
   - Front: `AuthContext` guarda `vigencia` (`undefined` = aún no se sabe tras recargar: `Panel` consulta `/auth/sesion`; `null` = no aplica). `/panel`: `por_vencer` → `AvisoCaducidad` (formulario solo desde ahí); `caducada` → `CambioObligatorio` (sin el resto del panel, con cerrar sesión). Un 403 `CONTRASENA_CADUCADA` en cualquier llamada lleva a esa pantalla (`setContrasenaCaducadaHandler` en `api.js`), no al login. El panel del barbero ya no tiene el cambio libre; el admin lo conserva en su menú de usuario. `/admin/empleados` muestra `IndicadorVigencia` (vigente, "Caduca en N días", caducada).
 
+### Pantalla de acceso (`/acceso`, `pages/LoginBarberos.jsx`)
+
+- **Ruta de nivel superior** en `AppRouter` (lazy + Suspense), **fuera de `Landingpage`**: sin franja de garantía, menú público, footer, botón de Inicio ni WhatsApp. Sigue con `NoIndex`, `robots.txt` y sin enlaces desde la web pública. Único enlace de salida: "← Volver al sitio" (`/`).
+- Diseño: escritorio (≥ 1024 px) dividido (`components/login/PanelMarca`, logo grande, frase y 3 puntos de `data/puntosAcceso.js`) + tarjeta; por debajo, una columna con la insignia (`InsigniaLogo`, `/Login/logo.jpg`) dentro de la tarjeta. Reutiliza `CampoFormulario` y `CampoContrasena` (ojo mostrar/ocultar). El campo sigue siendo "Usuario". No hay registro, "Recordarme" ni enlace de contraseña olvidada (solo el texto: "Pídele al administrador que la restablezca"). Entrada con `animate-hero-entrada` (`motion-safe:`) y `Revelar` (este solo anima lo que arranca bajo el pliegue).
+- UX: foco inicial en Usuario, `autocomplete` `username`/`current-password`, botón con estado de carga y guarda `useRef` contra doble envío, aviso de Bloq Mayús (`getModifierState('CapsLock')`). Errores en `role="alert"`: 401 = mensaje genérico (también usuario inactivo/inexistente), `error.red` (fallo de fetch; lo marca `request()` en `api.js`) y 5xx = servidor no disponible, 429 = límite.
+- **429 (límite de login, 10 intentos cada 15 min, sin cambios):** el back-end responde `{ error, codigo: 'DEMASIADOS_INTENTOS', reintentar_en_seg }` (`handler` del limitador en `routes/auth.js`, calculado con `req.rateLimit.resetTime`). **Se eligió el cuerpo JSON y no la cabecera `Retry-After`/`RateLimit-Reset`**: el CORS (`cors({ origin })`) no las expone al navegador en otro origen y así no hay que tocar el CORS ni depender de proxies. `Retry-After` se sigue enviando. El front (`hooks/useCuentaAtras.js`) muestra "Vuelve a intentarlo en N minutos" y deja el botón deshabilitado ("Espera m:ss") hasta que acaba; sin `reintentar_en_seg` asume 15 min.
+- **Sesión expirada:** `AuthContext` expone `sesionExpirada` (solo en memoria, nada sensible). Lo activan el handler de 401 con token (`expirarSesion`, que `api.js` llama como antes) y la restauración de un token ya vencido; `logout` (cierre voluntario) no, y `login` lo limpia. El login muestra "Tu sesión expiró. Vuelve a iniciar sesión" (`role="status"`).
+- Redirecciones sin cambios: admin → `/admin`, barbero → `/panel` (con la contraseña caducada el layout muestra la pantalla obligatoria); con sesión activa, `/acceso` redirige al panel.
+
 ## API
 
 | Método | Ruta | Acceso |
@@ -219,7 +228,7 @@ src/
 ## Estado actual
 
 - Front-end conectado a la API (login, reserva, paneles de barbero y admin) y back-end completo (auth, citas, admin).
-- Rutas públicas: `/`, `/cortes`, `/reservar-corte` y `/acceso`. Se eliminaron las páginas de carta de bebidas, ubicación y la sección `Descripcion` del inicio (`/ubicacion` y `/carta-bebidas` muestran la 404); la dirección y el horario salen de `src/data/negocio.js`.
+- Rutas públicas: `/`, `/cortes` y `/reservar-corte`, más `/acceso` (pantalla propia, sin el layout público). Se eliminaron las páginas de carta de bebidas, ubicación y la sección `Descripcion` del inicio (`/ubicacion` y `/carta-bebidas` muestran la 404); la dirección y el horario salen de `src/data/negocio.js`.
 - `Cortes.jsx` y `Galeria.jsx` sin JSX repetido: `Cortes.jsx` lee de `GET /api/servicios` (catálogo con filtros por categoría y tipo), `Galeria.jsx` usa `src/data/galeria.js` + `.map()`.
 - ESLint en 0 errores/warnings; `App.jsx` eliminado; todo unificado en `react-router-dom`.
 - Rendimiento: logo comprimido a WebP (1.22 MB → ~109 KB), `loading="lazy"` en imágenes bajo el pliegue, rutas con `React.lazy` + `Suspense`.

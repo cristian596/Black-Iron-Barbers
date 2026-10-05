@@ -28,7 +28,6 @@ const rutasPublicas = [
   ['inicio', '/'],
   ['servicios', '/cortes'],
   ['reserva', '/reservar-corte'],
-  ['acceso', '/acceso'],
   ['404', '/una-ruta-que-no-existe'],
   ['404 (ubicación eliminada)', '/ubicacion'],
   ['404 (carta eliminada)', '/carta-bebidas'],
@@ -59,16 +58,24 @@ describe('NavBar en todas las rutas', () => {
     expect(hrefs.some((h) => /^\/(acceso|panel|admin)/.test(h))).toBe(false)
   }, ESPERA_TEST)
 
-  it('en /acceso el menú no marca ningún enlace como activo', async () => {
+  // /acceso es una pantalla propia: sin garantía, menú público, footer ni botón de WhatsApp.
+  it('/acceso no lleva el layout público (sin menú, garantía ni WhatsApp), con un solo h1 y noindex', async () => {
     montar('/acceso')
-    const nav = within(await screen.findByRole('navigation', { name: 'Principal' }, { timeout: ESPERA_CARGA }))
-    nav.getAllByRole('link').forEach((a) => expect(a).not.toHaveAttribute('aria-current'))
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Agenda Barberos' }, { timeout: ESPERA_CARGA })).toBeInTheDocument()
+    expect(screen.queryByRole('banner')).not.toBeInTheDocument()
+    expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
+    expect(screen.queryByRole('contentinfo')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Garantía de satisfacción/)).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /WhatsApp/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+    expect(document.head.querySelector('meta[name="robots"][content="noindex, nofollow"]')).not.toBeNull()
   }, ESPERA_TEST)
 
   it.each([['/panel'], ['/admin'], ['/admin/citas'], ['/admin/servicios'], ['/admin/empleados'], ['/admin/reportes']])('%s sin sesión redirige al acceso sin romperse', async (ruta) => {
     const { router } = montar(ruta)
 
-    await screen.findByRole('banner', {}, { timeout: ESPERA_CARGA })
+    await screen.findByRole('heading', { level: 1, name: 'Agenda Barberos' }, { timeout: ESPERA_CARGA })
     expect(router.state.location.pathname).toBe('/acceso')
   }, ESPERA_TEST)
 })

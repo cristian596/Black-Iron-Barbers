@@ -21,7 +21,9 @@ const tokenVencido = (payload) => {
 
 // `vigencia`: estado de la contraseña del barbero ({ estado, dias_restantes, vence_en }). `undefined` = aún no se
 // sabe (sesión restaurada del navegador: el panel la consulta a /auth/sesion); `null` = no aplica (admin).
-const SIN_SESION = { token: null, usuario: null, vigencia: null }
+// `sesionExpirada`: la sesión terminó sin que el usuario la cerrara (401 con token o token vencido); solo en memoria,
+// la pantalla de acceso lo muestra como aviso. No guarda nada sensible.
+const SIN_SESION = { token: null, usuario: null, vigencia: null, sesionExpirada: false }
 
 const restaurarSesion = () => {
   const tokenGuardado = localStorage.getItem('token')
@@ -30,7 +32,7 @@ const restaurarSesion = () => {
   const payload = decodificarToken(tokenGuardado)
   if (!payload || tokenVencido(payload)) {
     localStorage.removeItem('token')
-    return SIN_SESION
+    return { ...SIN_SESION, sesionExpirada: true }
   }
 
   return {
@@ -50,6 +52,13 @@ export const AuthProvider = ({ children }) => {
     setSesion(SIN_SESION)
   }, [])
 
+  // Cierre no pedido por el usuario (401 de una petición con token): igual que logout, pero deja el motivo para el login.
+  const expirarSesion = useCallback(() => {
+    localStorage.removeItem('token')
+    olvidarBienvenida()
+    setSesion({ ...SIN_SESION, sesionExpirada: true })
+  }, [])
+
   const actualizarVigencia = useCallback((vigencia) => {
     setSesion((actual) => ({ ...actual, vigencia }))
   }, [])
@@ -66,13 +75,14 @@ export const AuthProvider = ({ children }) => {
         barbero_id: data.usuario.barbero_id,
       },
       vigencia: data.vigencia ?? null,
+      sesionExpirada: false,
     })
   }, [])
 
   useEffect(() => {
-    setUnauthorizedHandler(logout)
+    setUnauthorizedHandler(expirarSesion)
     return () => setUnauthorizedHandler(null)
-  }, [logout])
+  }, [expirarSesion])
 
   useEffect(() => {
     setContrasenaCaducadaHandler(() =>
@@ -87,7 +97,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, actualizarVigencia, cargando, login, logout }}
+      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, sesionExpirada: sesion.sesionExpirada, actualizarVigencia, cargando, login, logout }}
     >
       {children}
     </AuthContext.Provider>
