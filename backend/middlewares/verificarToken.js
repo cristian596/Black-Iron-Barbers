@@ -25,7 +25,8 @@ const crearVerificador = ({ permitirCaducada }) => async (req, res, next) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT u.id, u.usuario, u.rol, u.barbero_id, u.activo, u.contrasena_cambiada_en, b.activo AS barbero_activo
+      `SELECT u.id, u.usuario, u.rol, u.barbero_id, u.activo, u.contrasena_cambiada_en, u.nombre_perfil, u.foto_perfil,
+              b.activo AS barbero_activo, b.nombre AS barbero_nombre, b.foto AS barbero_foto
        FROM usuarios u
        LEFT JOIN barberos b ON b.id = u.barbero_id
        WHERE u.id = $1`,
@@ -44,7 +45,19 @@ const crearVerificador = ({ permitirCaducada }) => async (req, res, next) => {
         codigo: 'CONTRASENA_CADUCADA',
       });
     }
-    req.usuario = { ...payload, id: actual.id, usuario: actual.usuario, rol: actual.rol, barbero_id: actual.barbero_id, vigencia };
+    // El perfil (y el nombre y la foto públicos del barbero) viaja en la misma consulta: /api/perfil no necesita otra.
+    req.usuario = {
+      ...payload,
+      id: actual.id,
+      usuario: actual.usuario,
+      rol: actual.rol,
+      barbero_id: actual.barbero_id,
+      vigencia,
+      nombre_perfil: actual.nombre_perfil,
+      foto_perfil: actual.foto_perfil,
+      barbero_nombre: actual.barbero_nombre,
+      barbero_foto: actual.barbero_foto,
+    };
     next();
   } catch (err) {
     next(err);

@@ -159,3 +159,25 @@ CREATE TABLE IF NOT EXISTS migraciones_aplicadas (
 -- (en los arranques siguientes la columna ya existe y no se toca nada). Se actualiza desde Node (no con NOW()) cada
 -- vez que se fija una contraseña: cambio propio, restablecimiento del admin, alta de empleado o de acceso.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena_cambiada_en TIMESTAMPTZ NOT NULL DEFAULT now();
+
+-- Perfil del dashboard (nombre y foto que solo existen dentro del panel; aditivo e idempotente). NULL = se usan los
+-- valores públicos (barberos.nombre / barberos.foto; para el admin, usuarios.usuario). Nunca tocan la web pública.
+--  - foto_perfil guarda solo el nombre del archivo (UUID + extensión) dentro de la carpeta de subidas, no la ruta.
+--  - cambios_perfil registra los cambios de los barberos (el admin no registra) para avisar al admin. Guarda el valor
+--    efectivo anterior y nuevo; "revisado" lo marca el admin (por barbero) y el índice parcial acelera el conteo.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS nombre_perfil VARCHAR(40);
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS foto_perfil VARCHAR(100);
+
+CREATE TABLE IF NOT EXISTS cambios_perfil (
+  id SERIAL PRIMARY KEY,
+  usuario_id INT NOT NULL REFERENCES usuarios(id),
+  barbero_id INT NOT NULL REFERENCES barberos(id),
+  campo VARCHAR(10) NOT NULL CHECK (campo IN ('foto', 'nombre')),
+  valor_anterior VARCHAR(255),
+  valor_nuevo VARCHAR(255),
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  revisado_en TIMESTAMPTZ,
+  revisado_por INT REFERENCES usuarios(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cambios_perfil_pendientes ON cambios_perfil (barbero_id) WHERE revisado_en IS NULL;

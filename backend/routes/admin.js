@@ -5,6 +5,7 @@ import { listarUsuarios, crearUsuario, actualizarUsuario } from '../controllers/
 import { obtenerEstadisticas, obtenerIngresos, obtenerServiciosTop } from '../controllers/estadisticasController.js';
 import { listarEmpleados, crearEmpleado, actualizarEmpleado } from '../controllers/adminEmpleadosController.js';
 import { reporteDiario, reporteDiarioCsv } from '../controllers/adminReportesController.js';
+import { listarCambiosPerfil, revisarCambiosPerfil, restablecerPerfil } from '../controllers/adminPerfilController.js';
 import { listarCitasAdmin } from '../controllers/adminCitasController.js';
 import {
   listarServiciosAdmin,
@@ -36,6 +37,10 @@ router.patch('/categorias/:id', actualizarCategoria);
 router.get('/empleados', listarEmpleados);
 router.post('/empleados', crearEmpleado);
 router.patch('/empleados/:id', actualizarEmpleado);
+// Cambios de perfil de los barberos (nombre y foto del dashboard): aviso, revisión y restablecimiento.
+router.get('/cambios-perfil', listarCambiosPerfil);
+router.post('/cambios-perfil/revisar', revisarCambiosPerfil);
+router.post('/barberos/:id/restablecer-perfil', restablecerPerfil);
 router.get('/usuarios', listarUsuarios);
 router.post('/usuarios', crearUsuario);
 router.patch('/usuarios/:id', actualizarUsuario);

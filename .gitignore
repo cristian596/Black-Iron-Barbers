@@ -28,3 +28,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Fotos de perfil subidas desde el dashboard (no versionadas)
+backend/uploads/

@@ -32,8 +32,12 @@ services:
       ADMIN_USER: ${ADMIN_USER}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       FRONTEND_URL: ${FRONTEND_URL}
+    volumes:
+      # Fotos de perfil subidas desde el dashboard (backend/uploads): sobreviven a recrear el contenedor.
+      - fotos_perfil_data:/app/uploads
     depends_on:
       - db_black_iron
 
 volumes:
   postgres_barber_data:
+  fotos_perfil_data:
