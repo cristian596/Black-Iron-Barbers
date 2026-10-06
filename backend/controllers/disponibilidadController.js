@@ -7,6 +7,7 @@ import {
   intervaloDentroDeHorario,
   minutosDesdeMedianoche,
 } from '../utils/fechas.js';
+import { cargarServicios, leerServiciosCsv } from '../utils/serviciosCita.js';
 
 const obtenerBarberosActivos = async () => {
   const { rows } = await pool.query('SELECT id FROM barberos WHERE activo = true ORDER BY id');
@@ -38,29 +39,45 @@ const estaLibre = (barberoId, hora, duracionMin, ocupadas) => {
 
 export const obtenerDisponibilidad = async (req, res, next) => {
   try {
-    const { barbero, fecha, servicio } = req.query;
+    const { barbero, fecha, servicio, servicios: serviciosCsv } = req.query;
 
-    if (!fecha || !servicio) {
+    if (!fecha || (!servicio && !serviciosCsv)) {
       return res.status(400).json({ error: 'Los parámetros servicio y fecha son obligatorios' });
+    }
+    if (servicio !== undefined && serviciosCsv !== undefined) {
+      return res.status(400).json({
+        error: 'Envía servicios o servicio, no los dos a la vez',
+        codigo: 'DATOS_INVALIDOS',
+        campo: 'servicios',
+      });
     }
 
     if (!esFechaValida(fecha)) {
       return res.status(400).json({ error: 'La fecha debe tener el formato AAAA-MM-DD' });
     }
 
-    const servicioId = Number(servicio);
-    if (!Number.isInteger(servicioId)) {
-      return res.status(400).json({ error: 'El servicio debe ser un id numérico' });
+    let idsServicios;
+    if (serviciosCsv !== undefined) {
+      // Varios servicios (1 a 3, sin repetidos): se atienden seguidos como un solo bloque.
+      const lectura = leerServiciosCsv(serviciosCsv);
+      if (lectura.error) return res.status(lectura.error.status).json(lectura.error.cuerpo);
+      idsServicios = lectura.ids;
+    } else {
+      // Formato anterior `servicio=<id>`: mismas respuestas de siempre (404 si no existe, 400 si está inactivo).
+      const servicioId = Number(servicio);
+      if (!Number.isInteger(servicioId)) {
+        return res.status(400).json({ error: 'El servicio debe ser un id numérico' });
+      }
+      const { rows: existentes } = await pool.query('SELECT activo FROM servicios WHERE id = $1', [servicioId]);
+      if (existentes.length === 0) {
+        return res.status(404).json({ error: 'Servicio no encontrado' });
+      }
+      idsServicios = [servicioId];
     }
 
-    const { rows: servicios } = await pool.query('SELECT duracion_min, activo FROM servicios WHERE id = $1', [servicioId]);
-    if (servicios.length === 0) {
-      return res.status(404).json({ error: 'Servicio no encontrado' });
-    }
-    if (!servicios[0].activo) {
-      return res.status(400).json({ error: 'El servicio seleccionado no existe o no está disponible', codigo: 'SERVICIO_NO_DISPONIBLE' });
-    }
-    const duracionMin = servicios[0].duracion_min;
+    const cargados = await cargarServicios(pool, idsServicios);
+    if (cargados.error) return res.status(cargados.error.status).json(cargados.error.cuerpo);
+    const duracionMin = cargados.duracion; // suma de los servicios: el cierre y los solapamientos usan el bloque completo
 
     let grid = generarHorasDisponibles().filter((hora) => intervaloDentroDeHorario(hora, duracionMin));
 

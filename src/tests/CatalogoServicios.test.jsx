@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import CatalogoServicios from '../components/sections/CatalogoServicios'
 import * as api from '../services/api'
+import { ProveedorCarrito } from '../context/CarritoContext'
 import { SERVICIOS_API } from './fixturesServicios'
 
 vi.mock('../services/api')
@@ -11,7 +12,7 @@ vi.mock('../services/api')
 const montar = async () => {
   render(
     <MemoryRouter>
-      <CatalogoServicios />
+      <ProveedorCarrito><CatalogoServicios /></ProveedorCarrito>
     </MemoryRouter>
   )
   await screen.findByRole('group', { name: 'Filtrar servicios' })
@@ -19,9 +20,10 @@ const montar = async () => {
 
 const grupoCategorias = () => screen.getByRole('group', { name: 'Categoría' })
 const grupoTipos = () => screen.getByRole('group', { name: 'Tipo de servicio' })
-const tarjetasVisibles = () => screen.queryAllByRole('button', { name: 'Seleccionar' }).length
+const tarjetasVisibles = () => screen.queryAllByRole('button', { name: 'Agregar a mi selección' }).length
 
 beforeEach(() => {
+  sessionStorage.clear()
   vi.mocked(api.obtenerServicios).mockResolvedValue(SERVICIOS_API)
 })
 
@@ -119,7 +121,7 @@ describe('CatalogoServicios', () => {
     vi.mocked(api.obtenerServicios).mockRejectedValue(new Error('No se pudo conectar con el servidor'))
     render(
       <MemoryRouter>
-        <CatalogoServicios />
+        <ProveedorCarrito><CatalogoServicios /></ProveedorCarrito>
       </MemoryRouter>
     )
 
@@ -132,7 +134,7 @@ describe('CatalogoServicios', () => {
     vi.mocked(api.obtenerServicios).mockRejectedValueOnce(new Error('No se pudo conectar con el servidor'))
     render(
       <MemoryRouter>
-        <CatalogoServicios />
+        <ProveedorCarrito><CatalogoServicios /></ProveedorCarrito>
       </MemoryRouter>
     )
 
@@ -149,7 +151,7 @@ describe('CatalogoServicios', () => {
   it('mientras carga muestra un estado accesible (role="status")', async () => {
     render(
       <MemoryRouter>
-        <CatalogoServicios />
+        <ProveedorCarrito><CatalogoServicios /></ProveedorCarrito>
       </MemoryRouter>
     )
 

@@ -134,6 +134,7 @@ describe('pestañas y marca "Vencida" (reloj: 22:00 del 4 de oct en Bogotá)', (
       servicio_id: 1,
       barbero_id: 1,
       servicio_nombre: 'Corte de prueba',
+      servicios: [{ id: 1, nombre: 'Corte de prueba', duracion_min: 30, precio: 50000 }],
       barbero_nombre: 'Barbero Uno',
       vencida: false,
     });

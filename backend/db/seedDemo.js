@@ -172,11 +172,18 @@ export const sembrarDemo = async (pool, { simular = false, semilla } = {}) => {
   try {
     await cliente.query('BEGIN');
     for (const c of citas) {
-      await cliente.query(
+      const { rows } = await cliente.query(
         `INSERT INTO citas
            (cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado, creada_en, consentimiento_en)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)`,
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11)
+         RETURNING id`,
         [c.cliente, c.correo, c.telefono, c.servicio_id, c.barbero_id, c.fecha, c.hora, c.duracion_min, c.precio, c.estado, c.creada_en]
+      );
+      // Cada cita demo lleva su única línea de servicio (snapshot: nombre del catálogo, duración y precio de la cita).
+      await cliente.query(
+        `INSERT INTO cita_servicios (cita_id, servicio_id, orden, nombre, duracion_min, precio)
+         SELECT $1, s.id, 1, s.nombre, $3, $4 FROM servicios s WHERE s.id = $2`,
+        [rows[0].id, c.servicio_id, c.duracion_min, c.precio]
       );
     }
     await cliente.query('COMMIT');

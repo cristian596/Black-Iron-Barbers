@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Cortes from '../pages/Cortes'
 import * as api from '../services/api'
+import { ProveedorCarrito } from '../context/CarritoContext'
 
 vi.mock('../services/api')
 
@@ -26,6 +27,7 @@ class IntersectionObserverFalso {
 // tarjetas, por debajo del viewport
 let rectOriginal
 beforeEach(() => {
+  sessionStorage.clear()
   observers.length = 0
   vi.stubGlobal('IntersectionObserver', IntersectionObserverFalso)
   rectOriginal = Element.prototype.getBoundingClientRect
@@ -54,7 +56,9 @@ afterEach(() => {
 const montar = async () => {
   const vista = render(
     <MemoryRouter>
-      <Cortes />
+      <ProveedorCarrito>
+        <Cortes />
+      </ProveedorCarrito>
     </MemoryRouter>
   )
   await screen.findByText('Servicio 6')
@@ -78,10 +82,10 @@ describe('Cortes con Revelar', () => {
 
   it('las tarjetas fuera de la primera pantalla quedan ocultas y entran escalonadas', async () => {
     await montar()
-    const tarjetas = screen.getAllByRole('button', { name: 'Seleccionar' }).map(contenedorDe)
+    const tarjetas = screen.getAllByRole('button', { name: 'Agregar a mi selección' }).map(contenedorDe)
 
     tarjetas.forEach((t) => expect(t).toHaveClass('opacity-0'))
-    expect(tarjetas.map((t) => t.style.transitionDelay)).toEqual(['', '80ms', '160ms', '240ms', '', '80ms'])
+    expect(tarjetas.map((t) => t.style.transitionDelay)).toEqual(['', '80ms', '160ms', '', '80ms', '160ms'])
     // Un único observer compartido para las seis tarjetas
     expect(observers).toHaveLength(1)
     expect(observers[0].observe).toHaveBeenCalledTimes(6)
@@ -99,13 +103,13 @@ describe('Cortes con Revelar', () => {
 
   it('al volver a elegir una categoría, las tarjetas que se mantienen no vuelven a animarse', async () => {
     await montar()
-    const primera = contenedorDe(screen.getAllByRole('button', { name: 'Seleccionar' })[0])
+    const primera = contenedorDe(screen.getAllByRole('button', { name: 'Agregar a mi selección' })[0])
     act(() => observers[0].disparar(true, [primera]))
     expect(primera).toHaveClass('opacity-100')
 
     // "Todos" vuelve a seleccionarse: la lista no cambia y no se remonta nada
     fireEvent.click(within(screen.getByRole('group', { name: 'Categoría' })).getByRole('button', { name: 'Todos' }))
-    expect(contenedorDe(screen.getAllByRole('button', { name: 'Seleccionar' })[0])).toBe(primera)
+    expect(contenedorDe(screen.getAllByRole('button', { name: 'Agregar a mi selección' })[0])).toBe(primera)
     expect(primera).toHaveClass('opacity-100')
     expect(primera).not.toHaveClass('opacity-0')
   })

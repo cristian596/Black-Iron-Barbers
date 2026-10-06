@@ -118,7 +118,7 @@ describe('GET /api/barbero/citas: permisos y parámetros', () => {
     const res = await get('?pestana=todas&limite=50');
     expect(JSON.stringify(res.body)).not.toMatch(/correo|telefono|example\.com|3001234567/);
     expect(Object.keys(res.body.items[0]).sort()).toEqual(
-      ['cliente', 'duracion_min', 'estado', 'fecha', 'hora', 'id', 'por_confirmar', 'precio', 'servicio_nombre']
+      ['cliente', 'duracion_min', 'estado', 'fecha', 'hora', 'id', 'por_confirmar', 'precio', 'servicio_nombre', 'servicios']
     );
   });
 });

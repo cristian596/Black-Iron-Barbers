@@ -39,3 +39,12 @@ export const tiempoTranscurrido = (minutos) => {
 }
 
 export const textoCitas = (n) => `${n} ${n === 1 ? 'cita' : 'citas'}`
+
+// Duración en minutos legible: "45 min", "1 h", "1 h 15 min".
+export const formatearDuracion = (minutos) => {
+  const total = Math.max(0, Math.round(Number(minutos) || 0))
+  if (total < 60) return `${total} min`
+  const horas = Math.floor(total / 60)
+  const resto = total % 60
+  return resto === 0 ? `${horas} h` : `${horas} h ${resto} min`
+}

@@ -1,5 +1,8 @@
 import { FcClock } from 'react-icons/fc'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useId } from 'react'
+import { useCarrito } from '../../context/CarritoContext'
+import { avisoMismaCategoria, enlaceReservaIndividual, evaluarAgregado } from '../../utils/carrito'
 import InsigniaTipo from './InsigniaTipo'
 import { formatearPrecio } from '../../utils/formato'
 import { nombreCategoria } from '../../utils/servicios'
@@ -40,21 +43,54 @@ const ContenidoServicio = ({ servicio, Titulo, marcado = false }) => (
   </>
 )
 
-// Catálogo: el botón "Seleccionar" lleva a la reserva con ?servicio=<id>.
+// Catálogo: "Agregar a mi selección" suma el servicio al carrito (hasta 3) y "Reservar solo este" mantiene el camino
+// rápido (?servicio=<id>) sin tocar el carrito. Si no se puede agregar (máximo de servicios o de duración del combo) el
+// botón queda con aria-disabled —sigue enfocable— y el motivo se explica con texto visible enlazado con aria-describedby.
 const TarjetaServicio = ({ servicio, Titulo = 'h3' }) => {
-  const navigate = useNavigate()
+  const { ids, seleccion, alternar } = useCarrito()
+  const idAyuda = useId()
+
+  const seleccionado = ids.includes(servicio.id)
+  const evaluacion = seleccionado ? { permitido: true, mensaje: '' } : evaluarAgregado(seleccion, servicio, ids.length)
+  const bloqueado = !evaluacion.permitido
+  // Aviso suave (no bloquea): ya hay otro servicio de la misma categoría.
+  const ayuda = bloqueado ? evaluacion.mensaje : seleccionado ? null : avisoMismaCategoria(seleccion, servicio)
 
   return (
-    <div className='flex flex-col bg-white border border-gray-300 rounded-2xl p-4 shadow-md hover:shadow-xl hover:-translate-y-1 duration-300'>
-      <ContenidoServicio servicio={servicio} Titulo={Titulo} />
+    <div
+      className={`flex flex-col rounded-2xl border p-4 shadow-md hover:shadow-xl hover:-translate-y-1 duration-300 ${
+        seleccionado ? 'border-oro bg-[#FFFBF0] ring-2 ring-oro' : 'border-gray-300 bg-white'
+      }`}
+    >
+      <ContenidoServicio servicio={servicio} Titulo={Titulo} marcado={seleccionado} />
 
       <button
         type='button'
-        onClick={() => navigate(`/reservar-corte?servicio=${servicio.id}`)}
-        className='mt-4 rounded-xl bg-oro text-black font-bold font-cinzel py-2 hover:bg-black hover:text-oro cursor-pointer active:scale-95 duration-300'
+        aria-pressed={seleccionado}
+        aria-disabled={bloqueado || undefined}
+        aria-describedby={ayuda ? idAyuda : undefined}
+        onClick={() => {
+          if (!bloqueado) alternar(servicio)
+        }}
+        className={`mt-4 min-h-11 rounded-xl px-3 py-2 font-cinzel font-bold active:scale-95 duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:active:scale-100 ${
+          seleccionado ? 'bg-black text-oro hover:bg-zinc-800' : 'bg-oro text-black hover:bg-black hover:text-oro'
+        } ${bloqueado ? 'hover:bg-oro hover:text-black' : 'cursor-pointer'}`}
       >
-        Seleccionar
+        {seleccionado ? 'Quitar de mi selección' : 'Agregar a mi selección'}
       </button>
+
+      {ayuda && (
+        <p id={idAyuda} className='mt-2 font-poppins text-xs font-medium text-zinc-700'>
+          {ayuda}
+        </p>
+      )}
+
+      <Link
+        to={enlaceReservaIndividual(servicio.id)}
+        className='mt-1 flex min-h-11 items-center justify-center rounded-xl px-3 font-poppins text-sm font-semibold text-zinc-800 underline underline-offset-4 hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-black'
+      >
+        Reservar solo este
+      </Link>
     </div>
   )
 }

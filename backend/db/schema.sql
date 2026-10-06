@@ -181,3 +181,31 @@ CREATE TABLE IF NOT EXISTS cambios_perfil (
 );
 
 CREATE INDEX IF NOT EXISTS idx_cambios_perfil_pendientes ON cambios_perfil (barbero_id) WHERE revisado_en IS NULL;
+
+-- Varios servicios por cita (máx. 3, ver utils/serviciosCita.js). Aditivo e idempotente.
+--  - citas.duracion_min y citas.precio son la SUMA de las líneas (así rango, el EXCLUDE, ingresos y ticket promedio no
+--    cambian) y citas.servicio_id queda como "servicio principal" (el primero) por compatibilidad.
+--  - Cada línea guarda un snapshot (nombre, duración y precio al reservar): renombrar o editar el servicio después no
+--    altera la cita ya hecha. UNIQUE (cita_id, orden) con orden 1..3 fuerza el máximo de 3 también en la base.
+--  - ON DELETE CASCADE: la única baja de citas es la limpieza de las demo.
+CREATE TABLE IF NOT EXISTS cita_servicios (
+  id SERIAL PRIMARY KEY,
+  cita_id INT NOT NULL REFERENCES citas(id) ON DELETE CASCADE,
+  servicio_id INT NOT NULL REFERENCES servicios(id),
+  orden SMALLINT NOT NULL CHECK (orden BETWEEN 1 AND 3),
+  nombre VARCHAR(150) NOT NULL,
+  duracion_min INT NOT NULL CHECK (duracion_min > 0),
+  precio INT NOT NULL CHECK (precio >= 0),
+  UNIQUE (cita_id, servicio_id),
+  UNIQUE (cita_id, orden)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cita_servicios_servicio ON cita_servicios (servicio_id);
+
+-- Backfill: una línea por cada cita que aún no tiene ninguna. Duración y precio salen de la propia cita (su snapshot);
+-- el nombre, del catálogo actual (solo para este snapshot inicial). Repetible: no duplica ni pisa nada.
+INSERT INTO cita_servicios (cita_id, servicio_id, orden, nombre, duracion_min, precio)
+SELECT c.id, c.servicio_id, 1, s.nombre, c.duracion_min, c.precio
+FROM citas c
+JOIN servicios s ON s.id = c.servicio_id
+WHERE NOT EXISTS (SELECT 1 FROM cita_servicios cs WHERE cs.cita_id = c.id);

@@ -6,10 +6,12 @@ import FixedWhatsapp from '../components/layout/FixedWhatsapp';
 import FixedHome from '../components/layout/FixedHome';
 import FranjaGarantia from '../components/layout/FranjaGarantia';
 import CargandoPagina from '../components/ui/CargandoPagina';
+import { ProveedorCarrito } from '../context/CarritoContext';
 
 const Landingpage = () => {
   return (
-    <>
+    // La selección de servicios vive aquí para sobrevivir a la navegación entre la carta y la reserva.
+    <ProveedorCarrito>
         {/*Vive la experiencia */}
     {/*Franja de garantia, siempre arriba del navbar*/}
     <FranjaGarantia/>
@@ -30,7 +32,7 @@ const Landingpage = () => {
     <FixedWhatsapp/>
 
 
-    </>
+    </ProveedorCarrito>
   )
 }
 

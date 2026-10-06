@@ -2,6 +2,7 @@ import { pool } from '../db/connection.js';
 import { ahoraBogota } from '../utils/fechas.js';
 import { esFechaCalendario } from '../utils/periodos.js';
 import { validarParametros, leerEntero, escaparLike } from '../utils/parametrosQuery.js';
+import { COLUMNAS_SERVICIOS, unirServiciosDeCita, algunServicioCoincide } from '../db/citaServicios.js';
 
 const PARAMETROS = ['pestana', 'q', 'desde', 'hasta', 'barbero', 'pagina', 'limite'];
 const PESTANAS = ['proximas', 'todas', 'canceladas'];
@@ -10,9 +11,9 @@ const LIMITE_MAXIMO = 50;
 const PAGINA_MAXIMA = 1_000_000;
 const MAX_LONGITUD_Q = 100;
 
+// El conteo no necesita los servicios; la lista los une (nombre y arreglo, del snapshot de cada cita).
 const DESDE = `
   FROM citas c
-  JOIN servicios s ON s.id = c.servicio_id
   JOIN barberos b ON b.id = c.barbero_id`;
 
 // Lista paginada para el admin. Las pendientes de días pasados salen con `vencida: true` y no entran en
@@ -80,7 +81,7 @@ export const listarCitasAdmin = async (req, res, next) => {
       valores.push(`%${escaparLike(q.trim())}%`);
       const p = `$${valores.length}`;
       condiciones.push(
-        `(c.cliente ILIKE ${p} ESCAPE '\\' OR s.nombre ILIKE ${p} ESCAPE '\\' OR b.nombre ILIKE ${p} ESCAPE '\\')`
+        `(c.cliente ILIKE ${p} ESCAPE '\\' OR ${algunServicioCoincide(p)} OR b.nombre ILIKE ${p} ESCAPE '\\')`
       );
     }
 
@@ -94,9 +95,9 @@ export const listarCitasAdmin = async (req, res, next) => {
       pool.query(
         `SELECT c.id, c.cliente, c.correo, c.telefono, c.fecha::text AS fecha, c.hora::text AS hora, c.estado,
                 c.duracion_min, c.precio, c.servicio_id, c.barbero_id,
-                s.nombre AS servicio_nombre, b.nombre AS barbero_nombre,
+                ${COLUMNAS_SERVICIOS}, b.nombre AS barbero_nombre,
                 (c.estado = 'pendiente' AND (c.fecha + c.hora) < $${iAhora}::timestamp) AS vencida
-         ${DESDE} ${where}
+         ${DESDE} ${unirServiciosDeCita()} ${where}
          ORDER BY ${orden}
          LIMIT $${iAhora + 1} OFFSET $${iAhora + 2}`,
         [...valores, ahora, tamano, (paginaActual - 1) * tamano]

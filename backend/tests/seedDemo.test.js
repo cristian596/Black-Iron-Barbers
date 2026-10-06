@@ -160,6 +160,22 @@ describe('sembrarDemo / limpiarDemo contra la base de pruebas', () => {
     expect(rows[0].n).toBe(0);
   });
 
+  it('cada cita demo lleva su línea en cita_servicios (snapshot coherente) y limpiar se las lleva en cascada', async () => {
+    await sembrarDemo(pool);
+    const { rows } = await pool.query(
+      `SELECT COUNT(*)::int AS n FROM citas c
+       LEFT JOIN cita_servicios cs ON cs.cita_id = c.id AND cs.orden = 1
+       WHERE starts_with(c.cliente, $1)
+         AND (cs.id IS NULL OR cs.servicio_id <> c.servicio_id OR cs.duracion_min <> c.duracion_min OR cs.precio <> c.precio)`,
+      [MARCA_DEMO]
+    );
+    expect(rows[0].n).toBe(0);
+
+    await limpiarDemo(pool);
+    const lineas = await pool.query('SELECT COUNT(*)::int AS n FROM cita_servicios');
+    expect(lineas.rows[0].n).toBe(0);
+  });
+
   it('se niega a duplicar: si ya hay datos demo pide limpiar primero', async () => {
     await sembrarDemo(pool);
     await expect(sembrarDemo(pool)).rejects.toThrow(/Ya hay \d+ citas demo/);
