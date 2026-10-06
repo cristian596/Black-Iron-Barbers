@@ -482,6 +482,27 @@ describe('Registro en cambios_perfil', () => {
     expect(JSON.stringify(res.body)).not.toMatch(/contrasena|hash/i);
   });
 
+  it('GET admin trae el perfil ACTUAL del barbero (nombre_perfil, foto_url, foto_propia) además de los cambios', async () => {
+    await cambiarNombre(tokenB1, { nombre_perfil: 'Pepe' });
+    const sinFoto = (await request(app).get('/api/admin/cambios-perfil').set(auth(tokenAdmin))).body.barberos[0];
+    expect(sinFoto).toMatchObject({ barbero_id: 1, nombre: 'Barbero Uno', nombre_perfil: 'Pepe', foto_url: '/Barberos/uno.jpg', foto_propia: false });
+
+    const archivo = (await subir(tokenB1, png())).body.foto_url.split('/').pop();
+    const conFoto = (await request(app).get('/api/admin/cambios-perfil').set(auth(tokenAdmin))).body.barberos[0];
+    expect(conFoto).toMatchObject({ nombre: 'Barbero Uno', nombre_perfil: 'Pepe', foto_url: `/api/perfil/foto/${archivo}`, foto_propia: true });
+    expect(conFoto.cambios.map((c) => c.campo)).toEqual(['foto', 'nombre']); // la más reciente primero
+    expect(conFoto.cambios[0]).toMatchObject({ valor_anterior: '/Barberos/uno.jpg', valor_nuevo: archivo, creado_en: expect.any(String) });
+  });
+
+  it('un cambio posterior a la revisión vuelve a aparecer con solo lo nuevo', async () => {
+    await cambiarNombre(tokenB1, { nombre_perfil: 'Pepe' });
+    await request(app).post('/api/admin/cambios-perfil/revisar').set(auth(tokenAdmin)).send({ barbero_id: 1 });
+    await subir(tokenB1, png());
+    const { body } = await request(app).get('/api/admin/cambios-perfil').set(auth(tokenAdmin));
+    expect(body.total_barberos).toBe(1);
+    expect(body.barberos[0].cambios.map((c) => c.campo)).toEqual(['foto']);
+  });
+
   it('GET admin: sin cambios → cero; parámetros desconocidos → 400', async () => {
     const vacio = await request(app).get('/api/admin/cambios-perfil').set(auth(tokenAdmin));
     expect(vacio.body).toEqual({ total_barberos: 0, barberos: [] });

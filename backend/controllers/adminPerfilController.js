@@ -2,21 +2,25 @@
 // El aviso cuenta BARBEROS distintos con algún cambio sin revisar; "revisar" y "restablecer" actúan por barbero.
 import { pool } from '../db/connection.js';
 import { validarParametros, leerEntero } from '../utils/parametrosQuery.js';
-import { borrarArchivosFoto } from './perfilController.js';
+import { RUTA_FOTO, borrarArchivosFoto } from './perfilController.js';
 
 const fallo = (res, estado, codigo, error, extra = {}) => res.status(estado).json({ error, codigo, ...extra });
 
 const barberoExiste = async (cliente, id) => (await cliente.query('SELECT 1 FROM barberos WHERE id = $1', [id])).rowCount > 0;
 
-// GET /api/admin/cambios-perfil → { total_barberos, barberos: [{ barbero_id, nombre, ultimo_cambio, cambios: [...] }] }
-// `nombre` es el público (barberos.nombre); cada cambio trae campo, valor_anterior, valor_nuevo y creado_en.
+// GET /api/admin/cambios-perfil → { total_barberos, barberos: [{ barbero_id, nombre, nombre_perfil, foto_url, foto_propia,
+//   ultimo_cambio, cambios: [...] }] }
+// `nombre` es el público (barberos.nombre). `nombre_perfil`, `foto_url` y `foto_propia` son el perfil ACTUAL del usuario que
+// hizo el último cambio (misma forma que GET /api/perfil: foto_url es la subida o, si no hay, la pública). Cada cambio trae
+// campo, valor_anterior, valor_nuevo y creado_en.
 export const listarCambiosPerfil = async (req, res, next) => {
   try {
     const error = validarParametros(req.query, []);
     if (error) return fallo(res, 400, 'PARAMETRO_INVALIDO', error);
 
     const { rows } = await pool.query(
-      `SELECT c.id, c.barbero_id, b.nombre, u.usuario, c.campo, c.valor_anterior, c.valor_nuevo, c.creado_en
+      `SELECT c.id, c.barbero_id, b.nombre, b.foto AS foto_publica, u.usuario, u.nombre_perfil, u.foto_perfil,
+              c.campo, c.valor_anterior, c.valor_nuevo, c.creado_en
        FROM cambios_perfil c
        JOIN barberos b ON b.id = c.barbero_id
        JOIN usuarios u ON u.id = c.usuario_id
@@ -27,7 +31,16 @@ export const listarCambiosPerfil = async (req, res, next) => {
     const porBarbero = new Map();
     for (const fila of rows) {
       if (!porBarbero.has(fila.barbero_id)) {
-        porBarbero.set(fila.barbero_id, { barbero_id: fila.barbero_id, nombre: fila.nombre, ultimo_cambio: fila.creado_en, cambios: [] });
+        // Las filas llegan de la más reciente a la más antigua: la primera de cada barbero marca su perfil actual.
+        porBarbero.set(fila.barbero_id, {
+          barbero_id: fila.barbero_id,
+          nombre: fila.nombre,
+          nombre_perfil: fila.nombre_perfil,
+          foto_url: fila.foto_perfil ? `${RUTA_FOTO}/${fila.foto_perfil}` : fila.foto_publica,
+          foto_propia: Boolean(fila.foto_perfil),
+          ultimo_cambio: fila.creado_en,
+          cambios: [],
+        });
       }
       porBarbero.get(fila.barbero_id).cambios.push({
         id: fila.id,

@@ -241,3 +241,16 @@ export const subirFotoPerfil = (token, archivo) =>
   });
 
 export const quitarFotoPerfil = (token) => request('/perfil/foto', { method: 'DELETE', headers: authHeader(token) });
+
+// Revisión de los cambios de perfil de los barberos (solo admin).
+export const obtenerCambiosPerfil = (token, signal) => request('/admin/cambios-perfil', { headers: authHeader(token), signal });
+
+export const revisarCambiosPerfil = (token, barberoId) =>
+  request('/admin/cambios-perfil/revisar', {
+    method: 'POST',
+    headers: authHeader(token),
+    body: JSON.stringify({ barbero_id: barberoId }),
+  });
+
+export const restablecerPerfilBarbero = (token, barberoId) =>
+  request(`/admin/barberos/${barberoId}/restablecer-perfil`, { method: 'POST', headers: authHeader(token) });

@@ -16,7 +16,7 @@ import NoIndex from '../ui/NoIndex'
 //   cajonPausado   true mientras ese diálogo está abierto: el cajón suelta su trampa de foco
 //   encabezado     contenido sobre las rutas hijas (avisos propios del dashboard)
 //   superpuestos   elementos fijos o modales del dashboard (quedan dentro de la zona `inert` si el cajón está abierto)
-//   espacioInferior  reserva espacio al final del contenido (hay un aviso fijo abajo)
+//   espacioInferior  reserva espacio al final del contenido (hay un aviso fijo abajo; en móvil el aviso se apila y es más alto)
 const LayoutPanel = ({
   secciones,
   tarjeta,
@@ -51,7 +51,7 @@ const LayoutPanel = ({
         />
         <div className="min-w-0" inert={cajonAbierto}>
           <BarraSuperior alAbrirMenu={() => setAbiertoEn(location.key)} menuAbierto={cajonAbierto} centro={centroBarra} derecha={derechaBarra} />
-          <main className={`min-w-0 px-4 py-6 sm:px-6 lg:px-8 print:p-0 ${espacioInferior ? 'pb-28 lg:pb-36' : ''}`}>
+          <main className={`min-w-0 px-4 py-6 sm:px-6 lg:px-8 print:p-0 ${espacioInferior ? 'pb-44 sm:pb-28 lg:pb-36' : ''}`}>
             <div className="mx-auto flex w-full min-w-0 max-w-6xl flex-col gap-6">
               {encabezado}
               <Suspense fallback={<CargandoPagina />}>

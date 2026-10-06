@@ -61,3 +61,28 @@ export const formatearFechaChip = (fechaISO) => {
     mes: fecha.toLocaleDateString('es-CO', { month: 'short', timeZone: 'UTC' }).replace('.', ''),
   }
 }
+
+const FORMATO_HORA = new Intl.DateTimeFormat('es-CO', { timeZone: ZONA_HORARIA, hour: 'numeric', minute: '2-digit', hour12: true });
+const diaBogota = (fecha) => new Intl.DateTimeFormat('en-CA', { timeZone: ZONA_HORARIA, year: 'numeric', month: '2-digit', day: '2-digit' }).format(fecha);
+
+// Instante ISO → "hace un momento", "hace 5 min", "hoy, 3:45 p. m.", "ayer, 9:10 a. m." o "6 oct, 3:45 p. m.", siempre en
+// hora de Bogotá (no la del navegador). `ahora` solo se inyecta en las pruebas.
+export const fechaRelativa = (valor, ahora = new Date()) => {
+  const fecha = new Date(valor)
+  if (Number.isNaN(fecha.getTime())) return ''
+  const segundos = Math.round((ahora.getTime() - fecha.getTime()) / 1000)
+  if (segundos < 60) return 'hace un momento'
+  const minutos = Math.floor(segundos / 60)
+  if (minutos < 60) return `hace ${minutos} min`
+  const hora = FORMATO_HORA.format(fecha)
+  const hoy = diaBogota(ahora)
+  const dia = diaBogota(fecha)
+  if (dia === hoy) return `hoy, ${hora}`
+  if (dia === sumarDiasISO(hoy, -1)) return `ayer, ${hora}`
+  const corta = new Intl.DateTimeFormat('es-CO', { timeZone: ZONA_HORARIA, day: 'numeric', month: 'short' }).format(fecha).replace('.', '')
+  return `${corta}, ${hora}`
+}
+
+// Fecha y hora completas en Bogotá (para el atributo title de una fecha relativa).
+export const fechaHoraBogota = (valor) =>
+  new Date(valor).toLocaleString('es-CO', { timeZone: ZONA_HORARIA, dateStyle: 'long', timeStyle: 'short' })

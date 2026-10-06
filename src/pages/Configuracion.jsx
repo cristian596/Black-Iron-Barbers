@@ -5,6 +5,7 @@ import { usePerfil } from '../context/PerfilContext'
 import { actualizarPerfil, quitarFotoPerfil, subirFotoPerfil } from '../services/api'
 import { LIMITES_PERFIL, TIPOS_FOTO, mensajeErrorPerfil, resolverUrlFoto, validarFoto, validarNombrePerfil } from '../utils/perfil'
 import AvatarBarbero from '../components/ui/AvatarBarbero'
+import CambiosPerfilBarberos from '../components/admin/CambiosPerfilBarberos'
 import ErrorCarga from '../components/ui/ErrorCarga'
 import CampoFormulario, { ESTILO_CAMPO } from '../components/admin/CampoFormulario'
 
@@ -297,6 +298,8 @@ const Configuracion = () => {
           </div>
         </dl>
       </section>
+
+      {esAdmin && <CambiosPerfilBarberos />}
     </div>
   )
 }

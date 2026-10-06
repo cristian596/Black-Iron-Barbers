@@ -64,3 +64,6 @@ export const mensajeErrorPerfil = (err) => {
       return err?.message || 'No se pudo completar la acción. Inténtalo de nuevo'
   }
 }
+
+// "1 barbero ha cambiado su foto o nombre de perfil" / "3 barberos han cambiado su foto o nombre de perfil".
+export const textoCambiosPerfil = (n) => `${n} ${n === 1 ? 'barbero ha' : 'barberos han'} cambiado su foto o nombre de perfil`
