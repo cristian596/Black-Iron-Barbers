@@ -17,7 +17,7 @@ Ya **no** se ofrecen servicios de mujer (uñas, pedicura, cortes de dama). Si ap
 
 ## Stack
 
-- **Frontend:** React 19 + Vite + Tailwind CSS 4 + React Router 7 + Swiper + React Icons
+- **Frontend:** React 19 + Vite + Tailwind CSS 4 + React Router 7 + React Icons
 - **Backend:** Node.js + Express 5 + PostgreSQL 15 (`pg`) + `bcryptjs` + `jsonwebtoken`
 - **Tests:** Vitest + React Testing Library (front) · Vitest + Supertest (back, contra una base de pruebas aislada)
 - **CI:** GitHub Actions (`.github/workflows/ci.yml`) — lint, build y tests en cada push/PR
@@ -61,7 +61,7 @@ src/
 
 ## Modelo de datos
 
-- `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto` (nula en los creados desde el admin: la web muestra un avatar con iniciales), `activo` (el personal que se muestra en la web)
+- `barberos`: `id`, `nombre`, `cargo`, `especialidad`, `foto` (ruta pública bajo `public/`, p. ej. `/Barberos/boby.jpg`; nula en los creados desde el admin: la web muestra un avatar con iniciales), `activo` (el personal que se muestra en la web)
 - `usuarios`: `id`, `usuario` (único), `contrasena` (hash bcrypt), `rol` (`admin` | `barbero`), `barbero_id` (nulo para el admin), `activo`, `contrasena_cambiada_en` (TIMESTAMPTZ NOT NULL DEFAULT now(): último momento en que se fijó la contraseña; base de la caducidad de 60 días de los barberos; se escribe siempre desde Node, nunca con `NOW()`)
 - `categorias`: `id`, `nombre` (único), `slug` (único; se genera del nombre al crear y no se edita), `orden` (orden de aparición), `activo` (una categoría inactiva no aparece en la web), `clave_seed` (nulo = creada por el admin)
 - `servicios`: `id`, `nombre` (único; distingue mayúsculas), `descripcion`, `duracion_min` (> 0), `precio` (>= 0; 0 se muestra como "Gratis"), `tipo` (`original` | `elite` | `vip`), `categoria_id` (→ `categorias`), `activo`, `clave_seed` (solo barbería)
@@ -97,6 +97,16 @@ src/
 - **429 (límite de login, 10 intentos cada 15 min, sin cambios):** el back-end responde `{ error, codigo: 'DEMASIADOS_INTENTOS', reintentar_en_seg }` (`handler` del limitador en `routes/auth.js`, calculado con `req.rateLimit.resetTime`). **Se eligió el cuerpo JSON y no la cabecera `Retry-After`/`RateLimit-Reset`**: el CORS (`cors({ origin })`) no las expone al navegador en otro origen y así no hay que tocar el CORS ni depender de proxies. `Retry-After` se sigue enviando. El front (`hooks/useCuentaAtras.js`) muestra "Vuelve a intentarlo en N minutos" y deja el botón deshabilitado ("Espera m:ss") hasta que acaba; sin `reintentar_en_seg` asume 15 min.
 - **Sesión expirada:** `AuthContext` expone `sesionExpirada` (solo en memoria, nada sensible). Lo activan el handler de 401 con token (`expirarSesion`, que `api.js` llama como antes) y la restauración de un token ya vencido; `logout` (cierre voluntario) no, y `login` lo limpia. El login muestra "Tu sesión expiró. Vuelve a iniciar sesión" (`role="status"`).
 - Redirecciones sin cambios: admin → `/admin`, barbero → `/panel` (con la contraseña caducada el layout muestra la pantalla obligatoria); con sesión activa, `/acceso` redirige al panel.
+
+### Sección "Nuestro Equipo" (Home, `#equipo`, `components/sections/NuestrosColaboradores.jsx`)
+
+- **Galería editorial, sin carrusel**: todos los barberos activos de `GET /api/barberos` (orden alfabético con `localeCompare(…, 'es')`) en una `ul`/`li` con `h2` de sección y `h3` por nombre. `flex-wrap` + `justify-center` (no `grid`) para que 1–3 barberos queden centrados y no se estiren: 2 columnas en móvil, 3 desde `md`, 4 desde `xl`, ancho máximo `max-w-6xl`. Fondo `bg-zinc-950` con resplandor dorado, cabecera (línea "El equipo", título, frase, filete dorado) y cierre "¿No sabes con quién?" con el enlace "Reservar con cualquier barbero" → `/reservar-corte` sin `?barbero=` (eso preselecciona "Cualquier barbero", `barberoId = null`).
+- Piezas en `components/sections/equipo/`: `TarjetaEquipo` (propia de esta sección; reemplazó a la antigua `TarjetaBarbero` y al carrusel de Swiper, ya eliminados) y `FiltroCargos`; helpers puros en `utils/equipo.js` (`cargosDelEquipo`, `filtrarPorCargo`, `enlaceReserva`, `ordenarEquipo`). Los datos se piden con `useCarga` (reintento con `recargar`).
+- **Tarjeta**: foto 4:5 (`object-[50%_20%]` para no cortar la cara) con degradado inferior, nombre en Playfair, cargo en dorado en mayúsculas pequeñas y la especialidad como etiqueta. "Reservar con X" es un `<Link to="/reservar-corte?barbero=ID">`: siempre visible bajo la foto (móvil, táctil, < 1024 px); con `lg:pointer-fine:` se superpone y aparece al pasar el ratón o al enfocar (`group-hover` / `group-focus-within`). Elevación, borde dorado y zoom de la foto solo con `motion-safe:`.
+- **Sin foto o imagen rota**: `AvatarBarbero` con `variante="premium"` (monograma Cinzel dorado dentro de un aro fino sobre degradado zinc). Los demás usos de `AvatarBarbero` no cambian (variante `basico` por defecto); `descripcion` (el cargo) completa el `alt`, y `ancho`/`alto` fijan `width`/`height`.
+- **Filtro por cargo**: chips con `aria-pressed` dentro de `role="group"` y el conteo de cada uno, generados de los cargos reales; solo se muestran con 2 o más cargos distintos. Estados: esqueletos (8, misma forma), `ErrorCarga` con Reintentar, vacío ("Pronto presentaremos a nuestro equipo.") y sin resultados del filtro.
+- **Animación**: cada `li` es un `Revelar` escalonado (`retrasoEscalonado(i, 70, 280)`), con el observer compartido de siempre; el `article` interior no lleva estado de Revelar. Tras filtrar, las tarjetas entran con `motion-safe:animate-hero-entrada`.
+- **Fotos**: la foto de un barbero es una ruta pública guardada en `barberos.foto` y servida desde `public/` (`public/Barberos/<nombre>.jpg`; la asesora, en `public/Asesores/`). Sin foto = avatar de iniciales. **Añadir una**: copiar el archivo a `public/Barberos/` (≈ 800 px de ancho, < 150 KB), poner la ruta en `barberos.foto` (`UPDATE barberos SET foto='/Barberos/x.jpg' WHERE id=…`, con `pg_dump` antes) y, para instalaciones nuevas, en `BARBEROS` de `backend/db/seed.js` (el seed solo inserta si el nombre no existe: nunca pisa una foto ya guardada). Hoy: Boby, Lizeth y Camilo en `/Barberos/*.jpg`, Camila (asesora) en `/Asesores/camila_asesora.jpg`.
 
 ## API
 
@@ -247,6 +257,8 @@ src/
   - Los limitadores de intentos (login, cambio de contraseña, citas) viven en memoria del proceso: con varias instancias hay que moverlos a un almacén compartido (p. ej. Redis).
   - Subir Node del CI (`.github/workflows/ci.yml`) de 20 a 22.
 - Pendiente (idea futura, NO implementada): guardar la fecha/hora de cierre de cada cita (cuándo se completó o canceló) para medir la puntualidad de las confirmaciones.
+- Pendiente: la foto del barbero **no se puede editar desde el admin** (hoy se copia el archivo a `public/` y se actualiza `barberos.foto` a mano); haría falta subida de imagen (almacenamiento + validación de tipo/tamaño) y el campo en `PATCH /api/admin/empleados/:id`.
+- Pendiente: la foto de Camila (asesora) se guardó como `camila_asesora.jpg` (no `camila.jpg`) y la de Camilo es de 471×626 px (por debajo de los ~800 px previstos); en la de Camila aparece el rótulo "Brothers" de la camiseta y el espejo del local (no es marca de agua, pero conviene confirmar que es aceptable).
 - Pendiente: revisar las fotos `hair_woman_*` que quedaron en `public/Hair` sin usar (no se borraron sin confirmación).
 - El plan completo por sesiones está en `checklist-sesiones.md`.
 

@@ -1,8 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi } from 'vitest'
 import AvatarBarbero from '../components/ui/AvatarBarbero'
-import TarjetaBarbero from '../components/ui/TarjetaBarbero'
 import PasoBarbero from '../components/sections/reserva/PasoBarbero'
 
 describe('AvatarBarbero', () => {
@@ -34,17 +32,6 @@ describe('AvatarBarbero', () => {
 })
 
 describe('componentes públicos con un barbero sin foto (creado desde el admin)', () => {
-  it('TarjetaBarbero muestra las iniciales y conserva nombre, cargo y el botón de reservar', () => {
-    render(
-      <MemoryRouter>
-        <TarjetaBarbero barbero={{ id: 9, nombre: 'Nuevo Barbero', cargo: 'Barbero Profesional', especialidad: 'Fade', foto: null }} />
-      </MemoryRouter>
-    )
-    expect(screen.getByRole('img', { name: 'Avatar de Nuevo Barbero' })).toHaveTextContent('NB')
-    expect(screen.getByRole('heading', { name: 'Nuevo Barbero' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /reservar con nuevo barbero/i })).toBeInTheDocument()
-  })
-
   it('PasoBarbero muestra las iniciales junto a quien sí tiene foto', () => {
     render(
       <PasoBarbero
@@ -59,5 +46,25 @@ describe('componentes públicos con un barbero sin foto (creado desde el admin)'
     expect(screen.getByAltText(/foto de boby/i)).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Avatar de Ana Ríos' })).toHaveTextContent('AR')
     expect(screen.getByRole('heading', { name: 'Ana Ríos' }).closest('button')).toBeInTheDocument()
+  })
+})
+
+describe('AvatarBarbero: variante premium y alt con cargo (galería del equipo)', () => {
+  it('sin los props nuevos conserva el alt y el respaldo de siempre', () => {
+    const { rerender } = render(<AvatarBarbero barbero={{ nombre: 'Boby', foto: '/b.jpg' }} />)
+    expect(screen.getByAltText('Foto de Boby, barbero en Black Iron Barbers')).toBeInTheDocument()
+    rerender(<AvatarBarbero barbero={{ nombre: 'Boby', foto: null }} />)
+    const avatar = screen.getByRole('img', { name: 'Avatar de Boby' })
+    expect(avatar).toHaveClass('bg-linear-to-br', 'from-zinc-800', 'to-black', 'text-base')
+    expect(avatar.querySelector('.font-cinzel')).toBeNull()
+  })
+
+  it('premium: monograma Cinzel con aro dorado; con cargo, el alt lo incluye', () => {
+    const { rerender } = render(<AvatarBarbero barbero={{ nombre: 'Ana Ríos', foto: null }} variante="premium" />)
+    const monograma = screen.getByRole('img', { name: 'Avatar de Ana Ríos' }).querySelector('.font-cinzel')
+    expect(monograma).toHaveTextContent('AR')
+    expect(monograma).toHaveClass('ring-oro/60')
+    rerender(<AvatarBarbero barbero={{ nombre: 'Camila', foto: '/c.jpg' }} descripcion="Asesora de Imagen" />)
+    expect(screen.getByAltText('Foto de Camila, Asesora de Imagen en Black Iron Barbers')).toBeInTheDocument()
   })
 })

@@ -7,7 +7,7 @@ administrador).
 
 ## Stack
 
-- **Frontend:** React 19 + Vite + Tailwind CSS 4 + React Router 7 + Swiper + React Icons
+- **Frontend:** React 19 + Vite + Tailwind CSS 4 + React Router 7 + React Icons
 - **Backend:** Node.js + Express 5 + PostgreSQL 15 (`pg`) + `bcryptjs` + `jsonwebtoken`
 - **Tests:** Vitest + React Testing Library (front) · Vitest + Supertest (back)
 - **CI:** GitHub Actions (lint, build y tests en cada push/PR)

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Home from '../pages/Home'
 import * as api from '../services/api'
@@ -103,14 +103,18 @@ describe('Home con Revelar', () => {
     expect(titulo).toHaveClass('opacity-100')
   })
 
-  it('el carrusel de barberos se anima como contenedor completo, no por slide', async () => {
+  it('la galería del equipo no usa carrusel y cada tarjeta se revela escalonada con el observer compartido', async () => {
     const { container } = await montar()
-    const carrusel = container.querySelector('.swiper')
+    const lista = container.querySelector('#equipo ul')
+    const items = within(lista).getAllByRole('listitem')
 
-    expect(carrusel.closest('.opacity-0')).not.toBeNull()
-    container.querySelectorAll('.swiper-slide').forEach((slide) => {
-      expect(slide.className).not.toMatch(/opacity-0|translate-/)
-    })
+    expect(container.querySelector('.swiper')).toBeNull()
+    expect(items).toHaveLength(2)
+    items.forEach((item) => expect(item).toHaveClass('opacity-0'))
+    expect(items[0].style.transitionDelay).toBe('')
+    expect(items[1].style.transitionDelay).toBe('70ms')
+    // El article interior no lleva el estado de Revelar (no se oculta dos veces)
+    items.forEach((item) => expect(item.querySelector('article').className).not.toMatch(/opacity-0/))
   })
 
   it('las variantes laterales llevan el contenedor con overflow-x-clip', async () => {

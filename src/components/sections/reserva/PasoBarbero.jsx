@@ -13,19 +13,19 @@ const PasoBarbero = ({ barberos, barberoIdSeleccionado, onSeleccionar }) => {
           onClick={() => onSeleccionar(null)}
           className={`relative flex items-center gap-4 rounded-2xl border p-4 text-left shadow-sm motion-safe:transition-all motion-safe:duration-200 hover:-translate-y-0.5 hover:shadow-md sm:col-span-2 ${
             barberoIdSeleccionado === null
-              ? 'border-[#D4AF37] bg-[#FFFBF0] ring-2 ring-[#D4AF37]'
+              ? 'border-oro bg-[#FFFBF0] ring-2 ring-oro'
               : 'border-zinc-300 bg-white'
           }`}
         >
           {barberoIdSeleccionado === null && (
             <span
               aria-hidden="true"
-              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[#D4AF37] text-sm font-bold text-black"
+              className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-oro text-sm font-bold text-black"
             >
               ✓
             </span>
           )}
-          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-black text-[#D4AF37]">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-black text-oro">
             <FaRandom size={22} />
           </span>
           <span>
@@ -44,13 +44,13 @@ const PasoBarbero = ({ barberos, barberoIdSeleccionado, onSeleccionar }) => {
               aria-pressed={seleccionado}
               onClick={() => onSeleccionar(barbero.id)}
               className={`relative flex items-center gap-4 rounded-2xl border p-4 text-left shadow-sm motion-safe:transition-all motion-safe:duration-200 hover:-translate-y-0.5 hover:shadow-md ${
-                seleccionado ? 'border-[#D4AF37] bg-[#FFFBF0] ring-2 ring-[#D4AF37]' : 'border-zinc-300 bg-white'
+                seleccionado ? 'border-oro bg-[#FFFBF0] ring-2 ring-oro' : 'border-zinc-300 bg-white'
               }`}
             >
               {seleccionado && (
                 <span
                   aria-hidden="true"
-                  className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-[#D4AF37] text-sm font-bold text-black"
+                  className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-oro text-sm font-bold text-black"
                 >
                   ✓
                 </span>

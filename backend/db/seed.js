@@ -13,6 +13,8 @@ const BARBEROS = [
   { nombre: 'Manuel', cargo: 'Barbero Profesional', especialidad: 'Estilista Premium', foto: '/Barberos/manuel.jpg' },
   { nombre: 'Moscu', cargo: 'Barbero Profesional', especialidad: 'Estilista de Barbas', foto: '/Barberos/moscu.jpg' },
   { nombre: 'Rafa', cargo: 'Barbero Profesional', especialidad: 'Estilista Premium', foto: '/Barberos/rafa.jpg' },
+  { nombre: 'Camilo', cargo: 'Barbero Profesional', especialidad: 'Corte clasico', foto: '/Barberos/camilo.jpg' },
+  { nombre: 'Camila', cargo: 'Asesora de Imagen', especialidad: 'Asesoria', foto: '/Asesores/camila_asesora.jpg' },
 ];
 
 const seedBarberos = async () => {
