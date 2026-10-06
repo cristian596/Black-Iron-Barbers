@@ -35,6 +35,8 @@ const GraficoServiciosTop = ({ servicios }) => {
           return (
             <g key={s.id}>
               <text x={0} y={arriba + 14} className="fill-zinc-200 text-sm">
+                {/* Nombre completo al pasar el cursor cuando se recorta (cuenta cada servicio de cada cita, no los combos). */}
+                <title>{s.nombre}</title>
                 {recortarTexto(s.nombre, caracteres)}
               </text>
               <rect x={0} y={arriba + 22} width={pista} height={10} rx={5} className="fill-zinc-800" />

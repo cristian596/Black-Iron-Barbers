@@ -28,7 +28,7 @@ describe('PasoFechaHora', () => {
   it('muestra chips de fecha empezando hoy, sin fechas pasadas', () => {
     render(
       <PasoFechaHora
-        servicioId={1}
+        servicioIds={[1]}
         barberoId={null}
         fecha=""
         hora=""
@@ -41,7 +41,7 @@ describe('PasoFechaHora', () => {
     expect(screen.getByText('Selecciona primero una fecha.')).toBeInTheDocument()
   })
 
-  it('al elegir una fecha, pide la disponibilidad con servicio_id, fecha y barbero', async () => {
+  it('al elegir una fecha, pide la disponibilidad con la lista de servicios, fecha y barbero', async () => {
     obtenerDisponibilidad.mockResolvedValue({ horas: ['10:00', '10:30'] })
     const user = userEvent.setup()
     const onSeleccionarFecha = vi.fn()
@@ -49,7 +49,7 @@ describe('PasoFechaHora', () => {
 
     render(
       <PasoFechaHora
-        servicioId={3}
+        servicioIds={[3]}
         barberoId={5}
         fecha=""
         hora=""
@@ -69,7 +69,7 @@ describe('PasoFechaHora', () => {
 
     render(
       <PasoFechaHora
-        servicioId={1}
+        servicioIds={[1]}
         barberoId={null}
         fecha={fecha}
         hora=""
@@ -78,7 +78,7 @@ describe('PasoFechaHora', () => {
       />
     )
 
-    await waitFor(() => expect(obtenerDisponibilidad).toHaveBeenCalledWith(1, fecha, null))
+    await waitFor(() => expect(obtenerDisponibilidad).toHaveBeenCalledWith([1], fecha, null))
   })
 
   it('muestra las horas devueltas por la API y permite seleccionarlas', async () => {
@@ -89,7 +89,7 @@ describe('PasoFechaHora', () => {
 
     render(
       <PasoFechaHora
-        servicioId={1}
+        servicioIds={[1]}
         barberoId={2}
         fecha={fecha}
         hora=""
@@ -110,7 +110,7 @@ describe('PasoFechaHora', () => {
 
     render(
       <PasoFechaHora
-        servicioId={1}
+        servicioIds={[1]}
         barberoId={null}
         fecha={fecha}
         hora=""
@@ -128,7 +128,7 @@ describe('PasoFechaHora', () => {
 
     render(
       <PasoFechaHora
-        servicioId={1}
+        servicioIds={[1]}
         barberoId={null}
         fecha={fecha}
         hora=""

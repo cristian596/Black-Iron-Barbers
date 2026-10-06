@@ -35,12 +35,12 @@ const chipTipo = (nombre) => within(grupoTipos()).getByRole('button', { name: no
 const buscador = () => screen.getByLabelText('Buscar servicio')
 
 const montar = (props = {}) =>
-  render(<PasoServicio servicios={SERVICIOS} servicioIdSeleccionado="" onSeleccionar={vi.fn()} {...props} />)
+  render(<PasoServicio servicios={SERVICIOS} idsSeleccionados={[]} onSeleccionar={vi.fn()} {...props} />)
 
 // El paso es controlado por su padre; este contenedor imita ese comportamiento.
-const Controlado = ({ inicial = '' }) => {
-  const [id, setId] = useState(inicial)
-  return <PasoServicio servicios={SERVICIOS} servicioIdSeleccionado={id} onSeleccionar={setId} />
+const Controlado = ({ inicial = [] }) => {
+  const [ids, setIds] = useState(inicial)
+  return <PasoServicio servicios={SERVICIOS} idsSeleccionados={ids} onSeleccionar={setIds} />
 }
 
 describe('PasoServicio', () => {
@@ -53,7 +53,7 @@ describe('PasoServicio', () => {
   })
 
   it('marca como seleccionada la tarjeta cuyo id coincide (aria-pressed y check visible)', () => {
-    montar({ servicioIdSeleccionado: 2 })
+    montar({ idsSeleccionados: [2] })
 
     expect(tarjetaDe('Corte de Barba')).toHaveAttribute('aria-pressed', 'true')
     expect(tarjetaDe('Corte de Cabello')).toHaveAttribute('aria-pressed', 'false')
@@ -68,7 +68,7 @@ describe('PasoServicio', () => {
     await user.click(chipCategoria('Rostro')) // la categoría inicial es Cortes
     await user.click(screen.getByRole('button', { name: /perfilado de cejas/i }))
 
-    expect(onSeleccionar).toHaveBeenCalledWith(4)
+    expect(onSeleccionar).toHaveBeenCalledWith([4]) // ahora recibe la lista de ids elegidos
   })
 
   it('muestra los chips de categoría con aria-pressed y filtra al elegir una', async () => {
@@ -113,7 +113,7 @@ describe('PasoServicio — filtros, buscador y agrupación', () => {
   })
 
   it('empieza en la categoría del servicio ya seleccionado (por ejemplo, el de ?servicio=)', () => {
-    montar({ servicioIdSeleccionado: 4 })
+    montar({ idsSeleccionados: [4] })
 
     expect(chipCategoria('Rostro')).toHaveAttribute('aria-pressed', 'true')
     expect(tarjetaDe('Perfilado de Cejas')).toHaveAttribute('aria-pressed', 'true')
@@ -227,7 +227,7 @@ describe('PasoServicio — la selección sobrevive a los filtros', () => {
 
   it('una búsqueda que oculta el servicio elegido tampoco lo deselecciona', async () => {
     const user = userEvent.setup()
-    render(<Controlado inicial={1} />)
+    render(<Controlado inicial={[1]} />)
 
     await user.type(buscador(), 'cejas')
     expect(screen.queryByRole('heading', { name: 'Corte de Cabello' })).not.toBeInTheDocument()

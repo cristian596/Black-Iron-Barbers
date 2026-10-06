@@ -1,4 +1,6 @@
 import BadgeEstado from '../ui/BadgeEstado'
+import ServiciosDeCita from '../ui/ServiciosDeCita'
+import { esCombo } from '../../utils/servicios'
 import ErrorCarga from '../ui/ErrorCarga'
 import SinResultados from '../ui/SinResultados'
 import Esqueleto from './Esqueleto'
@@ -40,9 +42,18 @@ const AgendaHoy = ({ datos, cargando, error, alReintentar, ocupadoId, alCompleta
                   <BadgeEstado estado={cita.estado} />
                 </div>
               </div>
-              <p className="mt-1 wrap-anywhere text-sm text-zinc-400">
-                {cita.servicio_nombre} · {cita.duracion_min} min · {formatearPrecio(cita.precio)}
-              </p>
+              {esCombo(cita) ? (
+                <>
+                  <ServiciosDeCita cita={cita} detalle className="mt-1 text-sm text-zinc-400" />
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Total {cita.duracion_min} min · {formatearPrecio(cita.precio)}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 wrap-anywhere text-sm text-zinc-400">
+                  {cita.servicio_nombre} · {cita.duracion_min} min · {formatearPrecio(cita.precio)}
+                </p>
+              )}
               {cita.estado === 'pendiente' && (
                 <AccionesCita cita={cita} ocupado={ocupadoId === cita.id} alCompletar={alCompletar} alCancelar={alCancelar} />
               )}

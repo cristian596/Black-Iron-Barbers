@@ -54,6 +54,8 @@ const request = async (path, options = {}) => {
     // Campo del formulario al que se refiere el error y datos de apoyo (p. ej. cuántos servicios activos tiene una categoría).
     if (data?.campo) error.campo = data.campo;
     if (data?.total_servicios !== undefined) error.total_servicios = data.total_servicios;
+    // Ids de servicios que ya no están disponibles (SERVICIO_NO_DISPONIBLE al reservar o pedir horas).
+    if (Array.isArray(data?.servicios_no_disponibles)) error.servicios_no_disponibles = data.servicios_no_disponibles;
     // Segundos que faltan para poder reintentar (429 del login); viene en el cuerpo porque el CORS no expone Retry-After.
     if (Number.isFinite(data?.reintentar_en_seg)) error.reintentar_en_seg = data.reintentar_en_seg;
     throw error;
@@ -96,8 +98,10 @@ export const construirQuery = (filtros = {}) => {
 // direccion) los resuelve el back-end.
 export const obtenerServicios = (filtros) => request(`/servicios${construirQuery(filtros)}`);
 
-export const obtenerDisponibilidad = (servicioId, fecha, barberoId) => {
-  const params = new URLSearchParams({ servicio: servicioId, fecha });
+// `servicioIds`: lista de 1 a 3 ids (se atienden seguidos como un solo bloque); se admite un id suelto.
+export const obtenerDisponibilidad = (servicioIds, fecha, barberoId) => {
+  const ids = Array.isArray(servicioIds) ? servicioIds : [servicioIds];
+  const params = new URLSearchParams({ servicios: ids.join(','), fecha });
   if (barberoId !== null && barberoId !== undefined && barberoId !== '') {
     params.set('barbero', barberoId);
   }

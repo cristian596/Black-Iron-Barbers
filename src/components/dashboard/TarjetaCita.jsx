@@ -1,4 +1,5 @@
 import BadgeEstado from '../ui/BadgeEstado'
+import ServiciosDeCita from '../ui/ServiciosDeCita'
 import { fechaLegible, soloHora } from '../../utils/formato'
 
 const TarjetaCita = ({
@@ -13,9 +14,9 @@ const TarjetaCita = ({
   return (
     <div className="rounded-xl border border-white/10 bg-[#1a1a1a] p-4 text-white shadow">
       <div className="flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="text-lg font-semibold">{cita.cliente}</p>
-          <p className="text-sm text-gray-400">{cita.servicio_nombre}</p>
+          <ServiciosDeCita cita={cita} detalle className="text-sm text-gray-400" />
         </div>
         <BadgeEstado estado={cita.estado} vencida={cita.vencida} />
       </div>

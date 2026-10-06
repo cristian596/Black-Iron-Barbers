@@ -1,4 +1,6 @@
 import ErrorCarga from '../ui/ErrorCarga'
+import ServiciosDeCita from '../ui/ServiciosDeCita'
+import { esCombo } from '../../utils/servicios'
 import SinResultados from '../ui/SinResultados'
 import Esqueleto from './Esqueleto'
 import AccionesCita from './AccionesCita'
@@ -33,9 +35,18 @@ const SeccionPorConfirmar = ({ encabezadoRef, datos, error, alReintentar, ocupad
                 <p className="min-w-0 wrap-anywhere text-base font-semibold">{cita.cliente}</p>
                 <span className="text-xs font-medium text-orange-300">Vencida hace {tiempoTranscurrido(cita.vencida_hace_min)}</span>
               </div>
-              <p className="mt-1 wrap-anywhere text-sm text-zinc-400">
-                {cita.servicio_nombre} · {fechaLegible(cita.fecha)} · {soloHora(cita.hora)}
-              </p>
+              {esCombo(cita) ? (
+                <>
+                  <ServiciosDeCita cita={cita} detalle className="mt-1 text-sm text-zinc-400" />
+                  <p className="mt-1 text-sm text-zinc-400">
+                    {fechaLegible(cita.fecha)} · {soloHora(cita.hora)} · Total {cita.duracion_min} min
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 wrap-anywhere text-sm text-zinc-400">
+                  {cita.servicio_nombre} · {fechaLegible(cita.fecha)} · {soloHora(cita.hora)}
+                </p>
+              )}
               <AccionesCita cita={cita} ocupado={ocupadoId === cita.id} alCompletar={alCompletar} alCancelar={alCancelar} />
             </li>
           ))}

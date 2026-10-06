@@ -1,4 +1,6 @@
 import BadgeEstado from '../ui/BadgeEstado'
+import ServiciosDeCita from '../ui/ServiciosDeCita'
+import { esCombo } from '../../utils/servicios'
 import TarjetaCita from './TarjetaCita'
 import { fechaLegible, soloHora } from '../../utils/formato'
 
@@ -32,7 +34,9 @@ const TablaCitas = ({
             {citas.map((cita) => (
               <tr key={cita.id} className="border-b border-white/5">
                 <td className="py-2 pr-3">{cita.cliente}</td>
-                <td className="py-2 pr-3">{cita.servicio_nombre}</td>
+                <td className="py-2 pr-3">
+                  {esCombo(cita) ? <ServiciosDeCita cita={cita} detalle /> : cita.servicio_nombre}
+                </td>
                 {mostrarBarbero && <td className="py-2 pr-3">{cita.barbero_nombre}</td>}
                 <td className="py-2 pr-3">{fechaLegible(cita.fecha)}</td>
                 <td className="py-2 pr-3">{soloHora(cita.hora)}</td>

@@ -10,25 +10,25 @@ describe('reservaReducer', () => {
     const estado = estadoInicialReserva()
     expect(estado.paso).toBe('servicio')
     expect(estado.barberoId).toBeNull()
-    expect(estado.servicioId).toBe('')
+    expect(estado.servicioIds).toEqual([])
   })
 
-  it('SELECCIONAR_SERVICIO invalida fecha y hora, pero no el barbero', () => {
+  it('SELECCIONAR_SERVICIOS invalida fecha y hora, pero no el barbero', () => {
     const estado = { ...estadoInicialReserva(), barberoId: 3, fecha: '2030-01-10', hora: '10:00' }
-    const nuevo = reservaReducer(estado, { type: 'SELECCIONAR_SERVICIO', servicioId: 2 })
+    const nuevo = reservaReducer(estado, { type: 'SELECCIONAR_SERVICIOS', servicioIds: [2] })
 
-    expect(nuevo.servicioId).toBe(2)
+    expect(nuevo.servicioIds).toEqual([2])
     expect(nuevo.barberoId).toBe(3)
     expect(nuevo.fecha).toBe('')
     expect(nuevo.hora).toBe('')
   })
 
   it('SELECCIONAR_BARBERO invalida fecha y hora, pero no el servicio', () => {
-    const estado = { ...estadoInicialReserva(), servicioId: 1, fecha: '2030-01-10', hora: '10:00' }
+    const estado = { ...estadoInicialReserva([1]), fecha: '2030-01-10', hora: '10:00' }
     const nuevo = reservaReducer(estado, { type: 'SELECCIONAR_BARBERO', barberoId: 5 })
 
     expect(nuevo.barberoId).toBe(5)
-    expect(nuevo.servicioId).toBe(1)
+    expect(nuevo.servicioIds).toEqual([1])
     expect(nuevo.fecha).toBe('')
     expect(nuevo.hora).toBe('')
   })
@@ -42,11 +42,11 @@ describe('reservaReducer', () => {
   })
 
   it('IR_A_PASO cambia el paso sin tocar las demás selecciones', () => {
-    const estado = { ...estadoInicialReserva(), servicioId: 1, barberoId: 2 }
+    const estado = { ...estadoInicialReserva([1]), barberoId: 2 }
     const nuevo = reservaReducer(estado, { type: 'IR_A_PASO', paso: 'confirmar' })
 
     expect(nuevo.paso).toBe('confirmar')
-    expect(nuevo.servicioId).toBe(1)
+    expect(nuevo.servicioIds).toEqual([1])
     expect(nuevo.barberoId).toBe(2)
   })
 
@@ -59,7 +59,7 @@ describe('reservaReducer', () => {
   })
 
   it('REINICIAR vuelve al estado inicial', () => {
-    const estado = { ...estadoInicialReserva(), servicioId: 1, paso: 'confirmar' }
+    const estado = { ...estadoInicialReserva([1]), paso: 'confirmar' }
     const nuevo = reservaReducer(estado, { type: 'REINICIAR' })
 
     expect(nuevo).toEqual(estadoInicialReserva())
@@ -68,7 +68,7 @@ describe('reservaReducer', () => {
 
 describe('reservaReducer — SERVICIO_NO_DISPONIBLE', () => {
   const estadoAvanzado = {
-    ...estadoInicialReserva(7, 2),
+    ...estadoInicialReserva([7], 2),
     paso: 'confirmar',
     fecha: '2030-06-15',
     hora: '10:00',
@@ -79,7 +79,7 @@ describe('reservaReducer — SERVICIO_NO_DISPONIBLE', () => {
     const nuevo = reservaReducer(estadoAvanzado, { type: 'SERVICIO_NO_DISPONIBLE' })
 
     expect(nuevo.paso).toBe('servicio')
-    expect(nuevo.servicioId).toBe('')
+    expect(nuevo.servicioIds).toEqual([])
     expect(nuevo.fecha).toBe('')
     expect(nuevo.hora).toBe('')
     expect(nuevo.errorGlobal).toBe('Ese servicio ya no está disponible. Elige otro de la lista.')
@@ -98,7 +98,7 @@ describe('reservaReducer — SERVICIO_NO_DISPONIBLE', () => {
     ;['confirmar', 'fecha-hora', 'servicio'].forEach((paso) => {
       const nuevo = reservaReducer({ ...estadoAvanzado, paso }, { type: 'SERVICIO_NO_DISPONIBLE' })
       expect(nuevo.paso).toBe('servicio')
-      expect(nuevo.servicioId).toBe('')
+      expect(nuevo.servicioIds).toEqual([])
     })
   })
 
@@ -106,11 +106,11 @@ describe('reservaReducer — SERVICIO_NO_DISPONIBLE', () => {
     const tras = reservaReducer(estadoAvanzado, { type: 'SERVICIO_NO_DISPONIBLE' })
     const elegido = reservaReducer(
       { ...tras, fecha: '2030-06-16', hora: '11:00' },
-      { type: 'SELECCIONAR_SERVICIO', servicioId: 4 }
+      { type: 'SELECCIONAR_SERVICIOS', servicioIds: [4] }
     )
 
     expect(elegido.errorGlobal).toBe('')
-    expect(elegido.servicioId).toBe(4)
+    expect(elegido.servicioIds).toEqual([4])
     expect(elegido.fecha).toBe('')
     expect(elegido.hora).toBe('')
   })

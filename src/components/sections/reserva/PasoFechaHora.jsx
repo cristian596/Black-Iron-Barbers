@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { obtenerDisponibilidad } from '../../../services/api'
 import { hoyISO, sumarDiasISO, formatearFechaChip } from '../../../utils/fechas'
+import { mensajeErrorSeleccion } from './reservaReducer'
 
 const DIAS_VISIBLES = 30
 
+// servicioIds: los servicios elegidos (1 a 3): la disponibilidad se pide para el bloque completo (duración total).
 const PasoFechaHora = ({
-  servicioId,
+  servicioIds,
   barberoId,
   fecha,
   hora,
   onSeleccionarFecha,
   onSeleccionarHora,
   onServicioNoDisponible,
+  onErrorSeleccion,
   recargaHoras = 0,
 }) => {
   const fechasDisponibles = useMemo(() => {
@@ -25,9 +28,14 @@ const PasoFechaHora = ({
 
   // Ref para no volver a pedir horas cada vez que el padre crea un manejador nuevo.
   const alServicioNoDisponible = useRef(onServicioNoDisponible)
+  const alErrorSeleccion = useRef(onErrorSeleccion)
   useEffect(() => {
     alServicioNoDisponible.current = onServicioNoDisponible
-  }, [onServicioNoDisponible])
+    alErrorSeleccion.current = onErrorSeleccion
+  }, [onServicioNoDisponible, onErrorSeleccion])
+
+  // Clave estable de la selección: evita volver a pedir horas por una lista nueva con los mismos ids.
+  const claveServicios = servicioIds.join(',')
 
   useEffect(() => {
     // Sin fecha elegida, el render ya muestra "Selecciona primero una fecha" sin mirar
@@ -40,12 +48,17 @@ const PasoFechaHora = ({
       setCargandoHoras(true)
       setErrorHoras('')
       try {
-        const data = await obtenerDisponibilidad(servicioId, fecha, barberoId)
+        const data = await obtenerDisponibilidad(claveServicios.split(',').map(Number), fecha, barberoId)
         if (!cancelado) setHoras(data.horas)
       } catch (err) {
         if (err.codigo === 'SERVICIO_NO_DISPONIBLE') {
-          // El servicio se desactivó mientras el usuario reservaba: el padre vuelve al paso Servicio.
-          if (!cancelado) alServicioNoDisponible.current?.()
+          // Un servicio se desactivó mientras el usuario reservaba: el padre quita solo los afectados y vuelve al paso Servicio.
+          if (!cancelado) alServicioNoDisponible.current?.(err)
+          return
+        }
+        if (mensajeErrorSeleccion(err.codigo)) {
+          // Repetidos, más de 3 o combo de más de 240 min: el padre vuelve al paso Servicio con el motivo.
+          if (!cancelado) alErrorSeleccion.current?.(err)
           return
         }
         if (!cancelado) setErrorHoras(err.message)
@@ -59,7 +72,7 @@ const PasoFechaHora = ({
     return () => {
       cancelado = true
     }
-  }, [servicioId, fecha, barberoId, recargaHoras])
+  }, [claveServicios, fecha, barberoId, recargaHoras])
 
   return (
     <div>
@@ -115,7 +128,7 @@ const PasoFechaHora = ({
                 type="button"
                 aria-pressed={seleccionada}
                 onClick={() => onSeleccionarHora(horaOpcion)}
-                className={`rounded-lg border px-3 py-1.5 font-poppins font-medium motion-safe:transition-colors motion-safe:duration-200 ${
+                className={`min-h-11 rounded-lg border px-3 py-1.5 font-poppins font-medium motion-safe:transition-colors motion-safe:duration-200 ${
                   seleccionada
                     ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
                     : 'border-zinc-300 bg-white text-zinc-700 hover:border-black'

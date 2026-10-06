@@ -1,4 +1,6 @@
 import BadgeEstado from '../ui/BadgeEstado'
+import ServiciosDeCita from '../ui/ServiciosDeCita'
+import { esCombo } from '../../utils/servicios'
 import AccionesCita from './AccionesCita'
 import { InsigniaPorConfirmar } from './AgendaHoy'
 import { fechaLegible, formatearPrecio, soloHora } from '../../utils/formato'
@@ -19,9 +21,18 @@ const Tarjeta = ({ cita, ocupado, alCompletar, alCancelar }) => (
       <Estado cita={cita} />
     </div>
     <p className="mt-2 wrap-anywhere text-base font-semibold">{cita.cliente}</p>
-    <p className="mt-1 wrap-anywhere text-sm text-zinc-400">
-      {cita.servicio_nombre} · {cita.duracion_min} min · {formatearPrecio(cita.precio)}
-    </p>
+    {esCombo(cita) ? (
+      <>
+        <ServiciosDeCita cita={cita} detalle className="mt-1 text-sm text-zinc-400" />
+        <p className="mt-1 text-sm text-zinc-400">
+          Total {cita.duracion_min} min · {formatearPrecio(cita.precio)}
+        </p>
+      </>
+    ) : (
+      <p className="mt-1 wrap-anywhere text-sm text-zinc-400">
+        {cita.servicio_nombre} · {cita.duracion_min} min · {formatearPrecio(cita.precio)}
+      </p>
+    )}
     {cita.estado === 'pendiente' && (
       <AccionesCita cita={cita} ocupado={ocupado} alCompletar={alCompletar} alCancelar={alCancelar} />
     )}
@@ -50,7 +61,9 @@ const Tabla = ({ citas, ocupadoId, alCompletar, alCancelar }) => (
             <td className="py-2 pr-3 whitespace-nowrap text-zinc-300">{fechaLegible(cita.fecha)}</td>
             <td className="py-2 pr-3 font-semibold whitespace-nowrap text-oro">{soloHora(cita.hora)}</td>
             <th scope="row" className="min-w-40 py-2 pr-3 font-medium wrap-anywhere">{cita.cliente}</th>
-            <td className="min-w-36 py-2 pr-3 text-zinc-300 wrap-anywhere">{cita.servicio_nombre}</td>
+            <td className="min-w-36 py-2 pr-3 text-zinc-300 wrap-anywhere">
+              {esCombo(cita) ? <ServiciosDeCita cita={cita} detalle /> : cita.servicio_nombre}
+            </td>
             <td className="py-2 pr-3 text-right whitespace-nowrap">{cita.duracion_min} min</td>
             <td className="py-2 pr-3 text-right whitespace-nowrap">{formatearPrecio(cita.precio)}</td>
             <td className="py-2 pr-3"><Estado cita={cita} /></td>

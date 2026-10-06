@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
+import { ProveedorCarrito } from '../context/CarritoContext'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
 
 vi.mock('../services/api', () => ({
@@ -77,10 +78,14 @@ const llenarContactoValido = async (user) => {
   await user.click(screen.getByRole('checkbox'))
 }
 
+beforeEach(() => sessionStorage.clear())
+
 const renderConRuta = (ruta = '/reservar-corte') =>
   render(
     <MemoryRouter initialEntries={[ruta]}>
-      <ReservaCorte />
+      <ProveedorCarrito>
+        <ReservaCorte />
+      </ProveedorCarrito>
     </MemoryRouter>
   )
 
@@ -110,7 +115,7 @@ describe('ReservaCorte — contenedor y navegación por pasos', () => {
     expect(screen.getByRole('button', { name: /atrás/i })).toBeDisabled()
   })
 
-  it('el botón "Continuar" está deshabilitado mientras el paso Servicio no tiene servicio_id (vía query param)', async () => {
+  it('el botón "Continuar" está deshabilitado mientras el paso Servicio no tiene servicios elegidos (vía query param)', async () => {
     renderConRuta('/reservar-corte')
 
     await screen.findByRole('button', { name: /corte clasico/i })
@@ -279,7 +284,7 @@ describe('ReservaCorte — confirmación y éxito', () => {
     obtenerDisponibilidad.mockResolvedValue({ horas: ['10:00', '10:30'] })
   })
 
-  it('al confirmar con éxito, envía servicio_id, barbero_id, fecha, hora, telefono y consentimiento, y muestra el resumen del SERVIDOR (no la selección del cliente)', async () => {
+  it('al confirmar con éxito, envía servicios_ids, barbero_id, fecha, hora, telefono y consentimiento, y muestra el resumen del SERVIDOR (no la selección del cliente)', async () => {
     const user = userEvent.setup()
     crearCita.mockResolvedValueOnce({
       id: 7,
@@ -302,7 +307,7 @@ describe('ReservaCorte — confirmación y éxito', () => {
 
     expect(crearCita).toHaveBeenCalledWith(
       expect.objectContaining({
-        servicio_id: 1,
+        servicios_ids: [1],
         barbero_id: undefined,
         fecha: expect.any(String),
         hora: '10:00',
@@ -409,7 +414,7 @@ describe('ReservaCorte — estados de carga y servicio que deja de estar disponi
 
       expect(await screen.findByRole('alert')).toHaveTextContent(MENSAJE_NO_DISPONIBLE)
       expect(await screen.findByRole('button', { name: /corte clasico/i })).toBeInTheDocument()
-      expect(screen.getByRole('heading', { name: /elige un servicio/i })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: /elige tus servicios/i })).toBeInTheDocument()
       expect(continuarDeshabilitado()).toBe(true)
       expect(screen.getByRole('button', { name: /corte clasico/i })).toHaveAttribute('aria-pressed', 'false')
       expect(obtenerServicios).toHaveBeenCalledTimes(2)
@@ -445,7 +450,7 @@ describe('ReservaCorte — estados de carga y servicio que deja de estar disponi
       await seleccionarPrimeraFecha(user)
 
       expect(await screen.findByRole('alert')).toHaveTextContent(MENSAJE_NO_DISPONIBLE)
-      expect(await screen.findByRole('heading', { name: /elige un servicio/i })).toBeInTheDocument()
+      expect(await screen.findByRole('heading', { name: /elige tus servicios/i })).toBeInTheDocument()
       expect(continuarDeshabilitado()).toBe(true)
       expect(obtenerServicios).toHaveBeenCalledTimes(2)
     })

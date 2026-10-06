@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatearFechaLegible } from '../../../utils/fechas'
 import { esTelefonoValido } from '../../../utils/telefono'
-import { formatearPrecio } from '../../../utils/formato'
+import { formatearDuracion, formatearPrecio } from '../../../utils/formato'
+import { duracionTotal, precioTotal } from '../../../utils/carrito'
+import ListaServiciosReserva from './ListaServiciosReserva'
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -14,7 +16,9 @@ const mensajeParaError = (err) => {
 
 const FOCUSABLES = 'button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])'
 
-const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirmar }) => {
+// `servicios`: los servicios elegidos (1 a 3). Con uno solo el resumen es el de siempre; con varios se listan y se
+// muestra la duración total.
+const ModalConfirmacion = ({ servicios, barbero, fecha, hora, onClose, onConfirmar }) => {
   const [cliente, setCliente] = useState('')
   const [correo, setCorreo] = useState('')
   const [telefono, setTelefono] = useState('')
@@ -112,17 +116,26 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
             type="button"
             onClick={onClose}
             aria-label="Cerrar"
-            className="rounded-full p-1 text-xl text-zinc-500 duration-150 hover:bg-zinc-100 hover:text-black"
+            className="flex size-11 shrink-0 items-center justify-center rounded-full text-xl text-zinc-500 duration-150 hover:bg-zinc-100 hover:text-black"
           >
             ✕
           </button>
         </div>
 
         <dl className="mt-4 space-y-1 rounded-xl bg-zinc-50 p-4 font-poppins text-sm">
-          <div className="flex justify-between gap-2">
-            <dt className="text-zinc-500">Servicio</dt>
-            <dd className="text-right font-semibold text-black">{servicio?.nombre}</dd>
-          </div>
+          {servicios.length > 1 ? (
+            <div>
+              <dt className="text-zinc-500">Servicios</dt>
+              <dd className="mt-1 font-semibold text-black">
+                <ListaServiciosReserva servicios={servicios} conPrecio />
+              </dd>
+            </div>
+          ) : (
+            <div className="flex justify-between gap-2">
+              <dt className="shrink-0 text-zinc-500">Servicio</dt>
+              <dd className="min-w-0 text-right font-semibold text-black wrap-anywhere">{servicios[0]?.nombre}</dd>
+            </div>
+          )}
           <div className="flex justify-between gap-2">
             <dt className="text-zinc-500">Barbero</dt>
             <dd className="text-right font-semibold text-black">
@@ -139,12 +152,14 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
           </div>
           <div className="flex justify-between gap-2">
             <dt className="text-zinc-500">Duración</dt>
-            <dd className="text-right font-semibold text-black">{servicio?.duracion_min} min</dd>
+            <dd className="text-right font-semibold text-black">
+              {servicios.length > 1 ? formatearDuracion(duracionTotal(servicios)) : `${servicios[0]?.duracion_min} min`}
+            </dd>
           </div>
           <div className="mt-1 flex justify-between gap-2 border-t border-zinc-200 pt-2">
             <dt className="text-zinc-500">Total</dt>
             <dd className="text-right font-bold text-black">
-              {servicio ? formatearPrecio(servicio.precio) : '—'}
+              {servicios.length > 0 ? formatearPrecio(precioTotal(servicios)) : '—'}
             </dd>
           </div>
         </dl>
@@ -161,7 +176,7 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
               type="text"
               value={cliente}
               onChange={(evento) => setCliente(evento.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-[#D4AF37] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+              className="mt-1 min-h-11 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-[#D4AF37] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
             />
           </div>
 
@@ -175,7 +190,7 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
               type="email"
               value={correo}
               onChange={(evento) => setCorreo(evento.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-[#D4AF37] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+              className="mt-1 min-h-11 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-[#D4AF37] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
             />
           </div>
 
@@ -190,7 +205,7 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
               placeholder="300 123 4567"
               value={telefono}
               onChange={(evento) => setTelefono(evento.target.value)}
-              className="mt-1 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-[#D4AF37] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+              className="mt-1 min-h-11 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-[#D4AF37] focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
             />
           </div>
 
@@ -219,7 +234,7 @@ const ModalConfirmacion = ({ servicio, barbero, fecha, hora, onClose, onConfirma
           <button
             type="submit"
             disabled={enviando}
-            className="mt-2 w-full rounded-xl bg-[#D4AF37] py-2 font-cinzel font-bold text-black duration-200 hover:bg-black hover:text-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#D4AF37] disabled:hover:text-black"
+            className="mt-2 min-h-11 w-full rounded-xl bg-[#D4AF37] py-2 font-cinzel font-bold text-black duration-200 hover:bg-black hover:text-[#D4AF37] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[#D4AF37] disabled:hover:text-black"
           >
             {enviando ? 'Enviando...' : 'Confirmar reserva'}
           </button>

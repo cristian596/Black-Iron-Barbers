@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { obtenerServicios, obtenerBarberos, crearCita } from '../services/api'
+import { useCarrito } from '../context/CarritoContext'
 import IndicadorProgreso from '../components/sections/reserva/IndicadorProgreso'
 import PasoServicio from '../components/sections/reserva/PasoServicio'
 import PasoBarbero from '../components/sections/reserva/PasoBarbero'
@@ -10,12 +11,18 @@ import PantallaExito from '../components/sections/reserva/PantallaExito'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
 import ErrorCarga from '../components/ui/ErrorCarga'
 import { PASOS_RESERVA } from '../components/sections/reserva/pasos'
-import { reservaReducer, estadoInicialReserva } from '../components/sections/reserva/reservaReducer'
+import {
+  reservaReducer,
+  estadoInicialReserva,
+  mensajeErrorSeleccion,
+} from '../components/sections/reserva/reservaReducer'
+import { MAX_DURACION_COMBO_MIN, duracionTotal } from '../utils/carrito'
+import { leerServiciosDeUrl } from '../utils/seleccionReserva'
 
 const pasoCompleto = (estado) => {
   switch (estado.paso) {
     case 'servicio':
-      return Boolean(estado.servicioId)
+      return estado.servicioIds.length > 0
     case 'barbero':
       return true // "Cualquier barbero" (null) ya es una elección válida
     case 'fecha-hora':
@@ -25,17 +32,20 @@ const pasoCompleto = (estado) => {
   }
 }
 
+// Estado de la reserva: propio de esta página y NUNCA ligado al carrito. Arranca desde la URL —?servicios=1,2,3 (viene
+// del carrito) o ?servicio=<id> (camino rápido desde una tarjeta)— y, a partir de ahí, lo que se cambie en el paso 1
+// no toca el carrito. Al reservar con éxito se vacía el carrito SOLO si la reserva llegó con ?servicios= (es decir,
+// desde el carrito); una reserva por el camino rápido deja el carrito como estaba.
 const ReservaCorte = () => {
   const [searchParams] = useSearchParams()
-  const servicioInicial = searchParams.get('servicio')
+  const [{ ids: serviciosIniciales, desdeCarrito }] = useState(() => leerServiciosDeUrl(searchParams))
   const barberoInicial = searchParams.get('barbero')
+  const { vaciar: vaciarCarrito } = useCarrito()
 
   const [estado, dispatch] = useReducer(
     reservaReducer,
-    estadoInicialReserva(
-      servicioInicial ? Number(servicioInicial) : '',
-      barberoInicial ? Number(barberoInicial) : null
-    )
+    undefined,
+    () => estadoInicialReserva(serviciosIniciales, barberoInicial ? Number(barberoInicial) : null)
   )
 
   const [servicios, setServicios] = useState([])
@@ -51,18 +61,27 @@ const ReservaCorte = () => {
     setRecarga((veces) => veces + 1)
   }, [])
 
-  // Las tres vías (400 al confirmar, 400 al pedir horas, enlace viejo) terminan igual: paso Servicio,
-  // sin selección ni fecha/hora, con aviso, y la lista de servicios se vuelve a pedir.
-  const manejarServicioNoDisponible = useCallback(() => {
-    dispatch({ type: 'SERVICIO_NO_DISPONIBLE' })
-    recargarDatos()
-  }, [recargarDatos])
+  // Las tres vías (400 al confirmar, 400 al pedir horas, enlace viejo) terminan igual: se quitan SOLO los servicios
+  // afectados (`err.servicios_no_disponibles`), se conserva el resto, se vuelve al paso Servicio con aviso y la lista
+  // de servicios se vuelve a pedir.
+  const manejarServicioNoDisponible = useCallback(
+    (err) => {
+      dispatch({ type: 'SERVICIO_NO_DISPONIBLE', ids: err?.servicios_no_disponibles })
+      recargarDatos()
+    },
+    [recargarDatos]
+  )
 
-  // La carga asíncrona necesita el servicio elegido más reciente (p. ej. el de ?servicio=<id>).
-  const servicioIdRef = useRef(estado.servicioId)
+  // Repetidos, más de 3 o combo de más de 240 min: se vuelve al paso Servicio con el motivo y la selección intacta.
+  const manejarErrorSeleccion = useCallback((err) => {
+    dispatch({ type: 'ERROR_SELECCION', mensaje: mensajeErrorSeleccion(err.codigo) })
+  }, [])
+
+  // La carga asíncrona necesita los servicios elegidos más recientes (p. ej. los de ?servicios=...).
+  const servicioIdsRef = useRef(estado.servicioIds)
   useEffect(() => {
-    servicioIdRef.current = estado.servicioId
-  }, [estado.servicioId])
+    servicioIdsRef.current = estado.servicioIds
+  }, [estado.servicioIds])
 
   useEffect(() => {
     let cancelado = false
@@ -75,11 +94,18 @@ const ReservaCorte = () => {
         setServicios(serviciosData)
         setBarberos(barberosData)
 
-        // Enlace viejo: ?servicio=<id> de un servicio inactivo o inexistente.
-        const elegido = servicioIdRef.current
-        if (elegido && !serviciosData.some((servicio) => servicio.id === elegido)) {
+        // Enlace viejo: ?servicios=... con ids inactivos o inexistentes. Solo esos se quitan; el resto se conserva.
+        const elegidos = servicioIdsRef.current
+        const inactivos = elegidos.filter((id) => !serviciosData.some((servicio) => servicio.id === id))
+        if (inactivos.length > 0) {
           recargando = true
-          manejarServicioNoDisponible()
+          manejarServicioNoDisponible({ servicios_no_disponibles: inactivos })
+        } else if (elegidos.length > 1) {
+          // Un combo de la URL que pasa del tope de duración se avisa desde el principio (el servidor también lo rechaza).
+          const datos = elegidos.map((id) => serviciosData.find((servicio) => servicio.id === id))
+          if (duracionTotal(datos) > MAX_DURACION_COMBO_MIN) {
+            dispatch({ type: 'ERROR_SELECCION', mensaje: mensajeErrorSeleccion('DURACION_EXCEDIDA') })
+          }
         }
       } catch (err) {
         if (!cancelado) setErrorCarga(err.message)
@@ -117,16 +143,23 @@ const ReservaCorte = () => {
         correo: datosContacto.correo,
         telefono: datosContacto.telefono,
         consentimiento: datosContacto.consentimiento,
-        servicio_id: estado.servicioId,
+        servicios_ids: estado.servicioIds,
         barbero_id: estado.barberoId === null ? undefined : estado.barberoId,
         fecha: estado.fecha,
         hora: estado.hora,
       })
+      // La reserva terminó: si llegó desde el carrito, esa selección ya se agendó y se vacía.
+      if (desdeCarrito) vaciarCarrito()
       dispatch({ type: 'RESERVA_CONFIRMADA', resumen })
     } catch (err) {
       if (err.codigo === 'SERVICIO_NO_DISPONIBLE') {
-        // El servicio se desactivó mientras el usuario reservaba: se cierra el modal y se vuelve al paso Servicio.
-        manejarServicioNoDisponible()
+        // Un servicio se desactivó mientras el usuario reservaba: se cierra el modal, se quitan solo los afectados y
+        // se vuelve al paso Servicio.
+        manejarServicioNoDisponible(err)
+        return
+      }
+      if (mensajeErrorSeleccion(err.codigo)) {
+        manejarErrorSeleccion(err)
         return
       }
       if (err.status === 409) {
@@ -143,7 +176,9 @@ const ReservaCorte = () => {
     return <PantallaExito resumen={estado.resumen} onNuevaReserva={() => dispatch({ type: 'REINICIAR' })} />
   }
 
-  const servicioSeleccionado = servicios.find((servicio) => servicio.id === estado.servicioId)
+  const serviciosSeleccionados = estado.servicioIds
+    .map((id) => servicios.find((servicio) => servicio.id === id))
+    .filter(Boolean)
   const barberoSeleccionado =
     estado.barberoId === null ? null : barberos.find((barbero) => barbero.id === estado.barberoId)
 
@@ -159,7 +194,7 @@ const ReservaCorte = () => {
       </p>
 
       <div className="mt-8 flex w-full max-w-5xl flex-col items-start gap-8 lg:flex-row lg:justify-center">
-        <div className="flex w-full flex-col items-center lg:max-w-2xl">
+        <div className="flex w-full min-w-0 flex-col items-center lg:max-w-2xl">
           <div className="w-full">
             <IndicadorProgreso pasoActual={estado.paso} />
           </div>
@@ -182,8 +217,8 @@ const ReservaCorte = () => {
                 {estado.paso === 'servicio' && (
                   <PasoServicio
                     servicios={servicios}
-                    servicioIdSeleccionado={estado.servicioId}
-                    onSeleccionar={(servicioId) => dispatch({ type: 'SELECCIONAR_SERVICIO', servicioId })}
+                    idsSeleccionados={estado.servicioIds}
+                    onSeleccionar={(servicioIds) => dispatch({ type: 'SELECCIONAR_SERVICIOS', servicioIds })}
                   />
                 )}
                 {estado.paso === 'barbero' && (
@@ -195,7 +230,7 @@ const ReservaCorte = () => {
                 )}
                 {estado.paso === 'fecha-hora' && (
                   <PasoFechaHora
-                    servicioId={estado.servicioId}
+                    servicioIds={estado.servicioIds}
                     barberoId={estado.barberoId}
                     fecha={estado.fecha}
                     hora={estado.hora}
@@ -203,6 +238,7 @@ const ReservaCorte = () => {
                     onSeleccionarFecha={(fecha) => dispatch({ type: 'SELECCIONAR_FECHA', fecha })}
                     onSeleccionarHora={(hora) => dispatch({ type: 'SELECCIONAR_HORA', hora })}
                     onServicioNoDisponible={manejarServicioNoDisponible}
+                    onErrorSeleccion={manejarErrorSeleccion}
                   />
                 )}
               </>
@@ -215,7 +251,7 @@ const ReservaCorte = () => {
                 type="button"
                 onClick={irAPasoAnterior}
                 disabled={esPrimerPaso}
-                className="rounded-xl border border-black px-5 py-2 font-poppins font-semibold text-black duration-200 hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-black"
+                className="min-h-11 rounded-xl border border-black px-5 py-2 font-poppins font-semibold text-black duration-200 hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-black"
               >
                 Atrás
               </button>
@@ -225,7 +261,7 @@ const ReservaCorte = () => {
 
         {mostrarResumen && !cargandoDatos && !errorCarga && (
           <ResumenReserva
-            servicio={servicioSeleccionado}
+            servicios={serviciosSeleccionados}
             barbero={barberoSeleccionado}
             mostrarBarbero={indiceActual >= 1}
             fecha={estado.fecha}
@@ -238,7 +274,7 @@ const ReservaCorte = () => {
 
       {estado.paso === 'confirmar' && (
         <ModalConfirmacion
-          servicio={servicioSeleccionado}
+          servicios={serviciosSeleccionados}
           barbero={barberoSeleccionado}
           fecha={estado.fecha}
           hora={estado.hora}

@@ -9,7 +9,7 @@ const BARBERO = { id: 1, nombre: 'Boby' }
 const renderModal = (props = {}) =>
   render(
     <ModalConfirmacion
-      servicio={SERVICIO}
+      servicios={[SERVICIO]}
       barbero={BARBERO}
       fecha="2030-06-15"
       hora="10:00"

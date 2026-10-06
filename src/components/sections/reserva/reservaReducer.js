@@ -1,9 +1,24 @@
-export const MENSAJE_SERVICIO_NO_DISPONIBLE = 'Ese servicio ya no está disponible. Elige otro de la lista.'
+import { MAX_DURACION_COMBO_MIN, MAX_SERVICIOS } from '../../../utils/carrito'
+import { mismosIds, normalizarIds } from '../../../utils/seleccionReserva'
 
-// barberoId: null significa "Cualquier barbero" (opción por defecto), no "sin elegir".
-export const estadoInicialReserva = (servicioId = '', barberoId = null) => ({
+export const MENSAJE_SERVICIO_NO_DISPONIBLE = 'Ese servicio ya no está disponible. Elige otro de la lista.'
+export const MENSAJE_SERVICIOS_NO_DISPONIBLES =
+  'Quitamos de tu selección lo que ya no está disponible. Revisa lo que queda o elige otros servicios.'
+
+// Errores del servidor sobre la selección en sí (no deberían ocurrir si el cliente respeta las reglas, pero la URL o
+// un catálogo que cambió pueden provocarlos): se vuelve al paso Servicio con un mensaje claro y la selección intacta.
+const MENSAJES_ERROR_SELECCION = {
+  SERVICIOS_REPETIDOS: 'No puedes repetir un servicio en la misma reserva.',
+  LIMITE_SERVICIOS: `Puedes reservar máximo ${MAX_SERVICIOS} servicios a la vez.`,
+  DURACION_EXCEDIDA: `Esa combinación dura más de ${MAX_DURACION_COMBO_MIN} min, el máximo para combos. Quita algún servicio.`,
+}
+export const mensajeErrorSeleccion = (codigo) => MENSAJES_ERROR_SELECCION[codigo]
+
+// servicioIds: servicios elegidos, en orden (1 a 3, sin repetir). barberoId: null significa "Cualquier barbero"
+// (opción por defecto), no "sin elegir".
+export const estadoInicialReserva = (servicioIds = [], barberoId = null) => ({
   paso: 'servicio',
-  servicioId,
+  servicioIds: normalizarIds(servicioIds),
   barberoId,
   fecha: '',
   hora: '',
@@ -17,14 +32,27 @@ export const estadoInicialReserva = (servicioId = '', barberoId = null) => ({
 
 export const reservaReducer = (estado, accion) => {
   switch (accion.type) {
-    case 'SELECCIONAR_SERVICIO':
-      // La duración del servicio cambia la disponibilidad: fecha y hora ya no son válidas.
-      return { ...estado, servicioId: accion.servicioId, fecha: '', hora: '', errorGlobal: '' }
+    case 'SELECCIONAR_SERVICIOS': {
+      const servicioIds = normalizarIds(accion.servicioIds)
+      // La duración total cambia la disponibilidad: si cambia la selección, fecha y hora ya no son válidas.
+      if (mismosIds(servicioIds, estado.servicioIds)) return { ...estado, errorGlobal: '' }
+      return { ...estado, servicioIds, fecha: '', hora: '', errorGlobal: '' }
+    }
 
-    case 'SERVICIO_NO_DISPONIBLE':
-      // El servicio elegido ya no está activo (400 con codigo al confirmar o al pedir disponibilidad, o un
-      // enlace viejo ?servicio=<id>): se vuelve al paso Servicio sin selección y con un aviso de una sola vez.
-      return { ...estado, paso: 'servicio', servicioId: '', fecha: '', hora: '', errorGlobal: MENSAJE_SERVICIO_NO_DISPONIBLE }
+    case 'SERVICIO_NO_DISPONIBLE': {
+      // Uno o más servicios elegidos ya no están activos (400 con codigo al confirmar o al pedir disponibilidad, o un
+      // enlace viejo ?servicios=...): se quitan SOLO los afectados (`ids`; sin ids se asume que ninguno sirve) y se
+      // vuelve al paso Servicio con un aviso de una sola vez. Lo que queda sigue elegido.
+      const afectados = Array.isArray(accion.ids) ? accion.ids : null
+      const servicioIds = afectados ? estado.servicioIds.filter((id) => !afectados.includes(id)) : []
+      const quitados = estado.servicioIds.length - servicioIds.length
+      const mensaje =
+        servicioIds.length === 0 && quitados <= 1 ? MENSAJE_SERVICIO_NO_DISPONIBLE : MENSAJE_SERVICIOS_NO_DISPONIBLES
+      return { ...estado, paso: 'servicio', servicioIds, fecha: '', hora: '', errorGlobal: mensaje }
+    }
+
+    case 'ERROR_SELECCION':
+      return { ...estado, paso: 'servicio', fecha: '', hora: '', errorGlobal: accion.mensaje }
 
     case 'SELECCIONAR_BARBERO':
       // El calendario depende del barbero: fecha y hora ya no son válidas.

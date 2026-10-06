@@ -2,7 +2,7 @@ import { FcClock } from 'react-icons/fc'
 import { Link } from 'react-router-dom'
 import { useId } from 'react'
 import { useCarrito } from '../../context/CarritoContext'
-import { avisoMismaCategoria, enlaceReservaIndividual, evaluarAgregado } from '../../utils/carrito'
+import { enlaceReservaIndividual, estadoDeTarjeta } from '../../utils/carrito'
 import InsigniaTipo from './InsigniaTipo'
 import { formatearPrecio } from '../../utils/formato'
 import { nombreCategoria } from '../../utils/servicios'
@@ -50,11 +50,8 @@ const TarjetaServicio = ({ servicio, Titulo = 'h3' }) => {
   const { ids, seleccion, alternar } = useCarrito()
   const idAyuda = useId()
 
-  const seleccionado = ids.includes(servicio.id)
-  const evaluacion = seleccionado ? { permitido: true, mensaje: '' } : evaluarAgregado(seleccion, servicio, ids.length)
-  const bloqueado = !evaluacion.permitido
-  // Aviso suave (no bloquea): ya hay otro servicio de la misma categoría.
-  const ayuda = bloqueado ? evaluacion.mensaje : seleccionado ? null : avisoMismaCategoria(seleccion, servicio)
+  // ayuda: motivo del bloqueo o, si no bloquea, el aviso suave de que ya hay otro servicio de la misma categoría.
+  const { seleccionado, bloqueado, ayuda } = estadoDeTarjeta(seleccion, servicio, ids)
 
   return (
     <div
@@ -95,18 +92,42 @@ const TarjetaServicio = ({ servicio, Titulo = 'h3' }) => {
   )
 }
 
-// Paso 1 de la reserva: toda la tarjeta es un botón de selección (aria-pressed), sin depender del Router.
-export const TarjetaServicioSeleccionable = ({ servicio, Titulo = 'h3', seleccionado = false, onSeleccionar }) => (
-  <button
-    type='button'
-    aria-pressed={seleccionado}
-    onClick={() => onSeleccionar(servicio.id)}
-    className={`flex min-w-0 flex-col rounded-2xl border p-4 text-left shadow-md hover:shadow-xl hover:-translate-y-1 duration-300 cursor-pointer ${
-      seleccionado ? 'border-oro bg-[#FFFBF0] ring-2 ring-oro' : 'border-zinc-300 bg-white'
-    }`}
-  >
-    <ContenidoServicio servicio={servicio} Titulo={Titulo} marcado={seleccionado} />
-  </button>
-)
+// Paso 1 de la reserva: toda la tarjeta es un botón de selección (aria-pressed), sin depender del Router. Admite varias
+// a la vez; si no se puede agregar (`bloqueado`) queda con aria-disabled —sigue enfocable— y `ayuda` explica el motivo
+// con texto visible enlazado por aria-describedby (también sirve para el aviso suave de categoría repetida).
+export const TarjetaServicioSeleccionable = ({
+  servicio,
+  Titulo = 'h3',
+  seleccionado = false,
+  bloqueado = false,
+  ayuda = null,
+  onSeleccionar,
+}) => {
+  const idAyuda = useId()
+
+  return (
+    <div className='flex min-w-0 flex-col'>
+      <button
+        type='button'
+        aria-pressed={seleccionado}
+        aria-disabled={bloqueado || undefined}
+        aria-describedby={ayuda ? idAyuda : undefined}
+        onClick={() => {
+          if (!bloqueado) onSeleccionar(servicio.id)
+        }}
+        className={`flex min-w-0 flex-1 flex-col rounded-2xl border p-4 text-left shadow-md duration-300 aria-disabled:cursor-not-allowed aria-disabled:opacity-60 ${
+          bloqueado ? '' : 'cursor-pointer hover:shadow-xl hover:-translate-y-1'
+        } ${seleccionado ? 'border-oro bg-[#FFFBF0] ring-2 ring-oro' : 'border-zinc-300 bg-white'}`}
+      >
+        <ContenidoServicio servicio={servicio} Titulo={Titulo} marcado={seleccionado} />
+      </button>
+      {ayuda && (
+        <p id={idAyuda} className='mt-2 px-1 font-poppins text-xs font-medium text-zinc-700'>
+          {ayuda}
+        </p>
+      )}
+    </div>
+  )
+}
 
 export default TarjetaServicio

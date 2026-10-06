@@ -5,6 +5,9 @@ export const CATEGORIA_TODAS = 'todas'
 const CLAVE_OTROS = 'otros'
 const NOMBRE_OTROS = 'Otros'
 
+// ¿La cita tiene 2 o más servicios? (las citas de un solo servicio se muestran exactamente como siempre)
+export const esCombo = (cita) => Array.isArray(cita.servicios) && cita.servicios.length > 1
+
 // La API puede devolver servicios sin categoría (hoy el seed no los genera); se agrupan en "Otros".
 export const claveCategoria = (servicio) => servicio.categoria?.slug ?? CLAVE_OTROS
 export const nombreCategoria = (servicio) => servicio.categoria?.nombre ?? NOMBRE_OTROS

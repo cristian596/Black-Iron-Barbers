@@ -282,8 +282,9 @@ describe('Carta + carrito (integración)', () => {
   })
 })
 
-// Esta fase solo toca la carta: ni el flujo de reserva ni los paneles pueden depender del carrito todavía.
-describe('El flujo de reserva y los paneles no usan el carrito (Fase 2)', () => {
+// El carrito solo lo usan la carta y la reserva (el contexto y las reglas de utils/carrito.js); los paneles del barbero y
+// del admin no dependen de él.
+describe('Los paneles no usan el carrito', () => {
   const raiz = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const archivos = (ruta) => {
     const completa = path.join(raiz, ruta)
@@ -293,8 +294,6 @@ describe('El flujo de reserva y los paneles no usan el carrito (Fase 2)', () => 
   const PROHIBIDO = /CarritoContext|useCarrito|ProveedorCarrito|utils\/carrito|components\/carrito/
 
   it.each([
-    'components/sections/reserva',
-    'pages/ReservaCorte.jsx',
     'pages/panel',
     'pages/admin',
     'components/panel',

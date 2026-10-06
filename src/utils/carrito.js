@@ -30,6 +30,19 @@ export const avisoMismaCategoria = (seleccion, servicio) => {
     : null
 }
 
+// Estado de una tarjeta de servicio frente a la selección actual (carta y paso 1 de la reserva comparten esta regla):
+// { seleccionado, bloqueado, ayuda }. `ayuda` es el motivo del bloqueo (máximo o duración) o, si no bloquea, el aviso
+// suave de categoría repetida; `ids` son los ids elegidos (pueden ser más que `seleccion` si aún no se conocen todos).
+export const estadoDeTarjeta = (seleccion, servicio, ids) => {
+  if (ids.includes(servicio.id)) return { seleccionado: true, bloqueado: false, ayuda: null }
+  const evaluacion = evaluarAgregado(seleccion, servicio, ids.length)
+  return {
+    seleccionado: false,
+    bloqueado: !evaluacion.permitido,
+    ayuda: evaluacion.permitido ? avisoMismaCategoria(seleccion, servicio) : evaluacion.mensaje,
+  }
+}
+
 // Categorías con 2 o más servicios elegidos (para el aviso dentro del carrito).
 export const categoriasRepetidas = (seleccion) => {
   const conteo = new Map()

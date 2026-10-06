@@ -18,7 +18,7 @@ const ESTILOS = {
 }
 
 const BASE_CHIP =
-  'inline-flex min-h-10 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-4 py-1.5 font-poppins text-sm font-semibold active:scale-95 motion-safe:transition-colors motion-safe:duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]'
+  'inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-4 py-1.5 font-poppins text-sm font-semibold active:scale-95 motion-safe:transition-colors motion-safe:duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#D4AF37]'
 
 // En móvil las categorías se desplazan en horizontal (son muchas para envolverlas); desde sm se envuelven.
 const FILA_CHIPS = 'flex gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:justify-center sm:overflow-visible'
