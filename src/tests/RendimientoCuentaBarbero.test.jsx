@@ -83,7 +83,7 @@ afterEach(() => {
 })
 
 describe('Menú y rutas', () => {
-  it('el menú del barbero tiene Resumen, Mis citas, Mi rendimiento y Mi cuenta', async () => {
+  it('el menú del barbero tiene Resumen, Mis citas, Mi rendimiento, Mi cuenta y Configuración', async () => {
     montar('/panel/rendimiento')
     await h1('Mi rendimiento')
     const lateral = screen.getByRole('complementary', { name: 'Menú de navegación' })
@@ -93,6 +93,7 @@ describe('Menú y rutas', () => {
       ['Mis citas', '/panel/citas'],
       ['Mi rendimiento', '/panel/rendimiento'],
       ['Mi cuenta', '/panel/cuenta'],
+      ['Configuración', '/panel/configuracion'],
     ])
     expect(within(lateral).getByRole('link', { name: 'Mi rendimiento' })).toHaveAttribute('aria-current', 'page')
     expect(within(lateral).getByRole('link', { name: 'Resumen' })).not.toHaveAttribute('aria-current')

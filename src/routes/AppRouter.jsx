@@ -21,6 +21,7 @@ const CitasAdmin = lazy(() => import('../pages/admin/Citas'));
 const Servicios = lazy(() => import('../pages/admin/Servicios'));
 const Empleados = lazy(() => import('../pages/admin/Empleados'));
 const Reportes = lazy(() => import('../pages/admin/Reportes'));
+const Configuracion = lazy(() => import('../pages/Configuracion'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
 const AppRouter = createBrowserRouter([
@@ -72,6 +73,7 @@ const AppRouter = createBrowserRouter([
       { path: 'citas', element: <MisCitas /> },
       { path: 'rendimiento', element: <MiRendimiento /> },
       { path: 'cuenta', element: <MiCuenta /> },
+      { path: 'configuracion', element: <Configuracion /> },
       { path: '*', element: <Navigate to="/panel" replace /> },
     ]
   },
@@ -94,6 +96,7 @@ const AppRouter = createBrowserRouter([
       { path: 'servicios', element: <Servicios /> },
       { path: 'empleados', element: <Empleados /> },
       { path: 'reportes', element: <Reportes /> },
+      { path: 'configuracion', element: <Configuracion /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
     ]
   }

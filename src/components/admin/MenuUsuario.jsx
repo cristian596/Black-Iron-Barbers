@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { FiLock, FiLogOut } from 'react-icons/fi'
+import { Link } from 'react-router-dom'
+import { FiLock, FiLogOut, FiSettings } from 'react-icons/fi'
 import CambiarContrasena from '../dashboard/CambiarContrasena'
 import Modal from '../ui/Modal'
 
 const iniciales = (nombre) => nombre.trim().slice(0, 2).toUpperCase()
 
-// Avatar con iniciales (solo CSS) que abre un panel con las opciones de la cuenta.
+// Avatar (foto de perfil si hay; si no, o si no carga, iniciales hechas con CSS) que abre un panel con las opciones de la cuenta.
+// Con `rutaConfiguracion` ofrece "Configuración" (foto y nombre del dashboard).
 // Admin (por defecto): cambiar contraseña y cerrar sesión. Barbero (`conCambioContrasena={false}`): solo
 // ofrece "Cerrar sesión" (su contraseña solo se cambia cuando está por caducar, desde el aviso del panel).
-const MenuUsuario = ({ usuario, token, etiquetaRol = 'Administrador', conCambioContrasena = true, alCerrarSesion }) => {
+const MenuUsuario = ({ usuario, token, foto, rutaConfiguracion, etiquetaRol = 'Administrador', conCambioContrasena = true, alCerrarSesion }) => {
   const nombre = usuario?.usuario ?? etiquetaRol
+  const [fotoFallida, setFotoFallida] = useState(null)
+  const mostrarFoto = Boolean(foto) && fotoFallida !== foto
   const [abierto, setAbierto] = useState(false)
   const [verContrasena, setVerContrasena] = useState(false)
   const contenedorRef = useRef(null)
@@ -50,12 +54,22 @@ const MenuUsuario = ({ usuario, token, etiquetaRol = 'Administrador', conCambioC
         aria-label={`Menú de usuario de ${nombre}`}
         className="flex min-h-11 cursor-pointer items-center gap-2 rounded-full pr-1 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-oro sm:pr-3"
       >
-        <span
-          aria-hidden="true"
-          className="flex size-11 items-center justify-center rounded-full border border-oro/60 bg-oro/10 text-sm font-semibold text-oro sm:size-9"
-        >
-          {iniciales(nombre)}
-        </span>
+        {mostrarFoto ? (
+          <img
+            src={foto}
+            alt={`Foto de ${nombre}`}
+            className="size-11 shrink-0 rounded-full border border-oro/60 object-cover sm:size-9"
+            decoding="async"
+            onError={() => setFotoFallida(foto)}
+          />
+        ) : (
+          <span
+            aria-hidden="true"
+            className="flex size-11 items-center justify-center rounded-full border border-oro/60 bg-oro/10 text-sm font-semibold text-oro sm:size-9"
+          >
+            {iniciales(nombre)}
+          </span>
+        )}
         <span className="hidden max-w-32 truncate text-sm font-medium sm:block">{nombre}</span>
       </button>
 
@@ -68,6 +82,16 @@ const MenuUsuario = ({ usuario, token, etiquetaRol = 'Administrador', conCambioC
             <p className="truncate text-sm font-semibold">{nombre}</p>
             <p className="text-xs text-zinc-400">{etiquetaRol}</p>
           </div>
+          {rutaConfiguracion && (
+            <Link
+              to={rutaConfiguracion}
+              onClick={() => setAbierto(false)}
+              className="mt-1 flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm text-zinc-200 hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-oro"
+            >
+              <FiSettings aria-hidden="true" />
+              Configuración
+            </Link>
+          )}
           {conCambioContrasena && (
             <button
               type="button"

@@ -91,7 +91,7 @@ const conPorConfirmar = (items) => {
 const sinBienvenida = () => sessionStorage.setItem('bienvenida-barbero-vista', '1')
 
 describe('Layout de /panel', () => {
-  it('barra lateral con avatar, nombre y cargo del barbero y las cuatro entradas del menú', async () => {
+  it('barra lateral con avatar, nombre y cargo del barbero y las entradas del menú', async () => {
     sinBienvenida()
     montar()
     await esperarPanel()
@@ -102,6 +102,7 @@ describe('Layout de /panel', () => {
     const enlaces = within(within(lateral).getByRole('navigation')).getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])
     expect(enlaces).toEqual([
       ['Resumen', '/panel'], ['Mis citas', '/panel/citas'], ['Mi rendimiento', '/panel/rendimiento'], ['Mi cuenta', '/panel/cuenta'],
+      ['Configuración', '/panel/configuracion'],
     ])
   })
 

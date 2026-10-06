@@ -220,3 +220,24 @@ export const obtenerMisIngresos = (token, agrupar, signal) =>
 
 export const obtenerMisServiciosTop = (token, periodo, limite, signal) =>
   request(`/barbero/estadisticas/servicios-top${construirQuery({ periodo, limite })}`, { headers: authHeader(token), signal });
+
+// Perfil del dashboard (nombre y foto que solo existen en el panel; no cambian lo que ve el cliente en la web).
+export const obtenerPerfil = (token, signal) => request('/perfil', { headers: authHeader(token), signal });
+
+// nombre_perfil: texto (2–40) o null para volver al nombre público.
+export const actualizarPerfil = (token, nombrePerfil) =>
+  request('/perfil', {
+    method: 'PATCH',
+    headers: authHeader(token),
+    body: JSON.stringify({ nombre_perfil: nombrePerfil }),
+  });
+
+// La foto va como cuerpo crudo (no multipart), con el Content-Type del propio archivo.
+export const subirFotoPerfil = (token, archivo) =>
+  request('/perfil/foto', {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': archivo.type },
+    body: archivo,
+  });
+
+export const quitarFotoPerfil = (token) => request('/perfil/foto', { method: 'DELETE', headers: authHeader(token) });

@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { ProveedorPerfil, usePerfil } from '../../context/PerfilContext'
 import { ResumenBarberoProvider, useResumenBarbero } from '../../context/ResumenBarberoContext'
 import { useBarberosActivos } from '../../hooks/useBarberosActivos'
 import { useConfirmarCierreSesion } from '../../hooks/useConfirmarCierreSesion'
 import { obtenerSesion } from '../../services/api'
 import { SECCIONES_BARBERO } from '../../data/menuBarbero'
+import { barberoConPerfil } from '../../utils/perfil'
 import { bienvenidaYaMostrada, marcarBienvenidaMostrada } from '../../utils/bienvenida'
 import LayoutPanel from '../../components/admin/LayoutPanel'
 import MenuUsuario from '../../components/admin/MenuUsuario'
@@ -56,7 +58,14 @@ const ContenidoPanel = () => {
       secciones={SECCIONES_BARBERO}
       tarjeta={<PerfilBarbero barbero={barbero} />}
       derechaBarra={
-        <MenuUsuario usuario={{ usuario: barbero.nombre }} etiquetaRol="Barbero" conCambioContrasena={false} alCerrarSesion={pedirCierreSesion} />
+        <MenuUsuario
+          usuario={{ usuario: barbero.nombre }}
+          foto={barbero.foto}
+          etiquetaRol="Barbero"
+          conCambioContrasena={false}
+          rutaConfiguracion="/panel/configuracion"
+          alCerrarSesion={pedirCierreSesion}
+        />
       }
       alCerrarSesion={pedirCierreSesion}
       cajonPausado={cierreAbierto}
@@ -76,6 +85,18 @@ const ContenidoPanel = () => {
   )
 }
 
+// El barbero tal como lo ve SU panel: nombre y foto de perfil sobre lo público (el cargo no cambia). Todo lo que cuelga
+// del resumen compartido (barra lateral, menú, bienvenida, Mi cuenta) lee este valor, así se actualiza al instante.
+const PanelConPerfil = ({ barberoPublico, token, children }) => {
+  const { perfil } = usePerfil()
+  const barbero = useMemo(() => barberoConPerfil(barberoPublico, perfil), [barberoPublico, perfil])
+  return (
+    <ResumenBarberoProvider token={token} barbero={barbero}>
+      {children}
+    </ResumenBarberoProvider>
+  )
+}
+
 // Layout de /panel (el guard ProtectedRoute + RoleRoute "barbero" está una vez en AppRouter). Prioridad:
 //   1. contraseña caducada → pantalla obligatoria de cambio (bloquea todo; ni siquiera se piden datos),
 //   2. ventana de bienvenida (dentro de ContenidoPanel, sobre el contenido),
@@ -85,6 +106,11 @@ const PanelLayout = () => {
   const { usuario, token, vigencia, actualizarVigencia } = useAuth()
   const { pedirCierreSesion, dialogoCierreSesion } = useConfirmarCierreSesion()
   const { barberosActivos } = useBarberosActivos()
+  // Nombre, cargo y foto PÚBLICOS (los de la web): salen de la lista de barberos activos; sin ella, el nombre de usuario.
+  const barberoPublico = useMemo(
+    () => barberosActivos.find((b) => b.id === usuario.barbero_id) ?? { id: usuario.barbero_id, nombre: usuario.usuario, cargo: '', foto: null },
+    [barberosActivos, usuario.barbero_id, usuario.usuario]
+  )
 
   useEffect(() => {
     if (vigencia !== undefined) return undefined
@@ -110,13 +136,14 @@ const PanelLayout = () => {
     )
   }
 
-  // Nombre, cargo y foto salen de la lista pública de barberos activos; sin ella se usa el nombre de usuario.
-  const barbero = barberosActivos.find((b) => b.id === usuario.barbero_id) ?? { id: usuario.barbero_id, nombre: usuario.usuario, cargo: '', foto: null }
-
+  // El perfil solo se pide aquí, con el panel desbloqueado: con la contraseña caducada ya se mostró arriba la pantalla
+  // obligatoria y este proveedor ni se monta (no hay petición a /perfil).
   return (
-    <ResumenBarberoProvider token={token} barbero={barbero}>
-      <ContenidoPanel />
-    </ResumenBarberoProvider>
+    <ProveedorPerfil token={token} nombrePublico={barberoPublico.nombre}>
+      <PanelConPerfil barberoPublico={barberoPublico} token={token}>
+        <ContenidoPanel />
+      </PanelConPerfil>
+    </ProveedorPerfil>
   )
 }
 

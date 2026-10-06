@@ -88,12 +88,12 @@ describe('AdminLayout: estructura y rutas hijas', () => {
     expect(nav.getAllByRole('link').filter((a) => a.hasAttribute('aria-current'))).toHaveLength(1)
   }, ESPERA_TEST)
 
-  it('la barra lateral lista las cinco secciones y Cerrar sesión; no hay sección de clientes', async () => {
+  it('la barra lateral lista las cinco secciones más Configuración y Cerrar sesión; no hay sección de clientes', async () => {
     montar('/admin')
     const nav = within(await esperarLayout())
 
     expect(nav.getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual(
-      SECCIONES.map(([ruta, titulo]) => [titulo, ruta])
+      [...SECCIONES, ['/admin/configuracion', 'Configuración']].map(([ruta, titulo]) => [titulo, ruta])
     )
     expect(within(lateral()).getByRole('button', { name: 'Cerrar sesión' })).toBeInTheDocument()
     expect(screen.queryByText(/clientes/i)).toBeNull()
