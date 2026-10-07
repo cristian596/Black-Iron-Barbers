@@ -4,13 +4,17 @@ import { useAtraparFoco } from '../../hooks/useAtraparFoco'
 
 // Diálogo modal accesible: foco atrapado, Escape y clic en el fondo lo cierran.
 // `idTitulo` es el id del encabezado que lo nombra (aria-labelledby).
-const Modal = ({ idTitulo, alCerrar, children }) => {
+// Opcionales (los valores por defecto son los de siempre): `capa` (clase z-*), `claseCaja` (ancho y extras de la
+// caja) y `centrado` (centrar también en móvil).
+const Modal = ({ idTitulo, alCerrar, capa = 'z-50', claseCaja = 'max-w-md', centrado = false, children }) => {
   const ref = useRef(null)
   useAtraparFoco(ref, true, alCerrar)
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start overflow-y-auto bg-black/80 p-4 sm:items-center"
+      className={`fixed inset-0 ${capa} flex overflow-y-auto bg-black/80 p-4 ${
+        centrado ? 'items-center' : 'items-start sm:items-center'
+      }`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) alCerrar()
       }}
@@ -20,7 +24,7 @@ const Modal = ({ idTitulo, alCerrar, children }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby={idTitulo}
-        className="relative mx-auto w-full min-w-0 max-w-md rounded-2xl border border-white/10 bg-[#0a0a0a] p-5 text-white"
+        className={`relative mx-auto w-full min-w-0 ${claseCaja} rounded-2xl border border-white/10 bg-[#0a0a0a] p-5 text-white`}
       >
         <button
           type="button"

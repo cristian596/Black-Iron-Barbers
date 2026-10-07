@@ -6,6 +6,8 @@ import { IoCloseOutline } from 'react-icons/io5'
 import { IoMdMenu } from 'react-icons/io'
 import { ImScissors } from 'react-icons/im'
 import { IoIosHome } from 'react-icons/io'
+import BotonClienteNuevo from './BotonClienteNuevo'
+import ModalAsesorias from './ModalAsesorias'
 
 const UMBRAL_SCROLL = 24
 
@@ -21,6 +23,34 @@ const NavBar = () => {
   const [menuMovil, setMenuMovil] = useState(false)
   const [conScroll, setConScroll] = useState(false)
   const botonRef = useRef(null)
+  const botonNuevoRef = useRef(null)
+  const origenModalRef = useRef(null)
+  const devolverFocoRef = useRef(true)
+  const [modalAbierto, setModalAbierto] = useState(false)
+
+  // El modal de asesorias solo se abre con el clic. Al cerrarlo de forma voluntaria el foco vuelve al control que
+  // lo abrio (en movil, la hamburguesa: el boton del menu queda inert al cerrarse). Si se cierra por navegar,
+  // el foco lo decide la pagina de destino. La limpieza de este efecto corre despues de la del Modal.
+  useEffect(() => {
+    if (!modalAbierto) return undefined
+    return () => {
+      if (devolverFocoRef.current) origenModalRef.current?.focus()
+    }
+  }, [modalAbierto])
+
+  const abrirModal = (origen) => {
+    origenModalRef.current = origen.current
+    devolverFocoRef.current = true
+    setModalAbierto(true)
+  }
+  const cerrarModal = () => {
+    devolverFocoRef.current = true
+    setModalAbierto(false)
+  }
+  const cerrarModalAlNavegar = () => {
+    devolverFocoRef.current = false
+    setModalAbierto(false)
+  }
 
   useEffect(() => {
     const actualizar = () => setConScroll(window.scrollY > UMBRAL_SCROLL)
@@ -75,21 +105,30 @@ const NavBar = () => {
           aria-label='Principal'
           className='flex justify-between items-center py-3 px-5 max-w-7xl mx-auto'
         >
-          <Link
-            to='/'
-            onClick={cerrarMenu}
-            className={`flex items-center gap-2 font-semibold rounded ${foco}`}
-          >
-            <RiScissorsCutFill
-              aria-hidden='true'
-              className='bg-[#f7f4ef] text-black rounded-full p-1'
-              size={28}
+          <div className='flex min-w-0 items-center gap-3 lg:gap-4'>
+            <Link
+              to='/'
+              onClick={cerrarMenu}
+              className={`flex items-center gap-2 font-semibold rounded whitespace-nowrap ${foco}`}
+            >
+              <RiScissorsCutFill
+                aria-hidden='true'
+                className='bg-[#f7f4ef] text-black rounded-full p-1'
+                size={28}
+              />
+              Black Iron Barbers
+            </Link>
+
+            <BotonClienteNuevo
+              ref={botonNuevoRef}
+              conPulso
+              onClick={() => abrirModal(botonNuevoRef)}
+              className='hidden md:inline-flex min-h-11 px-4 text-sm'
             />
-            Black Iron Barbers
-          </Link>
+          </div>
 
           {/* Escritorio y tablet */}
-          <div className='hidden md:flex md:gap-8 lg:gap-10 items-center'>
+          <div className='hidden md:flex md:gap-4 lg:gap-8 xl:gap-10 items-center'>
             {enlaces.map(({ to, texto, Icono, end }) => (
               <NavLink
                 key={to}
@@ -162,6 +201,14 @@ const NavBar = () => {
             'linear-gradient(rgb(0 0 0 / 0.85), rgb(0 0 0 / 0.85)), url(/CourtMan/court_1.jpg)',
         }}
       >
+        <BotonClienteNuevo
+          onClick={() => {
+            cerrarMenu()
+            abrirModal(botonRef)
+          }}
+          className='inline-flex min-h-12 px-8 text-xl'
+        />
+
         {enlaces.map(({ to, texto, Icono, end }) => (
           <NavLink
             key={to}
@@ -189,6 +236,9 @@ const NavBar = () => {
           <FaArrowRight aria-hidden='true' />
         </Link>
       </nav>
+
+      {/* Hermano del header (no hijo): su backdrop-blur volvería "fixed" relativo al header */}
+      {modalAbierto && <ModalAsesorias alCerrar={cerrarModal} alNavegar={cerrarModalAlNavegar} />}
     </>
   )
 }

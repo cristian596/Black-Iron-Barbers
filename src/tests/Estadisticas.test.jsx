@@ -30,7 +30,9 @@ describe('Estadisticas', () => {
     vi.mocked(api.obtenerBarberos).mockRejectedValue(new Error('sin conexión'))
     render(<Estadisticas />)
 
-    await waitFor(() => expect(api.obtenerBarberos).toHaveBeenCalled())
+    // Mientras carga hay un hueco reservado (li aria-hidden con "Barberos"): su desaparición es la señal de que
+    // la carga terminó. Esperar solo a la llamada a la API no basta, el fallo aún no se ha reflejado en el estado.
+    await waitFor(() => expect(screen.queryByText('Barberos')).not.toBeInTheDocument())
     expect(within(lista()).getAllByRole('listitem')).toHaveLength(3)
     expect(screen.queryByText('Barberos')).not.toBeInTheDocument()
   })
@@ -39,7 +41,9 @@ describe('Estadisticas', () => {
     vi.mocked(api.obtenerBarberos).mockResolvedValue([])
     render(<Estadisticas />)
 
-    await waitFor(() => expect(api.obtenerBarberos).toHaveBeenCalled())
+    // Con hidden: true se cuenta también el hueco reservado (4 mientras carga, 3 al terminar): sin esto la
+    // aserción daba 3 antes y después de la carga.
+    await waitFor(() => expect(within(lista()).getAllByRole('listitem', { hidden: true })).toHaveLength(3))
     expect(within(lista()).getAllByRole('listitem')).toHaveLength(3)
   })
 

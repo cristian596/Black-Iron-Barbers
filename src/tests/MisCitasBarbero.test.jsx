@@ -134,7 +134,7 @@ describe('/panel/citas: estado en la URL', () => {
     await waitFor(() => expect(ultima().q).toBe('ana'), { timeout: 8000 })
 
     await userEvent.click(screen.getAllByRole('button', { name: 'Limpiar filtros' })[0])
-    await waitFor(() => expect(params().has('q')).toBe(false))
+    await waitFor(() => expect(params().has('q')).toBe(false), { timeout: 8000 })
     expect(screen.getByLabelText('Buscar')).toHaveValue('')
   }, ESPERA_TEST)
 
@@ -223,9 +223,12 @@ describe('/panel/citas: lista, tabla y tarjetas', () => {
   it('< 1280 px: tarjetas (sin tabla) con la misma información', async () => {
     fijarAncho(false)
     montar()
-    const lista = await screen.findByRole('list', {}, { timeout: ESPERA })
+    // La región "Lista de citas" existe desde el primer render (con el esqueleto dentro): hay que esperar los datos.
+    await esperarDatos()
+    const region = await esperarLista()
+    const lista = within(region).getByRole('list')
     expect(screen.queryByRole('table')).toBeNull()
-    const tarjetas = within(await esperarLista()).getAllByRole('listitem')
+    const tarjetas = within(lista).getAllByRole('listitem')
     expect(tarjetas).toHaveLength(3)
     expect(tarjetas[1]).toHaveTextContent('Cliente 2')
     expect(tarjetas[1]).toHaveTextContent('28/09/2026 · 10:00')
@@ -233,7 +236,6 @@ describe('/panel/citas: lista, tabla y tarjetas', () => {
     expect(tarjetas[1]).toHaveTextContent('Por confirmar')
     expect(within(tarjetas[1]).getByRole('button', { name: 'Completar la cita de Cliente 2' })).toBeInTheDocument()
     expect(within(tarjetas[0]).queryByRole('button')).toBeNull()
-    expect(lista).toBeInTheDocument()
   }, ESPERA_TEST)
 })
 

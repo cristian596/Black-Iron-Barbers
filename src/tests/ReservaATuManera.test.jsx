@@ -5,7 +5,10 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import ReservaATuManera from '../components/sections/ReservaATuManera'
 import { RUTA_ASESORIA } from '../data/negocio'
 
-const Ubicacion = () => <p data-testid='ubicacion'>{useLocation().pathname}</p>
+const Ubicacion = () => {
+  const { pathname, hash } = useLocation()
+  return <p data-testid='ubicacion'>{pathname + hash}</p>
+}
 
 const montar = () =>
   render(
@@ -29,9 +32,13 @@ describe('ReservaATuManera: botón de asesoría', () => {
     expect(enlace).toHaveAttribute('href', RUTA_ASESORIA)
   })
 
-  it('el clic no navega', async () => {
+  it('apunta a la ancla de la asesoría gratis', () => {
+    expect(RUTA_ASESORIA).toBe('/asesorias#gratis')
+  })
+
+  it('el clic navega a /asesorias#gratis (ya no se bloquea)', async () => {
     montar()
     await userEvent.click(screen.getByRole('link', { name: TEXTO }))
-    expect(screen.getByTestId('ubicacion')).toHaveTextContent(/^\/$/)
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent('/asesorias#gratis')
   })
 })

@@ -43,10 +43,8 @@ const ReservaATuManera = () => {
         </Revelar>
 
         <Revelar retraso={160} className='grid min-w-0 md:col-span-2'>
-          {/* Provisional: la página de asesoría aún no existe, por eso se evita la navegación */}
           <Link
             to={RUTA_ASESORIA}
-            onClick={(e) => e.preventDefault()}
             className='flex w-full min-w-0 items-center justify-center gap-4 rounded-2xl border border-black/30 bg-oro px-6 py-5 text-center font-poppins text-base font-medium text-black shadow-lg shadow-oro/20 duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-oro/40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-oro focus-visible:ring-offset-2 focus-visible:ring-offset-[#0f0f0f] active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 md:text-lg'
           >
             <FaWandMagicSparkles aria-hidden='true' size={28} className='shrink-0' />

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Hero from '../components/sections/Hero'
 import * as api from '../services/api'
@@ -19,6 +19,14 @@ const renderHero = () =>
   )
 
 const datos = () => screen.getByRole('list', { name: 'Datos de la barbería' })
+
+// Cargando y "sin dato" se ven igual (el dato se omite), así que no hay nada en el DOM que esperar. La señal real
+// es que la respuesta simulada ya se resolvió o rechazó y React aplicó el estado resultante: se espera dentro
+// de act, que vacía esas actualizaciones, y solo entonces se afirma la ausencia.
+const esperarRespuestaBarberos = () =>
+  act(async () => {
+    await Promise.allSettled(vi.mocked(api.obtenerBarberos).mock.results.map((resultado) => resultado.value))
+  })
 
 describe('Hero', () => {
   beforeEach(() => {
@@ -102,7 +110,8 @@ describe('HeroDatos', () => {
     vi.mocked(api.obtenerBarberos).mockRejectedValue(new Error('No se pudo conectar'))
     renderHero()
 
-    await waitFor(() => expect(api.obtenerBarberos).toHaveBeenCalled())
+    await esperarRespuestaBarberos()
+    expect(api.obtenerBarberos).toHaveBeenCalledTimes(1)
     expect(datos()).not.toHaveTextContent(/barbero/i)
     expect(datos()).toHaveTextContent('9 a. m. – 6 p. m.')
     expect(datos().querySelectorAll('li')).toHaveLength(2)
@@ -112,7 +121,8 @@ describe('HeroDatos', () => {
     vi.mocked(api.obtenerBarberos).mockResolvedValue([])
     renderHero()
 
-    await waitFor(() => expect(api.obtenerBarberos).toHaveBeenCalled())
+    await esperarRespuestaBarberos()
+    expect(api.obtenerBarberos).toHaveBeenCalledTimes(1)
     expect(datos()).not.toHaveTextContent(/barbero/i)
   })
 })

@@ -1,3 +1,5 @@
+import { rutaAsesoria } from './asesorias'
+
 // Datos del negocio: única fuente para el inicio.
 export const negocio = {
   ciudad: 'Facatativá',
@@ -15,8 +17,6 @@ export const ESTADISTICAS = [
   { id: 'locales', etiqueta: 'Locales', valor: 2 },
 ]
 
-// Destino del botón de asesoría gratuita (Home → "Reserva a tu manera").
-// PROVISIONAL: la página de asesoría se creará después y aún no existe esta ruta.
-// Mientras tanto el botón hace preventDefault y no navega; al crear la página,
-// quitar el preventDefault en ReservaATuManera.jsx.
-export const RUTA_ASESORIA = '/asesoria'
+// Destino del botón de asesoría gratuita (Home → "Reserva a tu manera"): la misma ancla que usa el modal
+// de "Soy cliente nuevo". La página /asesorias se crea en la fase siguiente (hasta entonces cae en la 404).
+export const RUTA_ASESORIA = rutaAsesoria('gratis')

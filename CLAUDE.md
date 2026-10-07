@@ -314,7 +314,7 @@ src/
 - Pendiente: checklist de despliegue (ver "Después: despliegue" en `checklist-sesiones.md`). Además:
   - La base de desarrollo NO se migra a producción: en producción se crean un admin y usuarios nuevos (con `ADMIN_USER`/`ADMIN_PASSWORD` del `.env` de producción y `POST /api/admin/empleados`).
   - Los limitadores de intentos (login, cambio de contraseña, citas) viven en memoria del proceso: con varias instancias hay que moverlos a un almacén compartido (p. ej. Redis).
-  - Subir Node del CI (`.github/workflows/ci.yml`) de 20 a 22.
+  - Node: el CI ya corre con Node 22 (`.github/workflows/ci.yml`, front y back; Vitest 5 exige `^22.12 || ^24`, y en Node 20 las pruebas de front eran inestables). Falta subir la imagen del back-end: `backend/Dockerfile` sigue en `node:18-alpine`.
 - Pendiente (idea futura, NO implementada): guardar la fecha/hora de cierre de cada cita (cuándo se completó o canceló) para medir la puntualidad de las confirmaciones.
 - Pendiente: la foto del barbero **no se puede editar desde el admin** (hoy se copia el archivo a `public/` y se actualiza `barberos.foto` a mano); haría falta subida de imagen (almacenamiento + validación de tipo/tamaño) y el campo en `PATCH /api/admin/empleados/:id`.
 - Pendiente: la foto de Camila (asesora) se guardó como `camila_asesora.jpg` (no `camila.jpg`) y la de Camilo es de 471×626 px (por debajo de los ~800 px previstos); en la de Camila aparece el rótulo "Brothers" de la camiseta y el espejo del local (no es marca de agua, pero conviene confirmar que es aceptable).
