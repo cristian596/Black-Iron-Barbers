@@ -1,5 +1,6 @@
-import { describe, it, expect, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
@@ -10,7 +11,14 @@ const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const schemaCompleto = readFileSync(path.resolve(__dirname, '../db/schema.sql'), 'utf-8');
 
-const NOMBRE_BD = 'black_iron_migracion_test';
+// DROP DATABASE fuerza un checkpoint inmediato en Postgres: en Docker/Windows tarda entre milisegundos y más de 6 s
+// según lo que haya escrito la suite antes. Con el timeout por defecto (5 s) el test expiraba pero su DROP seguía vivo
+// en el servidor, y el test siguiente (que reutilizaba el mismo nombre de base) chocaba con él. Por eso: tiempos
+// holgados y un nombre de base único por test, de modo que un test que expira no pueda pisar al siguiente.
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
+
+const PREFIJO_BD = 'black_iron_migracion_test';
+let nombreBd = PREFIJO_BD;
 
 const conexionAdmin = () =>
   new Pool({
@@ -21,11 +29,28 @@ const conexionAdmin = () =>
     database: 'postgres',
   });
 
-const recrearBasePrueba = async () => {
+// Borra con FORCE todas las bases de este archivo (las de esta corrida y las que haya dejado una corrida abortada).
+const borrarBasesDePrueba = async () => {
   const admin = conexionAdmin();
   try {
-    await admin.query(`DROP DATABASE IF EXISTS "${NOMBRE_BD}" WITH (FORCE)`);
-    await admin.query(`CREATE DATABASE "${NOMBRE_BD}"`);
+    const { rows } = await admin.query(
+      'SELECT datname FROM pg_database WHERE left(datname, $2) = $1',
+      [PREFIJO_BD, PREFIJO_BD.length]
+    );
+    for (const { datname } of rows) {
+      await admin.query(`DROP DATABASE IF EXISTS "${datname}" WITH (FORCE)`);
+    }
+  } finally {
+    await admin.end();
+  }
+};
+
+// Cada llamada crea una base NUEVA con nombre único (no hace falta borrar antes); la borra afterAll.
+const recrearBasePrueba = async () => {
+  nombreBd = `${PREFIJO_BD}_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+  const admin = conexionAdmin();
+  try {
+    await admin.query(`CREATE DATABASE "${nombreBd}"`);
   } finally {
     await admin.end();
   }
@@ -37,7 +62,7 @@ const conectarseABasePrueba = () =>
     password: process.env.DB_PASSWORD,
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT),
-    database: NOMBRE_BD,
+    database: nombreBd,
   });
 
 // Esquema tal como estaba ANTES de este bloque de cambios: sin duracion_min/precio/telefono/
@@ -83,14 +108,9 @@ const ESQUEMA_PREVIO = `
   );
 `;
 
-afterAll(async () => {
-  const admin = conexionAdmin();
-  try {
-    await admin.query(`DROP DATABASE IF EXISTS "${NOMBRE_BD}" WITH (FORCE)`);
-  } finally {
-    await admin.end();
-  }
-});
+beforeAll(borrarBasesDePrueba);
+
+afterAll(borrarBasesDePrueba);
 
 describe('Migración de esquema (backend/db/schema.sql)', () => {
   it('se aplica sin errores sobre una base de datos completamente vacía', async () => {
