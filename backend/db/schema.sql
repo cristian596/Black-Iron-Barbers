@@ -209,3 +209,120 @@ SELECT c.id, c.servicio_id, 1, s.nombre, c.duracion_min, c.precio
 FROM citas c
 JOIN servicios s ON s.id = c.servicio_id
 WHERE NOT EXISTS (SELECT 1 FROM cita_servicios cs WHERE cs.cita_id = c.id);
+
+
+-- Asesorías (fase 1: solo estructura; sin datos nuevos, el comportamiento actual no cambia). Aditivo e idempotente.
+--  - area: 'barberia' | 'asesoria' en barberos, servicios y categorias (servicios.tipo ya existe y significa
+--    original/elite/vip, por eso no se llama tipo). El DEFAULT deja todo lo existente como barbería.
+--  - citas.reserva_id: enlaza las dos citas de una reserva combinada (asesoría + corte). NULL = cita suelta.
+--  - citas_reserva_sin_autosolapamiento: las citas activas de una misma reserva no pueden solaparse en el tiempo.
+--  - asesoria_gratis_usos: una asesoría gratis por persona; UNIQUE por correo y teléfono normalizados (el backend
+--    los normaliza). Se libera borrando la fila (al cancelar la cita) y cae sola si se borra la cita.
+--  - Emparejamiento estricto: barberos.area de la cita = servicios.area de cada una de sus líneas. Se valida con
+--    triggers (no con FK compuesta) para no invalidar filas anteriores, p. ej. los cortes antiguos de una asesora:
+--    solo se revisan las líneas nuevas y las reasignaciones. El error lleva SQLSTATE 'BI001' y el mensaje empieza por
+--    PROFESIONAL_INCOMPATIBLE (err.code / err.constraint para reconocerlo desde Node).
+ALTER TABLE barberos ADD COLUMN IF NOT EXISTS area VARCHAR(20) NOT NULL DEFAULT 'barberia';
+ALTER TABLE servicios ADD COLUMN IF NOT EXISTS area VARCHAR(20) NOT NULL DEFAULT 'barberia';
+ALTER TABLE categorias ADD COLUMN IF NOT EXISTS area VARCHAR(20) NOT NULL DEFAULT 'barberia';
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS reserva_id UUID;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'barberos_area_check') THEN
+    ALTER TABLE barberos ADD CONSTRAINT barberos_area_check CHECK (area IN ('barberia', 'asesoria'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'servicios_area_check') THEN
+    ALTER TABLE servicios ADD CONSTRAINT servicios_area_check CHECK (area IN ('barberia', 'asesoria'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'categorias_area_check') THEN
+    ALTER TABLE categorias ADD CONSTRAINT categorias_area_check CHECK (area IN ('barberia', 'asesoria'));
+  END IF;
+  -- uuid se indexa con = gracias a btree_gist (ya instalada arriba).
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'citas_reserva_sin_autosolapamiento') THEN
+    ALTER TABLE citas
+      ADD CONSTRAINT citas_reserva_sin_autosolapamiento
+      EXCLUDE USING gist (reserva_id WITH =, rango WITH &&)
+      WHERE (reserva_id IS NOT NULL AND estado <> 'cancelada');
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_citas_reserva ON citas (reserva_id) WHERE reserva_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS asesoria_gratis_usos (
+  id SERIAL PRIMARY KEY,
+  cita_id INT NOT NULL,
+  correo_norm VARCHAR(150) NOT NULL,
+  telefono_norm VARCHAR(10) NOT NULL,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT asesoria_gratis_usos_cita_id_fkey FOREIGN KEY (cita_id) REFERENCES citas(id) ON DELETE CASCADE,
+  CONSTRAINT asesoria_gratis_usos_cita_id_key UNIQUE (cita_id),
+  CONSTRAINT asesoria_gratis_usos_correo_norm_key UNIQUE (correo_norm),
+  CONSTRAINT asesoria_gratis_usos_telefono_norm_key UNIQUE (telefono_norm)
+);
+
+-- Lanza el error de emparejamiento si el barbero de la cita y alguno de sus servicios son de áreas distintas.
+-- `servicio` (opcional) limita la revisión a un servicio; sin él se revisan todas las líneas de la cita.
+CREATE OR REPLACE FUNCTION validar_area_cita(p_cita_id INT, p_barbero_id INT, p_servicio_id INT DEFAULT NULL)
+RETURNS VOID AS $fn$
+DECLARE
+  v_area_barbero VARCHAR(20);
+  v_area_servicio VARCHAR(20);
+BEGIN
+  SELECT area INTO v_area_barbero FROM barberos WHERE id = p_barbero_id;
+  IF v_area_barbero IS NULL THEN
+    RETURN; -- sin barbero no hay nada que emparejar
+  END IF;
+
+  SELECT s.area INTO v_area_servicio
+  FROM cita_servicios cs
+  JOIN servicios s ON s.id = cs.servicio_id
+  WHERE cs.cita_id = p_cita_id
+    AND (p_servicio_id IS NULL OR cs.servicio_id = p_servicio_id)
+    AND s.area <> v_area_barbero
+  LIMIT 1;
+
+  IF v_area_servicio IS NOT NULL THEN
+    RAISE EXCEPTION 'PROFESIONAL_INCOMPATIBLE: el profesional (%) no atiende servicios de %', v_area_barbero, v_area_servicio
+      USING ERRCODE = 'BI001', CONSTRAINT = 'cita_servicios_area_profesional';
+  END IF;
+END;
+$fn$ LANGUAGE plpgsql;
+
+-- Al COMMIT (cita y líneas ya existen): cada línea nueva debe ser del área del barbero de su cita.
+CREATE OR REPLACE FUNCTION trg_cita_servicios_area() RETURNS TRIGGER AS $fn$
+DECLARE
+  v_barbero_id INT;
+BEGIN
+  SELECT barbero_id INTO v_barbero_id FROM citas WHERE id = NEW.cita_id;
+  IF FOUND THEN
+    PERFORM validar_area_cita(NEW.cita_id, v_barbero_id, NEW.servicio_id);
+  END IF;
+  RETURN NULL;
+END;
+$fn$ LANGUAGE plpgsql;
+
+-- Reasignación (admin): el nuevo barbero debe ser del área de todos los servicios de la cita.
+CREATE OR REPLACE FUNCTION trg_citas_area_barbero() RETURNS TRIGGER AS $fn$
+BEGIN
+  PERFORM validar_area_cita(NEW.id, NEW.barbero_id);
+  RETURN NEW;
+END;
+$fn$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'cita_servicios_area_profesional') THEN
+    CREATE CONSTRAINT TRIGGER cita_servicios_area_profesional
+      AFTER INSERT ON cita_servicios
+      DEFERRABLE INITIALLY DEFERRED
+      FOR EACH ROW EXECUTE FUNCTION trg_cita_servicios_area();
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'citas_area_barbero') THEN
+    CREATE TRIGGER citas_area_barbero
+      BEFORE UPDATE OF barbero_id ON citas
+      FOR EACH ROW
+      WHEN (OLD.barbero_id IS DISTINCT FROM NEW.barbero_id)
+      EXECUTE FUNCTION trg_citas_area_barbero();
+  END IF;
+END $$;
