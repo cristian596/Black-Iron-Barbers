@@ -3,6 +3,7 @@ import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import NavBar from '../components/layout/NavBar'
+import Modal from '../components/ui/Modal'
 import { ASESORIAS } from '../data/asesorias'
 
 const Ubicacion = () => {
@@ -59,11 +60,13 @@ describe('Botón "Soy cliente nuevo"', () => {
 
   it('el pulso aparece una sola vez por sesión', () => {
     const { unmount } = montar()
-    expect(botonEscritorio().querySelector('.animate-ping')).not.toBeNull()
+    // La clase lleva el prefijo "motion-safe:", por eso se busca por fragmento.
+    const anillo = (boton) => boton.querySelector('[class*="animate-ping"]')
+    expect(anillo(botonEscritorio())).not.toBeNull()
     unmount()
 
     montar()
-    expect(botonEscritorio().querySelector('.animate-ping')).toBeNull()
+    expect(anillo(botonEscritorio())).toBeNull()
   })
 })
 
@@ -185,6 +188,21 @@ describe('Modal de asesorías', () => {
     await user.keyboard('{Escape}')
     expect(dialogo()).toBeNull()
     expect(screen.getByRole('button', { name: 'Abrir menú' })).toHaveFocus()
+  })
+})
+
+describe('Modal compartido (props por defecto)', () => {
+  it('sin props nuevas conserva z-50, max-w-md y la alineación de siempre', () => {
+    render(
+      <Modal idTitulo="t" alCerrar={() => {}}>
+        <h2 id="t">Hola</h2>
+      </Modal>
+    )
+    const caja = screen.getByRole('dialog', { name: 'Hola' })
+    const fondo = caja.parentElement
+    expect(fondo.className).toBe('fixed inset-0 z-50 flex overflow-y-auto bg-black/80 p-4 items-start sm:items-center')
+    expect(caja).toHaveClass('max-w-md', 'w-full', 'rounded-2xl', 'p-5')
+    expect(caja).not.toHaveClass('max-h-[90dvh]')
   })
 })
 

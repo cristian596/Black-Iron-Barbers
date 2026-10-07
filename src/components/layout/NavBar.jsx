@@ -218,7 +218,7 @@ const NavBar = () => {
             className={({ isActive }) =>
               claseEnlace(
                 isActive,
-                'text-3xl font-bold flex items-center gap-2 active:scale-95 duration-200'
+                'min-h-11 text-3xl font-bold flex items-center gap-2 active:scale-95 duration-200'
               )
             }
           >
