@@ -7,8 +7,14 @@ import FixedHome from '../components/layout/FixedHome';
 import FranjaGarantia from '../components/layout/FranjaGarantia';
 import CargandoPagina from '../components/ui/CargandoPagina';
 import { ProveedorCarrito } from '../context/CarritoContext';
+import { useScrollAHash } from '../hooks/useScrollAHash';
+
+// Secciones de la web pública a las que se puede llegar con un hash (p. ej. /#equipo).
+const ANCLAS_PUBLICAS = ['equipo']
 
 const Landingpage = () => {
+  useScrollAHash(ANCLAS_PUBLICAS)
+
   return (
     // La selección de servicios vive aquí para sobrevivir a la navegación entre la carta y la reserva.
     <ProveedorCarrito>

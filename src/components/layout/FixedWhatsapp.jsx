@@ -1,13 +1,10 @@
 import { FaWhatsapp } from "react-icons/fa";
-
-// TODO: reemplazar por el número real de WhatsApp de la barbería.
-const NUMERO_WHATSAPP = 'PENDIENTE_NUMERO'
-const MENSAJE_PRELLENADO = encodeURIComponent('¡Hola! Quiero agendar una cita en Black Iron Barbers.')
+import { enlaceWhatsApp, MENSAJE_WHATSAPP_GENERAL } from '../../data/negocio'
 
 const FixedWhatsapp = () => {
   return (
     <a
-      href={`https://wa.me/${NUMERO_WHATSAPP}?text=${MENSAJE_PRELLENADO}`}
+      href={enlaceWhatsApp(MENSAJE_WHATSAPP_GENERAL)}
       target='_blank'
       rel='noopener noreferrer'
       aria-label='Escribir por WhatsApp a Black Iron Barbers'

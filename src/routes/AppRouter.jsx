@@ -5,10 +5,12 @@ import Landingpage from '../pages/Landingpage'
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
 import CargandoPagina from '../components/ui/CargandoPagina';
+import RedirigirAsesoria from './RedirigirAsesoria';
 
 const Home = lazy(() => import('../pages/Home'));
 const Cortes = lazy(() => import('../pages/Cortes'));
 const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
+const Asesorias = lazy(() => import('../pages/Asesorias'));
 const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
 const PanelLayout = lazy(() => import('../pages/panel/PanelLayout'));
 const ResumenBarbero = lazy(() => import('../pages/panel/Resumen'));
@@ -40,6 +42,14 @@ const AppRouter = createBrowserRouter([
       {
         path: 'reservar-corte',
         element: <ReservaCorte />
+      },
+      {
+        path: 'asesorias',
+        element: <Asesorias />
+      },
+      {
+        path: 'asesoria',
+        element: <RedirigirAsesoria />
       },
       {
         path: '*',

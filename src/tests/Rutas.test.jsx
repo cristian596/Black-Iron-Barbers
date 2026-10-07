@@ -28,6 +28,7 @@ const rutasPublicas = [
   ['inicio', '/'],
   ['servicios', '/cortes'],
   ['reserva', '/reservar-corte'],
+  ['asesorías', '/asesorias'],
   ['404', '/una-ruta-que-no-existe'],
   ['404 (ubicación eliminada)', '/ubicacion'],
   ['404 (carta eliminada)', '/carta-bebidas'],
