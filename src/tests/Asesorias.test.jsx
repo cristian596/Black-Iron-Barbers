@@ -109,12 +109,12 @@ describe('Página /asesorias: estructura', () => {
 })
 
 describe('Página /asesorias: reservar en línea', () => {
-  it('cada sección lleva "Reservar esta asesoría" a /reservar-corte?servicios=<id de la API>', async () => {
+  it('cada sección lleva "Reservar esta asesoría" a /reservar-corte?servicio=<id de la API> (camino rápido: no vacía el carrito)', async () => {
     const { container } = montar()
     for (const servicio of ASESORIAS_API) {
       const id = ASESORIAS.find((a) => a.clave === servicio.clave).id
       const boton = await within(container.querySelector(`section#${id}`)).findByRole('link', { name: /Reservar esta asesoría/ })
-      expect(boton).toHaveAttribute('href', `/reservar-corte?servicios=${servicio.id}`)
+      expect(boton).toHaveAttribute('href', `/reservar-corte?servicio=${servicio.id}`)
     }
   })
 
@@ -122,7 +122,7 @@ describe('Página /asesorias: reservar en línea', () => {
     const user = userEvent.setup()
     const { container } = montar()
     await user.click(await within(container.querySelector('section#premium')).findByRole('link', { name: /Reservar esta asesoría/ }))
-    expect(screen.getByTestId('ubicacion')).toHaveTextContent(`/reservar-corte?servicios=${PREMIUM_API.id}`)
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(`/reservar-corte?servicio=${PREMIUM_API.id}`)
   })
 
   it('ya no hay WhatsApp en la página: ni botones, ni enlaces wa.me, ni la nota de coordinar por WhatsApp', async () => {
@@ -138,7 +138,7 @@ describe('Página /asesorias: reservar en línea', () => {
     )
     const { container } = montar()
     const boton = await within(container.querySelector('section#barba')).findByRole('link', { name: /Reservar esta asesoría/ })
-    expect(boton).toHaveAttribute('href', '/reservar-corte?servicios=999')
+    expect(boton).toHaveAttribute('href', '/reservar-corte?servicio=999')
   })
 
   it('una asesoría que la API ya no trae (inactiva) no se muestra', async () => {

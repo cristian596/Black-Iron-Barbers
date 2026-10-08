@@ -2,6 +2,7 @@ import ErrorCarga from '../ui/ErrorCarga'
 import ServiciosDeCita from '../ui/ServiciosDeCita'
 import { esCombo } from '../../utils/servicios'
 import SinResultados from '../ui/SinResultados'
+import ReservaCombinada from '../ui/ReservaCombinada'
 import Esqueleto from './Esqueleto'
 import AccionesCita from './AccionesCita'
 import { fechaLegible, soloHora, tiempoTranscurrido } from '../../utils/formato'
@@ -47,6 +48,7 @@ const SeccionPorConfirmar = ({ encabezadoRef, datos, error, alReintentar, ocupad
                   {cita.servicio_nombre} · {fechaLegible(cita.fecha)} · {soloHora(cita.hora)}
                 </p>
               )}
+              <ReservaCombinada cita={cita} className="mt-2" />
               <AccionesCita cita={cita} ocupado={ocupadoId === cita.id} alCompletar={alCompletar} alCancelar={alCancelar} />
             </li>
           ))}

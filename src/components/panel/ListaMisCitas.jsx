@@ -3,6 +3,7 @@ import ServiciosDeCita from '../ui/ServiciosDeCita'
 import { esCombo } from '../../utils/servicios'
 import AccionesCita from './AccionesCita'
 import { InsigniaPorConfirmar } from './AgendaHoy'
+import ReservaCombinada from '../ui/ReservaCombinada'
 import { fechaLegible, formatearPrecio, soloHora } from '../../utils/formato'
 
 const Estado = ({ cita }) => (
@@ -33,6 +34,7 @@ const Tarjeta = ({ cita, ocupado, alCompletar, alCancelar }) => (
         {cita.servicio_nombre} · {cita.duracion_min} min · {formatearPrecio(cita.precio)}
       </p>
     )}
+    <ReservaCombinada cita={cita} className="mt-2" />
     {cita.estado === 'pendiente' && (
       <AccionesCita cita={cita} ocupado={ocupado} alCompletar={alCompletar} alCancelar={alCancelar} />
     )}
@@ -63,6 +65,7 @@ const Tabla = ({ citas, ocupadoId, alCompletar, alCancelar }) => (
             <th scope="row" className="min-w-40 py-2 pr-3 font-medium wrap-anywhere">{cita.cliente}</th>
             <td className="min-w-36 py-2 pr-3 text-zinc-300 wrap-anywhere">
               {esCombo(cita) ? <ServiciosDeCita cita={cita} detalle /> : cita.servicio_nombre}
+              <ReservaCombinada cita={cita} className="mt-2" />
             </td>
             <td className="py-2 pr-3 text-right whitespace-nowrap">{cita.duracion_min} min</td>
             <td className="py-2 pr-3 text-right whitespace-nowrap">{formatearPrecio(cita.precio)}</td>

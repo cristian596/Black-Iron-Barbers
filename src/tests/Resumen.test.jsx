@@ -11,13 +11,23 @@ vi.mock('../context/AuthContext', () => ({
 }))
 
 const PERIODO_HOY = { clave: 'hoy', desde: '2026-10-04', hasta: '2026-10-04' }
-const CEROS = { citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0 }
+// MODIFICADO (fase 6): las respuestas incluyen el desglose por área (cortes, asesorias, ingresos_barberia, ingresos_asesoria).
+const CEROS = {
+  citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0,
+  cortes: 0, asesorias: 0, ingresos_barberia: 0, ingresos_asesoria: 0,
+}
 
 const estadisticas = (sobrescribir = {}) => ({
   periodo: PERIODO_HOY,
   anterior: { desde: '2026-10-03', hasta: '2026-10-03' },
-  actual: { citas: 9, completadas: 6, canceladas: 1, ingresos: 185000, ticket_promedio: 30833 },
-  previo: { citas: 11, completadas: 8, canceladas: 0, ingresos: 220000, ticket_promedio: 27500 },
+  actual: {
+    citas: 9, completadas: 6, canceladas: 1, ingresos: 185000, ticket_promedio: 30833,
+    cortes: 5, asesorias: 1, ingresos_barberia: 125000, ingresos_asesoria: 60000,
+  },
+  previo: {
+    citas: 11, completadas: 8, canceladas: 0, ingresos: 220000, ticket_promedio: 27500,
+    cortes: 8, asesorias: 0, ingresos_barberia: 220000, ingresos_asesoria: 0,
+  },
   ...sobrescribir,
 })
 
@@ -71,15 +81,19 @@ const tarjeta = (nombre) =>
   within(screen.getByRole('region', { name: /Indicadores/ })).getByText(nombre).closest('div')
 
 describe('Resumen: indicadores', () => {
-  it('muestra las cinco tarjetas con sus cifras formateadas', async () => {
+  // MODIFICADO (fase 6): «Completadas» se separa en «Cortes» y «Asesorías» (seis tarjetas) y el ticket promedio pasa a ser «de barbería».
+  it('muestra las seis tarjetas con sus cifras formateadas', async () => {
     montar()
     await screen.findByText('$185.000')
 
     expect(within(tarjeta('Ingresos')).getByText('$185.000')).toBeInTheDocument()
     expect(within(tarjeta('Citas')).getByText('9')).toBeInTheDocument()
-    expect(within(tarjeta('Completadas')).getByText('6')).toBeInTheDocument()
+    expect(within(tarjeta('Cortes')).getByText('5')).toBeInTheDocument()
+    expect(within(tarjeta('Asesorías')).getByText('1')).toBeInTheDocument()
     expect(within(tarjeta('Canceladas')).getByText('1')).toBeInTheDocument()
-    expect(within(tarjeta('Ticket promedio')).getByText('$30.833')).toBeInTheDocument()
+    expect(within(tarjeta('Ticket promedio de barbería')).getByText('$30.833')).toBeInTheDocument()
+    // Los ingresos suman ambas áreas y muestran el desglose.
+    expect(within(tarjeta('Ingresos')).getByText('Barbería $125.000 · Asesorías $60.000')).toBeInTheDocument()
   })
 
   it('las cifras van en Poppins semibold', async () => {
@@ -93,7 +107,7 @@ describe('Resumen: indicadores', () => {
 
     expect(within(tarjeta('Ingresos')).getByText('16%')).toBeInTheDocument()
     expect(within(tarjeta('Ingresos')).getByText(/16% menos que en el período anterior/)).toBeInTheDocument()
-    expect(within(tarjeta('Ticket promedio')).getByText(/12% más/)).toBeInTheDocument()
+    expect(within(tarjeta('Ticket promedio de barbería')).getByText(/12% más/)).toBeInTheDocument()
     // Canceladas: el período anterior tenía 0 → sin base
     const canceladas = tarjeta('Canceladas')
     expect(within(canceladas).getByText('—')).toBeInTheDocument()
@@ -117,11 +131,11 @@ describe('Resumen: indicadores', () => {
   it('con todo en cero no aparece NaN, Infinity ni undefined', async () => {
     vi.mocked(api.obtenerEstadisticas).mockResolvedValue(estadisticas({ actual: CEROS, previo: CEROS }))
     montar()
-    await screen.findByText('Ticket promedio')
+    await screen.findByText('Ticket promedio de barbería')
     await waitFor(() => expect(within(tarjeta('Ingresos')).getByText('$0')).toBeInTheDocument())
 
     expect(document.body.textContent).not.toMatch(/NaN|Infinity|∞|undefined/)
-    expect(screen.getAllByText('—')).toHaveLength(5)
+    expect(screen.getAllByText('—')).toHaveLength(6) // MODIFICADO (fase 6): seis tarjetas en vez de cinco
   })
 
   it('muestra el período comparado de forma explícita', async () => {
@@ -144,7 +158,7 @@ describe('Resumen: indicadores', () => {
     await userEvent.click(within(grupo).getByRole('button', { name: 'Mes' }))
 
     expect(api.obtenerEstadisticas).toHaveBeenLastCalledWith('tok', 'mes')
-    expect(api.obtenerServiciosTop).toHaveBeenLastCalledWith('tok', 'mes', 5)
+    expect(api.obtenerServiciosTop).toHaveBeenLastCalledWith('tok', 'mes', 5, 'barberia') // MODIFICADO (fase 6): el Resumen del admin pide el área (barbería por defecto)
     expect(within(grupo).getByRole('button', { name: 'Mes' })).toHaveAttribute('aria-pressed', 'true')
     expect(within(grupo).getByRole('button', { name: 'Hoy' })).toHaveAttribute('aria-pressed', 'false')
     expect(

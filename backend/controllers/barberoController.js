@@ -8,6 +8,7 @@ import { validarParametros, leerEntero, escaparLike } from '../utils/parametrosQ
 import { esFechaCalendario } from '../utils/periodos.js';
 import { MINUTOS_GRACIA_CONFIRMACION, TOPE_POR_CONFIRMAR } from '../utils/confirmacion.js';
 import { resumenPeriodo } from '../db/estadisticas.js';
+import { AREA_ASESORIA } from '../utils/areas.js';
 import { PESTANAS_BARBERO, agendaDelDia, contarPorConfirmar, listarCitasBarbero, listarPorConfirmar, proximaCita } from '../db/barbero.js';
 
 // Valida parámetros (ninguno admitido) y devuelve el id del barbero de la sesión, o responde el error y devuelve null.
@@ -49,7 +50,8 @@ export const resumenDelDia = async (req, res, next) => {
       pendientes_hoy: dia.citas - dia.completadas,
       proxima_cita: proxima,
       ingresos_hoy: dia.ingresos,
-      cortes_mes: mes.completadas,
+      // Sus cortes (o sus asesorías, si atiende asesorías) del mes: no mezcla áreas ni cuenta citas anteriores de otra área.
+      cortes_mes: req.usuario.area === AREA_ASESORIA ? mes.asesorias : mes.cortes,
       ingresos_mes: mes.ingresos,
       por_confirmar: porConfirmar,
     });

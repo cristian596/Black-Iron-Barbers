@@ -20,8 +20,8 @@ const Resumen = () => {
       <PanelIndicadores token={token} periodo={periodo} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <PanelIngresos token={token} className="lg:col-span-2" />
-        <PanelServiciosTop token={token} periodo={periodo} />
+        <PanelIngresos token={token} desglose className="lg:col-span-2" />
+        <PanelServiciosTop token={token} periodo={periodo} conSelectorArea />
       </div>
 
       <CitasRecientes token={token} />

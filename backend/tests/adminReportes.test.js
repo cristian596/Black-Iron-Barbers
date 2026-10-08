@@ -109,11 +109,15 @@ describe('GET /api/admin/reportes/diario', () => {
     expect(res.body).toEqual({
       fecha: '2026-09-01',
       total_cortes: 0,
+      total_asesorias: 0, // fase 6 (campos nuevos)
       ingresos: 0,
+      ingresos_barberia: 0,
+      ingresos_asesoria: 0,
       ticket_promedio: 0,
       canceladas: 0,
       pendientes_sin_cerrar: 0,
       servicios_mas_pedidos: [],
+      asesorias_mas_pedidas: [],
     });
   });
 
@@ -189,7 +193,9 @@ describe('GET /api/admin/reportes/diario', () => {
   it('no desglosa por barbero', async () => {
     await insertarCita({ fecha: HOY });
     expect(Object.keys((await get(`/reportes/diario?fecha=${HOY}`)).body).sort()).toEqual([
-      'canceladas', 'fecha', 'ingresos', 'pendientes_sin_cerrar', 'servicios_mas_pedidos', 'ticket_promedio', 'total_cortes',
+      // fase 6: se añaden las claves de asesorías (no hay ninguna por barbero)
+      'asesorias_mas_pedidas', 'canceladas', 'fecha', 'ingresos', 'ingresos_asesoria', 'ingresos_barberia',
+      'pendientes_sin_cerrar', 'servicios_mas_pedidos', 'ticket_promedio', 'total_asesorias', 'total_cortes',
     ]);
   });
 
@@ -240,6 +246,13 @@ describe('GET /api/admin/reportes/diario.csv', () => {
       'Servicio;Cantidad;Ingresos',
       'Corte de prueba;1;50000',
       'Combo de prueba;1;30000',
+      // fase 6: bloque de asesorías al final (las filas anteriores no cambian)
+      '',
+      'Total de asesorías;0',
+      'Ingresos de barbería;80000',
+      'Ingresos de asesorías;0',
+      '',
+      'Asesoría;Cantidad;Ingresos',
       '',
     ]);
   });
@@ -260,7 +273,9 @@ describe('GET /api/admin/reportes/diario.csv', () => {
     const texto = (await csv('/reportes/diario.csv?fecha=2026-09-01')).body;
     expect(texto.slice(1).split('\r\n')).toEqual([
       'Reporte diario;2026-09-01', 'Total de cortes;0', 'Ingresos;0', 'Ticket promedio;0', 'Canceladas;0',
-      'Pendientes sin cerrar;0', '', 'Servicio;Cantidad;Ingresos', '',
+      'Pendientes sin cerrar;0', '', 'Servicio;Cantidad;Ingresos',
+      // fase 6: bloque de asesorías al final
+      '', 'Total de asesorías;0', 'Ingresos de barbería;0', 'Ingresos de asesorías;0', '', 'Asesoría;Cantidad;Ingresos', '',
     ]);
   });
 

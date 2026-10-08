@@ -13,8 +13,9 @@ export const CLAVE_ASESORIA_GRATIS = 'asesoria-gratis'
 export const TEXTO_RESERVAR_ASESORIA = 'Reservar esta asesoría'
 
 export const rutaAsesoria = (id) => `${RUTA_ASESORIAS}#${id}`
-// La reserva arranca con la asesoría ya elegida (?servicios=<id>, el id real que devuelve la API).
-export const rutaReservaAsesoria = (servicioId) => `${RUTA_RESERVA}?servicios=${servicioId}`
+// La reserva arranca con la asesoría ya elegida (?servicio=<id>, el id real que devuelve la API). Es el camino rápido
+// (como "Reservar solo este" en la carta): NO usa ?servicios=, así que al terminar la reserva no vacía el carrito.
+export const rutaReservaAsesoria = (servicioId) => `${RUTA_RESERVA}?servicio=${servicioId}`
 
 export const ASESORIAS = [
   {

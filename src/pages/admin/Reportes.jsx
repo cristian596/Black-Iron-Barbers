@@ -52,7 +52,8 @@ const Reportes = () => {
   }
 
   const datos = reporte.datos
-  const vacio = datos && datos.total_cortes === 0 && datos.canceladas === 0 && datos.pendientes_sin_cerrar === 0
+  const totalAsesorias = datos?.total_asesorias ?? 0
+  const vacio = datos && datos.total_cortes === 0 && totalAsesorias === 0 && datos.canceladas === 0 && datos.pendientes_sin_cerrar === 0
   const fechaLegible = formatearFechaLegible(fecha)
 
   return (
@@ -111,10 +112,19 @@ const Reportes = () => {
 
           <section aria-labelledby="titulo-cifras" className="min-w-0">
             <h2 id="titulo-cifras" className="sr-only">Cifras del día</h2>
-            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <TarjetaReporte etiqueta="Total de cortes" valor={datos.total_cortes} nota="Citas completadas" />
-              <TarjetaReporte etiqueta="Ingresos" valor={formatearDinero(datos.ingresos)} nota="Suma de lo cobrado en cada cita" />
-              <TarjetaReporte etiqueta="Ticket promedio" valor={formatearDinero(datos.ticket_promedio)} nota="No cuenta los cortes gratis" />
+            <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <TarjetaReporte etiqueta="Total de cortes" valor={datos.total_cortes} nota="Citas de barbería completadas" />
+              <TarjetaReporte etiqueta="Total de asesorías" valor={totalAsesorias} nota="Citas de asesoría completadas" />
+              <TarjetaReporte
+                etiqueta="Ingresos"
+                valor={formatearDinero(datos.ingresos)}
+                nota={`Barbería ${formatearDinero(datos.ingresos_barberia ?? datos.ingresos)} · Asesorías ${formatearDinero(datos.ingresos_asesoria ?? 0)}`}
+              />
+              <TarjetaReporte
+                etiqueta="Ticket promedio de barbería"
+                valor={formatearDinero(datos.ticket_promedio)}
+                nota="Solo cortes y otros servicios de barbería; no cuenta los gratis"
+              />
               <TarjetaReporte etiqueta="Canceladas" valor={datos.canceladas} nota="Aparte: no suman ingresos" />
             </div>
           </section>
@@ -140,6 +150,35 @@ const Reportes = () => {
                         <th scope="row" className="wrap-anywhere py-2 pr-3 font-medium">{servicio.nombre}</th>
                         <td className="py-2 pr-3 text-right">{servicio.cantidad}</td>
                         <td className="py-2 text-right font-semibold">{formatearDinero(servicio.ingresos)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <section aria-labelledby="titulo-asesorias" className="min-w-0 rounded-xl border border-white/10 bg-zinc-950 p-4 print:border-zinc-400 print:bg-white">
+            <h2 id="titulo-asesorias" className="text-lg font-semibold print:text-black">Asesorías más pedidas</h2>
+            {(datos.asesorias_mas_pedidas ?? []).length === 0 ? (
+              <p className="mt-3 text-sm text-zinc-400 print:text-zinc-700">Ninguna asesoría completada este día.</p>
+            ) : (
+              <div className="mt-3 min-w-0 overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <caption className="sr-only">Asesorías completadas el {fechaLegible}, de más a menos pedidas</caption>
+                  <thead>
+                    <tr className="border-b border-white/10 text-zinc-400 print:border-zinc-400 print:text-zinc-700">
+                      <th scope="col" className="py-2 pr-3 font-medium">Asesoría</th>
+                      <th scope="col" className="py-2 pr-3 text-right font-medium">Cantidad</th>
+                      <th scope="col" className="py-2 text-right font-medium">Ingresos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {datos.asesorias_mas_pedidas.map((asesoria) => (
+                      <tr key={asesoria.nombre} className="border-b border-white/5 print:border-zinc-300">
+                        <th scope="row" className="wrap-anywhere py-2 pr-3 font-medium">{asesoria.nombre}</th>
+                        <td className="py-2 pr-3 text-right">{asesoria.cantidad}</td>
+                        <td className="py-2 text-right font-semibold">{formatearDinero(asesoria.ingresos)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -3,6 +3,7 @@ import { hoyISO } from '../utils/fechas.js';
 import { PERIODOS, calcularPeriodos, primerDiaDelMes, sumarDias, sumarMeses } from '../utils/periodos.js';
 import { validarParametros, leerEntero } from '../utils/parametrosQuery.js';
 import { resumenPeriodo, ingresosPorDia, ingresosPorMes, serviciosTop } from '../db/estadisticas.js';
+import { AREAS, AREA_BARBERIA, esAreaValida } from '../utils/areas.js';
 
 const DIAS_GRAFICO = 30;
 const MESES_GRAFICO = 12;
@@ -19,7 +20,9 @@ const errorPeriodo = `El parámetro 'periodo' debe ser uno de: ${PERIODOS.join('
 // Los controladores se construyen con `alcance(req, res)`: devuelve el id del barbero al que se limitan las cifras
 // (null = todos, caso del admin) o `undefined` si ya respondió un error. El panel del barbero usa los mismos
 // controladores con su barbero_id (de req.usuario) y añade `codigo` a los 400.
-const crearControladores = (alcance, conCodigo) => {
+// `conArea`: solo el admin puede pedir los servicios más pedidos de un área (`?area=`; por defecto barbería, así las
+// asesorías no se mezclan con los cortes). El panel del profesional no lo admite: sus cifras ya son de su única área.
+const crearControladores = (alcance, conCodigo, conArea = false) => {
   const error400 = (res, error) => res.status(400).json(conCodigo ? { error, codigo: 'PARAMETRO_INVALIDO' } : { error });
 
   const obtenerEstadisticas = async (req, res, next) => {
@@ -82,7 +85,7 @@ const crearControladores = (alcance, conCodigo) => {
       const barberoId = alcance(req, res);
       if (barberoId === undefined) return;
 
-      const errorParametros = validarParametros(req.query, ['periodo', 'limite']);
+      const errorParametros = validarParametros(req.query, conArea ? ['periodo', 'limite', 'area'] : ['periodo', 'limite']);
       if (errorParametros) return error400(res, errorParametros);
 
       const periodo = leerPeriodo(req.query.periodo, '30d');
@@ -96,10 +99,16 @@ const crearControladores = (alcance, conCodigo) => {
         }
       }
 
-      const { actual } = calcularPeriodos(periodo, hoyISO());
-      const servicios = await serviciosTop(pool, actual, limite, barberoId);
+      let area = null;
+      if (conArea) {
+        area = req.query.area ?? AREA_BARBERIA;
+        if (!esAreaValida(area)) return error400(res, `El parámetro 'area' debe ser uno de: ${AREAS.join(', ')}`);
+      }
 
-      res.json({ periodo: { clave: periodo, ...actual }, servicios });
+      const { actual } = calcularPeriodos(periodo, hoyISO());
+      const servicios = await serviciosTop(pool, actual, limite, barberoId, area);
+
+      res.json({ periodo: { clave: periodo, ...actual }, ...(conArea ? { area } : {}), servicios });
     } catch (err) {
       next(err);
     }
@@ -109,7 +118,7 @@ const crearControladores = (alcance, conCodigo) => {
 };
 
 // Admin: todas las citas.
-export const { obtenerEstadisticas, obtenerIngresos, obtenerServiciosTop } = crearControladores(() => null, false);
+export const { obtenerEstadisticas, obtenerIngresos, obtenerServiciosTop } = crearControladores(() => null, false, true);
 
 // Barbero: solo las suyas. El barbero_id sale de req.usuario (base de datos), nunca de la petición.
 export const {

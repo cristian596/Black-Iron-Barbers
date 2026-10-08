@@ -10,6 +10,7 @@ const ALTO = 260
 const MARGEN = { izq: 52, der: 8, sup: 12, inf: 28 }
 const ANCHO_TOOLTIP = 152
 const ALTO_TOOLTIP = 78
+const ALTO_TOOLTIP_DESGLOSE = 94 // con una línea más por área
 
 const MESES_LARGOS = { month: 'long', year: 'numeric', timeZone: 'UTC' }
 
@@ -33,6 +34,10 @@ const etiquetaEje = (agrupar, punto) => {
 }
 
 const sumar = (lista) => lista.reduce((total, p) => total + p.ingresos, 0)
+const sumarArea = (lista, campo) => lista.reduce((total, p) => total + (p[campo] ?? 0), 0)
+// Unidades de un punto: el campo del vocabulario (`cortes` o `asesorias`, las del profesional según su área) o, si no hay,
+// las citas completadas (cortes + asesorías); sin `completadas` (respuestas anteriores), `cortes`.
+const cuentaDe = (campo) => (p) => p[campo] ?? p.completadas ?? p.cortes ?? 0
 
 // Barras de ingresos (oro) con el período anterior como línea discontinua (zinc). Se dibuja a 1 unidad = 1 px
 // del ancho real. El SVG es solo la imagen (role="img" + aria-label + tabla de datos oculta); la interacción
@@ -40,12 +45,14 @@ const sumar = (lista) => lista.reduce((total, p) => total + p.ingresos, 0)
 const VOCABULARIO_CORTES = { unidad: 'corte', unidades: 'cortes', etiquetaTotal: 'Cortes' }
 
 // `vocabulario` (opcional, solo textos): { unidad, unidades, etiquetaTotal }; sin él, "corte(s)" como siempre.
-const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARIO_CORTES }) => {
+// `desglose` (admin): las cifras de barbería y de asesoría van por separado (tooltip, totales y tabla).
+const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARIO_CORTES, desglose = false }) => {
   const contenedorRef = useRef(null)
   const botonesRef = useRef([])
   const ancho = useAnchoElemento(contenedorRef)
   const [activo, setActivo] = useState(null)
 
+  const cuenta = cuentaDe(vocabulario.campo)
   const n = puntos.length
   const unidad = agrupar === 'dia' ? 'día' : 'mes'
 
@@ -73,10 +80,15 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
     .map((p, i) => `${i === 0 ? 'M' : 'L'}${centro(i).toFixed(1)} ${y(p.ingresos).toFixed(1)}`)
     .join(' ')
 
+  const altoTooltip = desglose ? ALTO_TOOLTIP_DESGLOSE : ALTO_TOOLTIP
+  const totalBarberia = sumarArea(puntos, 'ingresos_barberia')
+  const totalAsesoria = sumarArea(puntos, 'ingresos_asesoria')
+
   const mejor = puntos.reduce((m, p) => (p.ingresos > m.ingresos ? p : m), puntos[0])
   const resumen =
     `Gráfico de barras de ingresos por ${unidad} (${n} ${agrupar === 'dia' ? 'días' : 'meses'}). ` +
     `Total ${formatearDinero(sumar(puntos))}; período anterior ${formatearDinero(sumar(anteriores))}. ` +
+    (desglose ? `De barbería ${formatearDinero(totalBarberia)} y de asesorías ${formatearDinero(totalAsesoria)}. ` : '') +
     (mejor.ingresos > 0
       ? `Mayor ingreso: ${etiquetaCompleta(agrupar, mejor)} con ${formatearDinero(mejor.ingresos)}. `
       : '') +
@@ -100,7 +112,7 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
   if (punto) {
     const previo = anteriores[activo]
     const tx = Math.min(Math.max(centro(activo) - ANCHO_TOOLTIP / 2, MARGEN.izq), ancho - MARGEN.der - ANCHO_TOOLTIP)
-    const ty = Math.max(MARGEN.sup, y(Math.max(punto.ingresos, previo.ingresos)) - ALTO_TOOLTIP - 6)
+    const ty = Math.max(MARGEN.sup, y(Math.max(punto.ingresos, previo.ingresos)) - altoTooltip - 6)
     tooltip = { tx, ty, punto, previo }
   }
 
@@ -156,19 +168,35 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
 
           {tooltip && (
             <g transform={`translate(${tooltip.tx} ${tooltip.ty})`} className="pointer-events-none motion-safe:transition-opacity">
-              <rect width={ANCHO_TOOLTIP} height={ALTO_TOOLTIP} rx={6} className="fill-zinc-900 stroke-zinc-600" />
+              <rect width={ANCHO_TOOLTIP} height={altoTooltip} rx={6} className="fill-zinc-900 stroke-zinc-600" />
               <text x={10} y={18} className="fill-zinc-400 text-xs">
                 {etiquetaCompleta(agrupar, tooltip.punto)}
               </text>
               <text x={10} y={38} className="fill-white text-sm font-semibold">
                 {formatearDinero(tooltip.punto.ingresos)}
               </text>
-              <text x={10} y={55} className="fill-zinc-300 text-xs">
-                {tooltip.punto.cortes} {tooltip.punto.cortes === 1 ? vocabulario.unidad : vocabulario.unidades}
-              </text>
-              <text x={10} y={70} className="fill-zinc-400 text-xs">
-                Antes: {formatearDinero(tooltip.previo.ingresos)}
-              </text>
+              {desglose ? (
+                <>
+                  <text x={10} y={55} className="fill-zinc-300 text-xs">
+                    Barbería {formatearDinero(tooltip.punto.ingresos_barberia ?? 0)}
+                  </text>
+                  <text x={10} y={70} className="fill-zinc-300 text-xs">
+                    Asesorías {formatearDinero(tooltip.punto.ingresos_asesoria ?? 0)}
+                  </text>
+                  <text x={10} y={86} className="fill-zinc-400 text-xs">
+                    Antes: {formatearDinero(tooltip.previo.ingresos)}
+                  </text>
+                </>
+              ) : (
+                <>
+                  <text x={10} y={55} className="fill-zinc-300 text-xs">
+                    {cuenta(tooltip.punto)} {cuenta(tooltip.punto) === 1 ? vocabulario.unidad : vocabulario.unidades}
+                  </text>
+                  <text x={10} y={70} className="fill-zinc-400 text-xs">
+                    Antes: {formatearDinero(tooltip.previo.ingresos)}
+                  </text>
+                </>
+              )}
             </g>
           )}
         </svg>
@@ -186,7 +214,11 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
               }}
               type="button"
               tabIndex={i === (activo ?? n - 1) ? 0 : -1}
-              aria-label={`${etiquetaCompleta(agrupar, p)}: ${formatearDinero(p.ingresos)}, ${p.cortes} ${p.cortes === 1 ? vocabulario.unidad : vocabulario.unidades}`}
+              aria-label={
+                desglose
+                  ? `${etiquetaCompleta(agrupar, p)}: ${formatearDinero(p.ingresos)} (barbería ${formatearDinero(p.ingresos_barberia ?? 0)}, asesorías ${formatearDinero(p.ingresos_asesoria ?? 0)}), ${p.cortes ?? 0} ${p.cortes === 1 ? 'corte' : 'cortes'} y ${p.asesorias ?? 0} ${p.asesorias === 1 ? 'asesoría' : 'asesorías'}`
+                  : `${etiquetaCompleta(agrupar, p)}: ${formatearDinero(p.ingresos)}, ${cuenta(p)} ${cuenta(p) === 1 ? vocabulario.unidad : vocabulario.unidades}`
+              }
               onMouseEnter={() => setActivo(i)}
               onFocus={() => setActivo(i)}
               onBlur={() => setActivo(null)}
@@ -205,6 +237,11 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
           <li className="flex items-center gap-2">
             <span aria-hidden="true" className="w-5 border-t-2 border-dashed border-zinc-400" /> Período anterior
           </li>
+          {desglose && (
+            <li>
+              Del período actual: barbería {formatearDinero(totalBarberia)} · asesorías {formatearDinero(totalAsesoria)}
+            </li>
+          )}
         </ul>
       </figcaption>
 
@@ -216,7 +253,16 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
             <tr>
               <th scope="col">{agrupar === 'dia' ? 'Día' : 'Mes'}</th>
               <th scope="col">Ingresos</th>
-              <th scope="col">{vocabulario.etiquetaTotal}</th>
+              {desglose ? (
+                <>
+                  <th scope="col">Ingresos de barbería</th>
+                  <th scope="col">Ingresos de asesorías</th>
+                  <th scope="col">Cortes</th>
+                  <th scope="col">Asesorías</th>
+                </>
+              ) : (
+                <th scope="col">{vocabulario.etiquetaTotal}</th>
+              )}
               <th scope="col">Ingresos del período anterior</th>
             </tr>
           </thead>
@@ -225,7 +271,16 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARI
               <tr key={i}>
                 <th scope="row">{etiquetaCompleta(agrupar, p)}</th>
                 <td>{formatearDinero(p.ingresos)}</td>
-                <td>{p.cortes}</td>
+                {desglose ? (
+                  <>
+                    <td>{formatearDinero(p.ingresos_barberia ?? 0)}</td>
+                    <td>{formatearDinero(p.ingresos_asesoria ?? 0)}</td>
+                    <td>{p.cortes ?? 0}</td>
+                    <td>{p.asesorias ?? 0}</td>
+                  </>
+                ) : (
+                  <td>{cuenta(p)}</td>
+                )}
                 <td>{formatearDinero(anteriores[i].ingresos)}</td>
               </tr>
             ))}

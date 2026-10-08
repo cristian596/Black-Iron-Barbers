@@ -10,7 +10,7 @@ import {
 } from '../utils/fechas.js';
 import { normalizarTelefono, esTelefonoValido } from '../utils/telefono.js';
 import { leerServiciosDelCuerpo, cargarServicios } from '../utils/serviciosCita.js';
-import { COLUMNAS_SERVICIOS, unirServiciosDeCita, serviciosDeCita } from '../db/citaServicios.js';
+import { COLUMNAS_SERVICIOS, COLUMNAS_RESERVA, unirServiciosDeCita, serviciosDeCita } from '../db/citaServicios.js';
 import {
   CODIGO_PROFESIONAL_INCOMPATIBLE,
   errorAsesoriaGratisYaUsada,
@@ -423,7 +423,7 @@ export const listarCitas = async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT c.id, c.cliente, c.correo, c.telefono, c.fecha, c.hora, c.estado,
               c.duracion_min, c.precio, c.creada_en, c.servicio_id, c.barbero_id,
-              ${COLUMNAS_SERVICIOS}, b.nombre AS barbero_nombre
+              ${COLUMNAS_SERVICIOS}, ${COLUMNAS_RESERVA}, b.nombre AS barbero_nombre
        FROM citas c
        ${unirServiciosDeCita()}
        JOIN barberos b ON b.id = c.barbero_id

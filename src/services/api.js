@@ -175,10 +175,11 @@ export const descargarReporteDiarioCsv = async (token, fecha) => {
 export const obtenerIngresos = (token, agrupar) =>
   request(`/admin/estadisticas/ingresos${construirQuery({ agrupar })}`, { headers: authHeader(token) });
 
-export const obtenerServiciosTop = (token, periodo, limite) =>
-  request(`/admin/estadisticas/servicios-top${construirQuery({ periodo, limite })}`, { headers: authHeader(token) });
+// `area` (opcional, 'barberia' | 'asesoria'): sin ella el back-end devuelve los de barbería.
+export const obtenerServiciosTop = (token, periodo, limite, area) =>
+  request(`/admin/estadisticas/servicios-top${construirQuery({ periodo, limite, area })}`, { headers: authHeader(token) });
 
-// Lista paginada del admin: { pestana, q, desde, hasta, barbero, pagina, limite } → { items, total, pagina, limite }.
+// Lista paginada del admin: { pestana, q, desde, hasta, barbero, area, pagina, limite } → { items, total, pagina, limite }.
 export const obtenerCitasAdmin = (token, filtros) =>
   request(`/admin/citas${construirQuery(filtros)}`, { headers: authHeader(token) });
 

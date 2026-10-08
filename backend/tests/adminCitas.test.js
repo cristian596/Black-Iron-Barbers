@@ -137,6 +137,10 @@ describe('pestañas y marca "Vencida" (reloj: 22:00 del 4 de oct en Bogotá)', (
       servicios: [{ id: 1, nombre: 'Corte de prueba', duracion_min: 30, precio: 50000 }],
       barbero_nombre: 'Barbero Uno',
       vencida: false,
+      // fase 6 (campos nuevos, aditivos): área de la cita y datos de reserva combinada (esta es una cita suelta)
+      area: 'barberia',
+      reserva_id: null,
+      hermana: null,
     });
   });
 

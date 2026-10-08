@@ -5,6 +5,7 @@ import ErrorCarga from '../ui/ErrorCarga'
 import SinResultados from '../ui/SinResultados'
 import Esqueleto from './Esqueleto'
 import AccionesCita from './AccionesCita'
+import ReservaCombinada from '../ui/ReservaCombinada'
 import { formatearPrecio, soloHora } from '../../utils/formato'
 
 export const InsigniaPorConfirmar = () => (
@@ -54,6 +55,7 @@ const AgendaHoy = ({ datos, cargando, error, alReintentar, ocupadoId, alCompleta
                   {cita.servicio_nombre} · {cita.duracion_min} min · {formatearPrecio(cita.precio)}
                 </p>
               )}
+              <ReservaCombinada cita={cita} className="mt-2" />
               {cita.estado === 'pendiente' && (
                 <AccionesCita cita={cita} ocupado={ocupadoId === cita.id} alCompletar={alCompletar} alCancelar={alCancelar} />
               )}

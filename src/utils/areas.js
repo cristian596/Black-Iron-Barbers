@@ -30,3 +30,17 @@ export const vocabularioPanel = (area) =>
         unidades: 'cortes',
         sinCompletadas: 'No tienes cortes completados en este período.',
       }
+
+// Campo de las estadísticas que cuenta las citas completadas de un profesional según su área: sus cortes o sus asesorías.
+// (Una cita anterior a las asesorías, como los cortes que hizo Camila, cuenta como corte aunque hoy ella sea de asesoría.)
+export const campoConteo = (area) => (area === AREA_ASESORIA ? 'asesorias' : 'cortes')
+
+// Nombre visible del área de una cita ("Barbería" / "Asesoría"). Sin `area` (respuestas anteriores) es barbería.
+export const textoArea = (area) => (area === AREA_ASESORIA ? 'Asesoría' : 'Barbería')
+
+// Profesionales del MISMO área que una cita: barberos para un corte, asesores para una asesoría (selector de reasignar).
+export const profesionalesDeArea = (profesionales, area) => {
+  if (!Array.isArray(profesionales)) return profesionales
+  const buscada = area === AREA_ASESORIA ? AREA_ASESORIA : AREA_BARBERIA
+  return profesionales.filter((p) => (p?.area ?? AREA_BARBERIA) === buscada)
+}

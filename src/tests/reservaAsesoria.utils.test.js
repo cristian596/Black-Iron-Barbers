@@ -112,7 +112,8 @@ describe('normalizarReserva', () => {
 
 describe('textos de asesorías y unión con la API', () => {
   it('rutaReservaAsesoria usa el id real', () => {
-    expect(rutaReservaAsesoria(270)).toBe('/reservar-corte?servicios=270')
+    // MODIFICADO (fase 6, paso previo): camino rápido ?servicio= para no vaciar el carrito
+    expect(rutaReservaAsesoria(270)).toBe('/reservar-corte?servicio=270')
   })
 
   it('unirAsesorias une por clave, no por posición ni por nombre', () => {

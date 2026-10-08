@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { obtenerMisEstadisticas, obtenerMisIngresos, obtenerMisServiciosTop } from '../../services/api'
 import { indicadoresBarbero } from '../../data/indicadoresBarbero'
-import { vocabularioPanel } from '../../utils/areas'
+import { campoConteo, vocabularioPanel } from '../../utils/areas'
 import SelectorPeriodo from '../../components/admin/SelectorPeriodo'
 import PanelIndicadores from '../../components/admin/PanelIndicadores'
 import PanelIngresos from '../../components/admin/PanelIngresos'
@@ -14,7 +14,7 @@ const MiRendimiento = () => {
   const { token, usuario } = useAuth()
   const [periodo, setPeriodo] = useState('hoy')
   // Solo textos: quien atiende asesorías ve "Asesorías" donde un barbero ve "Cortes". Los datos son los mismos.
-  const vocabulario = vocabularioPanel(usuario?.area)
+  const vocabulario = { ...vocabularioPanel(usuario?.area), campo: campoConteo(usuario?.area) }
   const indicadores = useMemo(() => indicadoresBarbero(usuario?.area), [usuario?.area])
 
   return (

@@ -2,9 +2,10 @@ import { pool } from '../db/connection.js';
 import { ahoraBogota } from '../utils/fechas.js';
 import { esFechaCalendario } from '../utils/periodos.js';
 import { validarParametros, leerEntero, escaparLike } from '../utils/parametrosQuery.js';
-import { COLUMNAS_SERVICIOS, unirServiciosDeCita, algunServicioCoincide } from '../db/citaServicios.js';
+import { COLUMNAS_SERVICIOS, COLUMNAS_RESERVA, areaDeCita, unirServiciosDeCita, algunServicioCoincide } from '../db/citaServicios.js';
+import { AREAS, esAreaValida } from '../utils/areas.js';
 
-const PARAMETROS = ['pestana', 'q', 'desde', 'hasta', 'barbero', 'pagina', 'limite'];
+const PARAMETROS = ['pestana', 'q', 'desde', 'hasta', 'barbero', 'area', 'pagina', 'limite'];
 const PESTANAS = ['proximas', 'todas', 'canceladas'];
 const LIMITE_POR_DEFECTO = 10;
 const LIMITE_MAXIMO = 50;
@@ -23,7 +24,7 @@ export const listarCitasAdmin = async (req, res, next) => {
     const errorParametros = validarParametros(req.query, PARAMETROS);
     if (errorParametros) return res.status(400).json({ error: errorParametros });
 
-    const { pestana = 'todas', q, desde, hasta, barbero, pagina, limite } = req.query;
+    const { pestana = 'todas', q, desde, hasta, barbero, area, pagina, limite } = req.query;
 
     if (!PESTANAS.includes(pestana)) {
       return res.status(400).json({ error: `El parámetro 'pestana' debe ser uno de: ${PESTANAS.join(', ')}` });
@@ -38,6 +39,10 @@ export const listarCitasAdmin = async (req, res, next) => {
     }
     if (desde !== undefined && hasta !== undefined && desde > hasta) {
       return res.status(400).json({ error: "El parámetro 'desde' no puede ser posterior a 'hasta'" });
+    }
+
+    if (area !== undefined && !esAreaValida(area)) {
+      return res.status(400).json({ error: `El parámetro 'area' debe ser uno de: ${AREAS.join(', ')}` });
     }
 
     let barberoId;
@@ -77,6 +82,7 @@ export const listarCitasAdmin = async (req, res, next) => {
     if (desde !== undefined) agregar('c.fecha >= ?::date', desde);
     if (hasta !== undefined) agregar('c.fecha <= ?::date', hasta);
     if (barberoId !== undefined) agregar('c.barbero_id = ?', barberoId);
+    if (area !== undefined) agregar(`${areaDeCita()} = ?`, area);
     if (q?.trim()) {
       valores.push(`%${escaparLike(q.trim())}%`);
       const p = `$${valores.length}`;
@@ -95,7 +101,7 @@ export const listarCitasAdmin = async (req, res, next) => {
       pool.query(
         `SELECT c.id, c.cliente, c.correo, c.telefono, c.fecha::text AS fecha, c.hora::text AS hora, c.estado,
                 c.duracion_min, c.precio, c.servicio_id, c.barbero_id,
-                ${COLUMNAS_SERVICIOS}, b.nombre AS barbero_nombre,
+                ${COLUMNAS_SERVICIOS}, ${COLUMNAS_RESERVA}, b.nombre AS barbero_nombre,
                 (c.estado = 'pendiente' AND (c.fecha + c.hora) < $${iAhora}::timestamp) AS vencida
          ${DESDE} ${unirServiciosDeCita()} ${where}
          ORDER BY ${orden}

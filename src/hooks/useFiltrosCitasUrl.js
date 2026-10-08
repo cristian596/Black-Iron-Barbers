@@ -2,31 +2,34 @@ import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { esFechaISO } from '../utils/fechas'
 import { totalPaginas } from '../utils/paginacion'
+import { AREA_ASESORIA, AREA_BARBERIA } from '../utils/areas'
 
 const ESPERA_BUSQUEDA_MS = 300
 
 // Todo el estado de una lista de citas vive en la URL (?pestana=&q=&desde=&hasta=&barbero=&pagina=): atrás, adelante,
 // F5 y los enlaces compartidos funcionan. Un valor inválido se ignora en vez de romper la página. Lo comparten
-// /admin/citas (con `conBarbero`) y /panel/citas.
-const leerParametros = (params, pestanas, pestanaPorDefecto, conBarbero) => {
+// /admin/citas (con `conBarbero` y `conArea`: ?area=barberia|asesoria) y /panel/citas.
+const leerParametros = (params, pestanas, pestanaPorDefecto, conBarbero, conArea) => {
   const pestana = params.get('pestana')
   const pagina = params.get('pagina')
   const barbero = params.get('barbero')
   const desde = params.get('desde')
   const hasta = params.get('hasta')
+  const area = params.get('area')
   return {
     pestana: pestanas.some((p) => p.id === pestana) ? pestana : pestanaPorDefecto,
     q: (params.get('q') ?? '').trim().slice(0, 100),
     desde: esFechaISO(desde) ? desde : '',
     hasta: esFechaISO(hasta) ? hasta : '',
     barbero: conBarbero && /^\d{1,9}$/.test(barbero ?? '') && Number(barbero) > 0 ? barbero : '',
+    area: conArea && (area === AREA_BARBERIA || area === AREA_ASESORIA) ? area : '',
     pagina: /^\d{1,6}$/.test(pagina ?? '') && Number(pagina) > 0 ? Number(pagina) : 1,
   }
 }
 
-export const useFiltrosCitasUrl = ({ pestanas, pestanaPorDefecto, conBarbero = false }) => {
+export const useFiltrosCitasUrl = ({ pestanas, pestanaPorDefecto, conBarbero = false, conArea = false }) => {
   const [searchParams, setSearchParams] = useSearchParams()
-  const filtros = leerParametros(searchParams, pestanas, pestanaPorDefecto, conBarbero)
+  const filtros = leerParametros(searchParams, pestanas, pestanaPorDefecto, conBarbero, conArea)
   const { q } = filtros
 
   const [texto, setTexto] = useState(q)
@@ -61,10 +64,10 @@ export const useFiltrosCitasUrl = ({ pestanas, pestanaPorDefecto, conBarbero = f
     if (texto.trim() !== q) setTexto(q)
   }
 
-  const hayFiltros = Boolean(q || filtros.desde || filtros.hasta || filtros.barbero || texto)
+  const hayFiltros = Boolean(q || filtros.desde || filtros.hasta || filtros.barbero || filtros.area || texto)
   const limpiar = () => {
     setTexto('')
-    cambiar({ q: '', desde: '', hasta: '', barbero: '' })
+    cambiar({ q: '', desde: '', hasta: '', barbero: '', area: '' })
   }
 
   return { ...filtros, texto, setTexto, cambiar, hayFiltros, limpiar }

@@ -2,6 +2,8 @@ import BadgeEstado from '../ui/BadgeEstado'
 import ServiciosDeCita from '../ui/ServiciosDeCita'
 import { esCombo } from '../../utils/servicios'
 import TarjetaCita from './TarjetaCita'
+import ReservaCombinada, { EtiquetaArea } from '../ui/ReservaCombinada'
+import { AREA_ASESORIA, profesionalesDeArea } from '../../utils/areas'
 import { fechaLegible, soloHora } from '../../utils/formato'
 
 const TablaCitas = ({
@@ -17,13 +19,14 @@ const TablaCitas = ({
   return (
     <>
       {/* Vista de tabla en escritorio */}
-      <div className="hidden overflow-x-auto md:block">
+      <div className="relative hidden overflow-x-auto md:block">
         <table className="w-full min-w-160 text-left text-sm text-white">
           <thead>
             <tr className="border-b border-white/10 text-gray-400">
               <th className="py-2 pr-3 font-medium">Cliente</th>
               <th className="py-2 pr-3 font-medium">Servicio</th>
-              {mostrarBarbero && <th className="py-2 pr-3 font-medium">Barbero</th>}
+              <th className="py-2 pr-3 font-medium">Área</th>
+              {mostrarBarbero && <th className="py-2 pr-3 font-medium">Profesional</th>}
               <th className="py-2 pr-3 font-medium">Fecha</th>
               <th className="py-2 pr-3 font-medium">Hora</th>
               <th className="py-2 pr-3 font-medium">Estado</th>
@@ -36,7 +39,9 @@ const TablaCitas = ({
                 <td className="py-2 pr-3">{cita.cliente}</td>
                 <td className="py-2 pr-3">
                   {esCombo(cita) ? <ServiciosDeCita cita={cita} detalle /> : cita.servicio_nombre}
+                  <ReservaCombinada cita={cita} className="mt-2" />
                 </td>
+                <td className="py-2 pr-3"><EtiquetaArea area={cita.area} /></td>
                 {mostrarBarbero && <td className="py-2 pr-3">{cita.barbero_nombre}</td>}
                 <td className="py-2 pr-3">{fechaLegible(cita.fecha)}</td>
                 <td className="py-2 pr-3">{soloHora(cita.hora)}</td>
@@ -47,13 +52,15 @@ const TablaCitas = ({
                       <div className="flex flex-wrap items-center gap-2">
                         {onReasignar && barberosActivos && (
                           <label className="flex items-center gap-1 text-xs text-gray-300">
-                            <span className="sr-only">Reasignar barbero de la cita de {cita.cliente}</span>
+                            <span className="sr-only">
+                              {cita.area === AREA_ASESORIA ? 'Reasignar asesor/a' : 'Reasignar barbero'} de la cita de {cita.cliente}
+                            </span>
                             <select
                               value={cita.barbero_id}
                               onChange={(e) => onReasignar(cita, e.target.value)}
                               className="min-h-11 rounded-lg border border-white/20 bg-[#1a1a1a] p-1 text-xs text-white"
                             >
-                              {barberosActivos.map((b) => (
+                              {profesionalesDeArea(barberosActivos, cita.area).map((b) => (
                                 <option key={b.id} value={b.id}>
                                   {b.nombre}
                                 </option>

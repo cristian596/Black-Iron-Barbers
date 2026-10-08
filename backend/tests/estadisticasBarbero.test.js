@@ -113,7 +113,10 @@ describe('GET /api/barbero/estadisticas', () => {
       const res = await get('?periodo=hoy');
       expect(res.status).toBe(200);
       expect(res.body.periodo).toMatchObject({ clave: 'hoy', desde: '2026-10-04', hasta: '2026-10-04' });
-      expect(res.body.actual).toEqual({ citas: 4, completadas: 3, canceladas: 1, ingresos: 80000, ticket_promedio: 40000 });
+      expect(res.body.actual).toEqual({
+        citas: 4, completadas: 3, canceladas: 1, ingresos: 80000, ticket_promedio: 40000,
+        cortes: 3, asesorias: 0, ingresos_barberia: 80000, ingresos_asesoria: 0, // fase 6 (campos nuevos)
+      });
     } finally {
       await pool.query('UPDATE servicios SET precio = 50000 WHERE id = 1');
     }
@@ -164,8 +167,12 @@ describe('GET /api/barbero/estadisticas', () => {
 
   it('periodo vacío: ceros, sin NaN', async () => {
     const res = await get('?periodo=30d');
-    expect(res.body.actual).toEqual({ citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0 });
-    expect(res.body.previo).toEqual({ citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0 });
+    const ceros = {
+      citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0,
+      cortes: 0, asesorias: 0, ingresos_barberia: 0, ingresos_asesoria: 0, // fase 6 (campos nuevos)
+    };
+    expect(res.body.actual).toEqual(ceros);
+    expect(res.body.previo).toEqual(ceros);
   });
 
   it('"hoy" es el de Bogotá: a las 23:30 de Bogotá (04:30 UTC del día siguiente) sigue siendo el mismo día', async () => {
@@ -228,9 +235,9 @@ describe('GET /api/barbero/estadisticas/ingresos', () => {
     expect(res.body.agrupar).toBe('dia');
     expect(res.body.puntos).toHaveLength(30);
     expect(res.body.anteriores).toHaveLength(30);
-    expect(res.body.puntos[0]).toEqual({ fecha: '2026-09-05', ingresos: 7000, cortes: 1 });
-    expect(res.body.puntos[29]).toEqual({ fecha: '2026-10-04', ingresos: 30000, cortes: 2 });
-    expect(res.body.puntos[10]).toEqual({ fecha: '2026-09-15', ingresos: 0, cortes: 0 });
+    expect(res.body.puntos[0]).toEqual({ fecha: '2026-09-05', ingresos: 7000, cortes: 1, completadas: 1, asesorias: 0, ingresos_barberia: 7000, ingresos_asesoria: 0 });
+    expect(res.body.puntos[29]).toEqual({ fecha: '2026-10-04', ingresos: 30000, cortes: 2, completadas: 2, asesorias: 0, ingresos_barberia: 30000, ingresos_asesoria: 0 });
+    expect(res.body.puntos[10]).toEqual({ fecha: '2026-09-15', ingresos: 0, cortes: 0, completadas: 0, asesorias: 0, ingresos_barberia: 0, ingresos_asesoria: 0 });
   });
 
   it('agrupar=mes: 12 meses y los 12 anteriores, solo suyos', async () => {
@@ -240,8 +247,8 @@ describe('GET /api/barbero/estadisticas/ingresos', () => {
     const res = await get('/ingresos?agrupar=mes');
     expect(res.body.puntos).toHaveLength(12);
     expect(res.body.anteriores).toHaveLength(12);
-    expect(res.body.puntos[11]).toEqual({ mes: '2026-10', ingresos: 10000, cortes: 1 });
-    expect(res.body.puntos[10]).toEqual({ mes: '2026-09', ingresos: 20000, cortes: 1 });
+    expect(res.body.puntos[11]).toEqual({ mes: '2026-10', ingresos: 10000, cortes: 1, completadas: 1, asesorias: 0, ingresos_barberia: 10000, ingresos_asesoria: 0 });
+    expect(res.body.puntos[10]).toEqual({ mes: '2026-09', ingresos: 20000, cortes: 1, completadas: 1, asesorias: 0, ingresos_barberia: 20000, ingresos_asesoria: 0 });
   });
 
   it('sin citas: todo en ceros', async () => {

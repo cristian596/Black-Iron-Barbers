@@ -23,6 +23,24 @@ export const COLUMNAS_SERVICIOS = 'sv.nombre AS servicio_nombre, sv.servicios';
 export const algunServicioCoincide = (parametro, cita = 'c') =>
   `EXISTS (SELECT 1 FROM cita_servicios cs WHERE cs.cita_id = ${cita}.id AND cs.nombre ILIKE ${parametro} ESCAPE '\\')`;
 
+// Área de la cita ('barberia' | 'asesoria'): la de su servicio principal (citas.servicio_id). Coincide con la de su
+// profesional (lo garantizan los triggers del esquema); en las citas anteriores a las asesorías manda el servicio.
+export const areaDeCita = (cita = 'c') => `(SELECT sp.area FROM servicios sp WHERE sp.id = ${cita}.servicio_id)`;
+
+// Columnas de reserva de cada cita en los listados: `area`, `reserva_id` (nulo = cita suelta) y `hermana`: si la cita
+// es parte de una reserva combinada (asesoría + corte), la OTRA cita con SOLO estos campos mínimos
+// { id, area, profesional (nombre público), hora_inicio, hora_fin, estado } (horas 'HH:MM:SS'); si no, null. Nada de
+// contacto, precios ni servicios de la hermana: es la misma persona, pero la hermana es de otro profesional.
+export const COLUMNAS_RESERVA = `
+  ${areaDeCita()} AS area, c.reserva_id,
+  (SELECT json_build_object(
+            'id', h.id, 'area', ${areaDeCita('h')}, 'profesional', hb.nombre,
+            'hora_inicio', h.hora::text, 'hora_fin', (h.hora + make_interval(mins => h.duracion_min))::text,
+            'estado', h.estado)
+   FROM citas h JOIN barberos hb ON hb.id = h.barbero_id
+   WHERE c.reserva_id IS NOT NULL AND h.reserva_id = c.reserva_id AND h.id <> c.id
+   ORDER BY h.hora, h.id LIMIT 1) AS hermana`;
+
 // { servicio_nombre, servicios } de una cita concreta.
 export const serviciosDeCita = async (db, citaId) => {
   const { rows } = await db.query(

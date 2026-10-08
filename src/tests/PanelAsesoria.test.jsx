@@ -157,7 +157,9 @@ describe('AuthContext guarda el área de la sesión', () => {
 describe('vocabulario en los componentes compartidos', () => {
   it('indicadoresBarbero cambia solo la etiqueta de la primera tarjeta; INDICADORES_BARBERO sigue siendo el de cortes', () => {
     expect(indicadoresBarbero('asesoria').map((i) => i.etiqueta)).toEqual(['Asesorías', 'Ingresos', 'Ticket promedio', 'Canceladas'])
-    expect(indicadoresBarbero('asesoria').map((i) => i.clave)).toEqual(INDICADORES_BARBERO.map((i) => i.clave))
+    // MODIFICADO (fase 6): la primera tarjeta ya no lee 'completadas' sino el contador de SU área (cortes o asesorias); las demás claves son las mismas
+    expect(indicadoresBarbero('asesoria').map((i) => i.clave)).toEqual(['asesorias', ...INDICADORES_BARBERO.slice(1).map((i) => i.clave)])
+    expect(INDICADORES_BARBERO[0].clave).toBe('cortes')
     expect(INDICADORES_BARBERO[0].etiqueta).toBe('Cortes')
   })
 

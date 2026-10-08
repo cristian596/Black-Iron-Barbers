@@ -5,7 +5,7 @@
 // Duración: la total guardada en la cita (suma de sus servicios). El fin de la cita es fecha + hora + duración.
 // El nombre y los servicios salen del snapshot de cita_servicios (ver db/citaServicios.js).
 
-import { COLUMNAS_SERVICIOS, unirServiciosDeCita, algunServicioCoincide } from './citaServicios.js';
+import { COLUMNAS_SERVICIOS, COLUMNAS_RESERVA, unirServiciosDeCita, algunServicioCoincide } from './citaServicios.js';
 
 const FIN_CITA = '((c.fecha + c.hora) + make_interval(mins => c.duracion_min))';
 // Requiere $2 = ahora y $3 = minutos de gracia (ver utils/confirmacion.js).
@@ -27,7 +27,7 @@ export const contarPorConfirmar = async (db, barberoId, ahora, gracia) => {
 // `vencida_hace_min`: minutos desde que pasó el límite de confirmación (termino_hace_min - gracia).
 export const listarPorConfirmar = async (db, barberoId, ahora, gracia, tope) => {
   const { rows } = await db.query(
-    `SELECT c.id, c.cliente, ${COLUMNAS_SERVICIOS}, c.fecha::text AS fecha, c.hora::text AS hora,
+    `SELECT c.id, c.cliente, ${COLUMNAS_SERVICIOS}, ${COLUMNAS_RESERVA}, c.fecha::text AS fecha, c.hora::text AS hora,
             c.duracion_min,
             FLOOR(EXTRACT(EPOCH FROM ($2::timestamp - ${FIN_CITA})) / 60)::int AS termino_hace_min,
             FLOOR(EXTRACT(EPOCH FROM ($2::timestamp - ${FIN_CITA})) / 60)::int - $3::int AS vencida_hace_min
@@ -55,7 +55,7 @@ export const proximaCita = async (db, barberoId, ahora) => {
 
 export const agendaDelDia = async (db, barberoId, fecha, ahora, gracia) => {
   const { rows } = await db.query(
-    `SELECT c.id, c.cliente, ${COLUMNAS_SERVICIOS}, c.fecha::text AS fecha, c.hora::text AS hora, c.estado,
+    `SELECT c.id, c.cliente, ${COLUMNAS_SERVICIOS}, ${COLUMNAS_RESERVA}, c.fecha::text AS fecha, c.hora::text AS hora, c.estado,
             c.duracion_min, c.precio,
             (${POR_CONFIRMAR}) AS por_confirmar
      ${DESDE_CON_SERVICIOS}
@@ -113,7 +113,7 @@ export const listarCitasBarbero = async (db, barberoId, { pestana, patron, desde
     valores
   );
   const items = db.query(
-    `SELECT c.id, c.cliente, ${COLUMNAS_SERVICIOS}, c.duracion_min,
+    `SELECT c.id, c.cliente, ${COLUMNAS_SERVICIOS}, ${COLUMNAS_RESERVA}, c.duracion_min,
             c.fecha::text AS fecha, c.hora::text AS hora, c.estado, c.precio, (${POR_CONFIRMAR}) AS por_confirmar
      ${DESDE_CON_SERVICIOS} WHERE ${donde} AND ${PREDICADO_PESTANA[pestana]}
      ORDER BY ${ORDEN_PESTANA[pestana]}

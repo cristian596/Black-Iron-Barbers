@@ -285,7 +285,11 @@ const ModalConfirmacion = ({
             />
           </div>
 
-          <div className="flex items-start gap-2">
+          {/* Toda la fila es la etiqueta (zona clicable de al menos 44 px de alto); el checkbox conserva su tamaño de 16 px. */}
+          <label
+            htmlFor="reserva-consentimiento"
+            className="flex min-h-11 cursor-pointer items-start gap-2 py-1 font-poppins text-xs text-zinc-600"
+          >
             <input
               id="reserva-consentimiento"
               name="consentimiento"
@@ -294,12 +298,12 @@ const ModalConfirmacion = ({
               onChange={(evento) => setConsentimiento(evento.target.checked)}
               className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-300 text-oro focus:ring-oro"
             />
-            <label htmlFor="reserva-consentimiento" className="font-poppins text-xs text-zinc-600">
+            <span>
               Acepto que Black Iron Barbers use mis datos de contacto (nombre, correo y teléfono)
               únicamente para gestionar esta cita, conforme a la Ley 1581 de 2012 de Protección de Datos
               Personales. No se usarán con fines publicitarios ni se compartirán con terceros.
-            </label>
-          </div>
+            </span>
+          </label>
 
           {/* Siempre presente para que el lector de pantalla anuncie el aviso cuando aparece. No dice qué dato coincidió. */}
           <div role="status" aria-live="polite">

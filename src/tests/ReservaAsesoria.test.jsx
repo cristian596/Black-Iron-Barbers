@@ -248,6 +248,52 @@ describe('Llegada por ?servicios= (mezcla de asesoría y barbería)', () => {
   })
 })
 
+// Fase 6, paso previo: "Reservar esta asesoría" usa el camino rápido ?servicio=<id>, que NO vacía el carrito.
+describe('Llegada por ?servicio= con una asesoría (camino rápido, no toca el carrito)', () => {
+  it('?servicio=<id de una asesoría> la deja preseleccionada, validada contra la API como cualquier otro servicio', async () => {
+    montar(`/reservar-corte?servicio=${PREMIUM_API.id}`)
+    await esperarCarga()
+    expect(tarjeta('Asesoría Premium')).toHaveAttribute('aria-pressed', 'true')
+    expect(botonesContinuar().every((b) => !b.disabled)).toBe(true)
+  })
+
+  it('un id que la API no trae se descarta con aviso', async () => {
+    montar('/reservar-corte?servicio=999')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ese servicio ya no está disponible')
+    await esperarCarga()
+    expect(tarjeta('Asesoría Premium')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('al terminar la reserva el carrito queda intacto (con ?servicios= se vaciaba)', async () => {
+    const user = userEvent.setup()
+    sessionStorage.setItem('seleccion-servicios', JSON.stringify([CORTE_2.id]))
+    api.crearCita.mockResolvedValueOnce({ ...CITA_ASESORIA })
+    montar(`/reservar-corte?servicio=${PREMIUM_API.id}`)
+    await llegarAlModal(user)
+    await llenarContacto(user)
+    await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
+    await screen.findByText(/¡cita agendada con éxito!/i)
+    expect(JSON.parse(sessionStorage.getItem('seleccion-servicios'))).toEqual([CORTE_2.id])
+  })
+})
+
+describe('Consentimiento del modal de contacto: zona clicable de 44 px', () => {
+  it('toda la fila es la etiqueta (min-h-11), el checkbox conserva su tamaño y un clic en el texto lo marca', async () => {
+    const user = userEvent.setup()
+    montar(`/reservar-corte?servicio=${PREMIUM_API.id}`)
+    await llegarAlModal(user)
+    const casilla = screen.getByRole('checkbox')
+    const fila = casilla.closest('label')
+    expect(fila).not.toBeNull()
+    expect(fila).toHaveClass('min-h-11')
+    expect(fila).toHaveAttribute('for', casilla.id)
+    expect(casilla).toHaveClass('h-4', 'w-4') // el aspecto del checkbox no cambia
+    expect(casilla).not.toBeChecked()
+    await user.click(within(fila).getByText(/Acepto que Black Iron Barbers/))
+    expect(casilla).toBeChecked()
+  })
+})
+
 describe('Paso de profesionales', () => {
   it('solo barbería: los barberos de siempre, sin asesores, y el paso se llama "Barbero"', async () => {
     const user = userEvent.setup()

@@ -109,7 +109,11 @@ describe('GET /api/admin/estadisticas', () => {
 
     const { actual } = (await get('/api/admin/estadisticas?periodo=hoy')).body;
 
-    expect(actual).toEqual({ citas: 2, completadas: 1, canceladas: 1, ingresos: 50000, ticket_promedio: 50000 });
+    expect(actual).toEqual({
+      citas: 2, completadas: 1, canceladas: 1, ingresos: 50000, ticket_promedio: 50000,
+      // fase 6 (campos nuevos): el desglose por área
+      cortes: 1, asesorias: 0, ingresos_barberia: 50000, ingresos_asesoria: 0,
+    });
   });
 
   it('usa el precio guardado en la cita: cambiar el precio del servicio después no altera los ingresos', async () => {
@@ -136,7 +140,10 @@ describe('GET /api/admin/estadisticas', () => {
   it('con 0 completadas el ticket promedio es 0 (no null ni NaN) y todo es cero', async () => {
     const { actual, previo } = (await get('/api/admin/estadisticas?periodo=hoy')).body;
 
-    const ceros = { citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0 };
+    const ceros = {
+      citas: 0, completadas: 0, canceladas: 0, ingresos: 0, ticket_promedio: 0,
+      cortes: 0, asesorias: 0, ingresos_barberia: 0, ingresos_asesoria: 0, // fase 6
+    };
     expect(actual).toEqual(ceros);
     expect(previo).toEqual(ceros);
   });
@@ -206,11 +213,11 @@ describe('GET /api/admin/estadisticas/ingresos', () => {
     expect(res.body.agrupar).toBe('dia');
     expect(res.body.puntos).toHaveLength(30);
     expect(res.body.anteriores).toHaveLength(30);
-    expect(res.body.puntos[0]).toEqual({ fecha: '2026-09-05', ingresos: 20000, cortes: 1 });
-    expect(res.body.puntos[29]).toEqual({ fecha: HOY, ingresos: 80000, cortes: 2 });
-    expect(res.body.puntos[28]).toEqual({ fecha: '2026-10-03', ingresos: 0, cortes: 0 });
-    expect(res.body.anteriores[0]).toEqual({ fecha: '2026-08-06', ingresos: 5000, cortes: 1 });
-    expect(res.body.anteriores[29]).toEqual({ fecha: '2026-09-04', ingresos: 10000, cortes: 1 });
+    expect(res.body.puntos[0]).toEqual({ fecha: '2026-09-05', ingresos: 20000, cortes: 1, completadas: 1, asesorias: 0, ingresos_barberia: 20000, ingresos_asesoria: 0 });
+    expect(res.body.puntos[29]).toEqual({ fecha: HOY, ingresos: 80000, cortes: 2, completadas: 2, asesorias: 0, ingresos_barberia: 80000, ingresos_asesoria: 0 });
+    expect(res.body.puntos[28]).toEqual({ fecha: '2026-10-03', ingresos: 0, cortes: 0, completadas: 0, asesorias: 0, ingresos_barberia: 0, ingresos_asesoria: 0 });
+    expect(res.body.anteriores[0]).toEqual({ fecha: '2026-08-06', ingresos: 5000, cortes: 1, completadas: 1, asesorias: 0, ingresos_barberia: 5000, ingresos_asesoria: 0 });
+    expect(res.body.anteriores[29]).toEqual({ fecha: '2026-09-04', ingresos: 10000, cortes: 1, completadas: 1, asesorias: 0, ingresos_barberia: 10000, ingresos_asesoria: 0 });
     const fechas = [...res.body.anteriores, ...res.body.puntos].map((p) => p.fecha);
     expect(new Set(fechas).size).toBe(60);
     expect([...fechas].sort()).toEqual(fechas);

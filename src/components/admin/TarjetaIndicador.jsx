@@ -19,7 +19,8 @@ const DESCRIPCION = {
 }
 
 // `nota`: texto libre bajo el valor en lugar de la comparación con el período anterior (panel del barbero).
-const TarjetaIndicador = ({ etiqueta, valor, actual, previo, invertir = false, nota, className = '' }) => {
+// `detalle`: línea extra bajo la comparación (p. ej. el desglose de los ingresos por área).
+const TarjetaIndicador = ({ etiqueta, valor, actual, previo, invertir = false, nota, detalle, className = '' }) => {
   const { texto, direccion } = formatearDelta(actual, previo)
 
   return (
@@ -36,6 +37,7 @@ const TarjetaIndicador = ({ etiqueta, valor, actual, previo, invertir = false, n
           <span className="sr-only">{DESCRIPCION[direccion](texto)}</span>
         </p>
       )}
+      {detalle && <p className="mt-1 wrap-anywhere text-xs text-zinc-400">{detalle}</p>}
     </div>
   )
 }

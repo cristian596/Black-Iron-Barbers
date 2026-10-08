@@ -14,7 +14,10 @@ const FORMATOS = {
 
 // Tarjetas con el período elegido y su comparación con el período anterior (rango visible). Sin props extra son las
 // cinco del admin; el panel del barbero pasa sus cuatro `indicadores`, su `obtener` y un `mensajeVacio`.
-const COLUMNAS = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5' }
+const COLUMNAS = { 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5', 6: 'lg:grid-cols-3' }
+
+// Valor de un indicador: su clave o, si la respuesta no la trae, su `respaldo`; 0 si no hay ninguna.
+const valorDe = (cifras, indicador) => cifras?.[indicador.clave] ?? (indicador.respaldo ? cifras?.[indicador.respaldo] : undefined) ?? 0
 
 const PanelIndicadores = ({ token, periodo, obtener = obtenerEstadisticas, indicadores = INDICADORES, mensajeVacio }) => {
   const { datos, cargando, error, recargar } = useCarga(() => obtener(token, periodo), periodo)
@@ -49,20 +52,24 @@ const PanelIndicadores = ({ token, periodo, obtener = obtenerEstadisticas, indic
         </p>
       ) : (
         <div className={`grid grid-cols-2 gap-3 ${COLUMNAS[indicadores.length]}`}>
-          {indicadores.map(({ clave, etiqueta, formato, invertir }, i) => (
+          {indicadores.map((indicador, i) => {
+            const { clave, etiqueta, formato, invertir, detalle } = indicador
+            return (
             <TarjetaIndicador
               key={clave}
               etiqueta={etiqueta}
-              valor={FORMATOS[formato](datos.actual[clave])}
-              actual={datos.actual[clave]}
-              previo={datos.previo[clave]}
+              valor={FORMATOS[formato](valorDe(datos.actual, indicador))}
+              actual={valorDe(datos.actual, indicador)}
+              previo={valorDe(datos.previo, indicador)}
               invertir={invertir}
+              detalle={detalle?.(datos.actual, formatearDinero)}
               className={i === indicadores.length - 1 && indicadores.length % 2 === 1 ? 'col-span-2 lg:col-span-1' : ''}
             />
-          ))}
+            )
+          })}
         </div>
       )}
-      {datos && mensajeVacio && datos.actual.completadas === 0 && (
+      {datos && mensajeVacio && valorDe(datos.actual, indicadores[0]) === 0 && (
         <p className="text-sm text-zinc-400">{mensajeVacio}</p>
       )}
     </section>

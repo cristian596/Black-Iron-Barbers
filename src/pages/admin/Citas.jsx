@@ -5,7 +5,6 @@ import { useCarga } from '../../hooks/useCarga'
 import { useBarberosActivos } from '../../hooks/useBarberosActivos'
 import { useFiltrosCitasUrl, useCorregirPagina } from '../../hooks/useFiltrosCitasUrl'
 import { PESTANAS_CITAS } from '../../data/periodos'
-import { soloBarberia } from '../../utils/areas'
 import TablaCitas from '../../components/dashboard/TablaCitas'
 import PestanasCitas from '../../components/admin/PestanasCitas'
 import FiltrosCitasAdmin from '../../components/admin/FiltrosCitasAdmin'
@@ -26,17 +25,18 @@ const Citas = () => {
   const { token } = useAuth()
   const { barberosActivos, errorBarberos } = useBarberosActivos()
   // Todo el estado de la lista vive en la URL (?pestana=&q=&desde=&hasta=&barbero=&pagina=); ver useFiltrosCitasUrl.
-  const { pestana, q, desde, hasta, barbero, pagina, texto, setTexto, cambiar, hayFiltros, limpiar } = useFiltrosCitasUrl({
+  const { pestana, q, desde, hasta, barbero, area, pagina, texto, setTexto, cambiar, hayFiltros, limpiar } = useFiltrosCitasUrl({
     pestanas: PESTANAS_CITAS,
     pestanaPorDefecto: PESTANA_POR_DEFECTO,
     conBarbero: true,
+    conArea: true,
   })
 
   const [accionCitaId, setAccionCitaId] = useState(null)
   const [errorAccion, setErrorAccion] = useState('')
   const tablaRef = useRef(null)
 
-  const filtros = { pestana, q, desde, hasta, barbero, pagina, limite: LIMITE }
+  const filtros = { pestana, q, desde, hasta, barbero, ...(area ? { area } : {}), pagina, limite: LIMITE }
   const { datos, cargando, error, recargar } = useCarga(() => obtenerCitasAdmin(token, filtros), JSON.stringify(filtros))
   useCorregirPagina(datos, pagina, LIMITE, cambiar)
 
@@ -78,11 +78,13 @@ const Citas = () => {
           hasta={hasta}
           barbero={barbero}
           barberos={barberosActivos}
+          area={area}
           hayFiltros={hayFiltros}
           alCambiarTexto={setTexto}
           alCambiarDesde={(valor) => cambiar({ desde: valor })}
           alCambiarHasta={(valor) => cambiar({ hasta: valor })}
           alCambiarBarbero={(valor) => cambiar({ barbero: valor })}
+          alCambiarArea={(valor) => cambiar({ area: valor })}
           alLimpiar={limpiar}
         />
         {errorBarberos && <p className="text-sm text-red-400">{errorBarberos}</p>}
@@ -118,8 +120,8 @@ const Citas = () => {
               <TablaCitas
                 citas={datos.items}
                 mostrarBarbero
-                onReasignar={accionCitaId ? undefined : handleReasignar} // solo se reasigna entre barberos de barbería (el filtro de arriba sí lista a todos)
-                barberosActivos={soloBarberia(barberosActivos)}
+                onReasignar={accionCitaId ? undefined : handleReasignar} // el selector de cada cita ofrece solo profesionales de SU área (barberos para cortes, asesores para asesorías)
+                barberosActivos={barberosActivos}
               />
             </div>
             <Paginacion pagina={datos.pagina} total={datos.total} limite={LIMITE} alCambiar={irAPagina} />
