@@ -1,6 +1,7 @@
 import { formatearFechaLegible } from '../../../utils/fechas'
 import { formatearDuracion, formatearPrecio } from '../../../utils/formato'
 import { duracionTotal, precioTotal, textoServicios } from '../../../utils/carrito'
+import { TITULO_CITA, planCitas, separarPorArea } from '../../../utils/reservaAsesoria'
 import ListaServiciosReserva from './ListaServiciosReserva'
 
 const CampoResumen = ({ etiqueta, valor }) => (
@@ -10,7 +11,11 @@ const CampoResumen = ({ etiqueta, valor }) => (
   </div>
 )
 
-const Contenido = ({ servicios, barbero, mostrarBarbero, fecha, hora }) => (
+const Contenido = ({ servicios, barbero, asesor, mostrarBarbero, fecha, hora }) => {
+  const { asesoria, barberia } = separarPorArea(servicios)
+  const plan = planCitas(servicios, hora)
+  const combinada = plan.length === 2
+  return (
   <dl className="space-y-2 font-poppins text-sm">
     {servicios.length === 0 && <p className="font-poppins text-sm text-zinc-400">Elige un servicio para empezar.</p>}
     {servicios.length === 1 && <CampoResumen etiqueta="Servicio" valor={servicios[0].nombre} />}
@@ -23,19 +28,28 @@ const Contenido = ({ servicios, barbero, mostrarBarbero, fecha, hora }) => (
       </div>
     )}
     {servicios.length > 1 && <CampoResumen etiqueta="Duración total" valor={formatearDuracion(duracionTotal(servicios))} />}
-    {servicios.length > 0 && mostrarBarbero && (
+    {asesoria && mostrarBarbero && (
+      <CampoResumen etiqueta="Asesor/a" valor={asesor ? asesor.nombre : 'Cualquier asesor'} />
+    )}
+    {barberia.length > 0 && mostrarBarbero && (
       <CampoResumen etiqueta="Barbero" valor={barbero ? barbero.nombre : 'Cualquier barbero'} />
     )}
     {fecha && <CampoResumen etiqueta="Fecha" valor={formatearFechaLegible(fecha)} />}
-    {hora && <CampoResumen etiqueta="Hora" valor={hora} />}
+    {hora && !combinada && <CampoResumen etiqueta="Hora" valor={hora} />}
+    {hora &&
+      combinada &&
+      plan.map((cita) => (
+        <CampoResumen key={cita.clave} etiqueta={TITULO_CITA[cita.clave]} valor={`${cita.inicio} – ${cita.fin}`} />
+      ))}
   </dl>
-)
+  )
+}
 
 // Un único componente para el panel lateral (escritorio) y la barra inferior fija
 // (móvil): ambos reciben los mismos datos y el mismo botón "Continuar"; Tailwind
 // decide cuál se muestra según el ancho de pantalla, sin duplicar la lógica.
 // `servicios`: los servicios elegidos (objetos del catálogo), en orden; el total es la suma de sus precios.
-const ResumenReserva = ({ servicios, barbero, mostrarBarbero, fecha, hora, onContinuar, puedeContinuar }) => {
+const ResumenReserva = ({ servicios, barbero, asesor = null, mostrarBarbero, fecha, hora, onContinuar, puedeContinuar }) => {
   const total = servicios.length > 0 ? precioTotal(servicios) : null
 
   return (
@@ -44,7 +58,14 @@ const ResumenReserva = ({ servicios, barbero, mostrarBarbero, fecha, hora, onCon
         <div className="sticky top-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
           <h2 className="font-cinzel text-lg font-bold text-black">Resumen</h2>
           <div className="mt-3">
-            <Contenido servicios={servicios} barbero={barbero} mostrarBarbero={mostrarBarbero} fecha={fecha} hora={hora} />
+            <Contenido
+              servicios={servicios}
+              barbero={barbero}
+              asesor={asesor}
+              mostrarBarbero={mostrarBarbero}
+              fecha={fecha}
+              hora={hora}
+            />
           </div>
 
           {servicios.length > 0 && (

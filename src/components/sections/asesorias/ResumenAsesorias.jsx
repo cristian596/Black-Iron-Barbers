@@ -1,13 +1,14 @@
 import { Link } from 'react-router-dom'
 import { FaArrowDown } from 'react-icons/fa6'
-import { ASESORIAS, rutaAsesoria } from '../../../data/asesorias'
+import { rutaAsesoria } from '../../../data/asesorias'
 import EtiquetaAsesoria from './EtiquetaAsesoria'
 
-// Franja con las tres asesorías: cada tarjeta lleva a su sección dentro de la misma página.
-const ResumenAsesorias = () => (
+// Franja con las asesorías: cada tarjeta lleva a su sección dentro de la misma página. `asesorias` son los textos unidos
+// con la API (precio y duración vienen de `servicio`; sin él no se muestra ninguna etiqueta).
+const ResumenAsesorias = ({ asesorias }) => (
   <nav aria-label="Asesorías disponibles" className="border-y border-oro/20 bg-black px-4 py-8">
     <ul className="mx-auto grid max-w-5xl grid-cols-1 gap-4 md:grid-cols-3">
-      {ASESORIAS.map(({ id, titulo, precio, duracion_min, Icono }) => (
+      {asesorias.map(({ id, titulo, servicio, Icono }) => (
         <li key={id} className="grid min-w-0">
           <Link
             to={rutaAsesoria(id)}
@@ -16,7 +17,7 @@ const ResumenAsesorias = () => (
             <Icono aria-hidden="true" size={26} className="shrink-0 text-oro" />
             <span className="flex min-w-0 flex-1 flex-col items-start gap-2">
               <span className="font-playfair text-lg font-semibold text-white wrap-anywhere">{titulo}</span>
-              <EtiquetaAsesoria precio={precio} duracion_min={duracion_min} />
+              {servicio && <EtiquetaAsesoria precio={servicio.precio} duracion_min={servicio.duracion_min} />}
             </span>
             <FaArrowDown
               aria-hidden="true"

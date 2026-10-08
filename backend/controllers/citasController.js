@@ -31,7 +31,7 @@ const CODIGO_DEADLOCK = '40P01';
 // completada y cancelada son finales: no cambian de estado (409 TRANSICION_INVALIDA, con el estado actual y el pedido).
 const ESTADOS_FINALES = ['completada', 'cancelada'];
 const errorTransicionInvalida = (actual, pedido) => ({
-  error: `Una cita ${actual} no puede pasar a ${pedido}`,
+  error: pedido === undefined ? `Una cita ${actual} no se puede reasignar` : `Una cita ${actual} no puede pasar a ${pedido}`,
   codigo: 'TRANSICION_INVALIDA',
   estado_actual: actual,
 });
@@ -486,6 +486,11 @@ export const actualizarCita = async (req, res, next) => {
       return res.status(409).json(errorTransicionInvalida(cita.estado, estado));
     }
 
+    // Tampoco se reasigna una cita en estado final (cambiar de profesional no tiene sentido y movería citas del historial).
+    if (barbero_id !== undefined && ESTADOS_FINALES.includes(cita.estado) && Number(barbero_id) !== cita.barbero_id) {
+      return res.status(409).json(errorTransicionInvalida(cita.estado, undefined));
+    }
+
     // Una cita solo se puede completar el día en que ocurre o después (hora de Bogotá).
     // Completar citas futuras inflaría los ingresos del dashboard.
     if (estado === 'completada' && cita.fecha > hoyISO()) {
@@ -535,13 +540,14 @@ export const actualizarCita = async (req, res, next) => {
            UPDATE citas
            SET estado = COALESCE($1, estado), barbero_id = $2
            WHERE id = $3 AND ($1::text IS NULL OR estado = 'pendiente' OR estado = $1::text)
+             AND (NOT $4::boolean OR estado = 'pendiente')
            RETURNING id, cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado
          ), liberada AS (
            DELETE FROM asesoria_gratis_usos
            WHERE $1::text = 'cancelada' AND cita_id IN (SELECT id FROM actualizada)
          )
          SELECT * FROM actualizada`,
-        [estado ?? null, nuevoBarberoId, citaId]
+        [estado ?? null, nuevoBarberoId, citaId, nuevoBarberoId !== cita.barbero_id]
       );
       if (rows.length === 0) {
         return res.status(409).json(errorTransicionInvalida(cita.estado, estado));

@@ -8,6 +8,8 @@ import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } f
 
 vi.mock('../services/api', () => ({
   obtenerServicios: vi.fn(),
+  // Sin asesorías por defecto: estos tests son del flujo de cortes (las de asesorías están en ReservaAsesoria.test.jsx).
+  obtenerServiciosAsesoria: vi.fn().mockResolvedValue([]),
   obtenerBarberos: vi.fn(),
   obtenerDisponibilidad: vi.fn(),
   crearCita: vi.fn(),

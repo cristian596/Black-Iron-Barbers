@@ -193,6 +193,21 @@ describe('GET /api/servicios?area=', () => {
     expect(ids(res.body).sort()).toEqual([SERV_ASESORIA, SERV_MIXTO_ASESORIA]);
   });
 
+  it('expone `clave` (clave_seed) solo en los servicios del catálogo del seed; los demás no llevan el campo', async () => {
+    await pool.query("UPDATE servicios SET clave_seed = 'asesoria-prueba-area' WHERE id = $1", [SERV_ASESORIA]);
+    try {
+      const res = await listar({ area: 'asesoria' });
+      const conClave = res.body.find((s) => s.id === SERV_ASESORIA);
+      const sinClave = res.body.find((s) => s.id === SERV_MIXTO_ASESORIA);
+      expect(conClave.clave).toBe('asesoria-prueba-area');
+      expect(sinClave).not.toHaveProperty('clave');
+      const uno = await request(app).get(`/api/servicios/${SERV_ASESORIA}`);
+      expect(uno.body.clave).toBe('asesoria-prueba-area');
+    } finally {
+      await pool.query('UPDATE servicios SET clave_seed = NULL WHERE id = $1', [SERV_ASESORIA]);
+    }
+  });
+
   it('funciona junto a agrupar=categoria y a los demás filtros', async () => {
     const res = await listar({ area: 'asesoria', agrupar: 'categoria' });
     expect(res.status).toBe(200);

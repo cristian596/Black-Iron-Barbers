@@ -14,9 +14,11 @@ export const precioTotal = (seleccion) => seleccion.reduce((suma, servicio) => s
 
 // ¿Se puede añadir `servicio` a `seleccion`? { permitido, motivo: 'maximo' | 'duracion' | null, mensaje }.
 // `cantidad` (opcional) es el número real de ids elegidos, por si aún no se conocen los datos de alguno.
-export const evaluarAgregado = (seleccion, servicio, cantidad = seleccion.length) => {
+// El tope de duración es POR CITA: en una reserva con asesoría solo cuentan los servicios de barbería (`seleccion` y
+// `cantidadBarberia`); el máximo de 3 servicios cuenta todos (`cantidad`).
+export const evaluarAgregado = (seleccion, servicio, cantidad = seleccion.length, cantidadBarberia = cantidad) => {
   if (cantidad >= MAX_SERVICIOS) return { permitido: false, motivo: 'maximo', mensaje: MENSAJE_MAXIMO }
-  if (cantidad >= 1 && duracionTotal(seleccion) + servicio.duracion_min > MAX_DURACION_COMBO_MIN) {
+  if (cantidadBarberia >= 1 && duracionTotal(seleccion) + servicio.duracion_min > MAX_DURACION_COMBO_MIN) {
     return { permitido: false, motivo: 'duracion', mensaje: MENSAJE_DURACION }
   }
   return { permitido: true, motivo: null, mensaje: '' }
@@ -33,9 +35,9 @@ export const avisoMismaCategoria = (seleccion, servicio) => {
 // Estado de una tarjeta de servicio frente a la selección actual (carta y paso 1 de la reserva comparten esta regla):
 // { seleccionado, bloqueado, ayuda }. `ayuda` es el motivo del bloqueo (máximo o duración) o, si no bloquea, el aviso
 // suave de categoría repetida; `ids` son los ids elegidos (pueden ser más que `seleccion` si aún no se conocen todos).
-export const estadoDeTarjeta = (seleccion, servicio, ids) => {
+export const estadoDeTarjeta = (seleccion, servicio, ids, cantidadBarberia = ids.length) => {
   if (ids.includes(servicio.id)) return { seleccionado: true, bloqueado: false, ayuda: null }
-  const evaluacion = evaluarAgregado(seleccion, servicio, ids.length)
+  const evaluacion = evaluarAgregado(seleccion, servicio, ids.length, cantidadBarberia)
   return {
     seleccionado: false,
     bloqueado: !evaluacion.permitido,

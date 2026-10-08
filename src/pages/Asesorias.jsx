@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ASESORIAS } from '../data/asesorias'
+import { useAsesoriasCatalogo } from '../hooks/useAsesoriasCatalogo'
 import { useScrollAHash } from '../hooks/useScrollAHash'
 import { useTitulo } from '../hooks/useTitulo'
 import ResumenAsesorias from '../components/sections/asesorias/ResumenAsesorias'
@@ -13,6 +14,9 @@ const Asesorias = () => {
     'Asesoría de imagen gratis, Asesoría Premium y asesoría de barba en Black Iron Barbers: descubre el estilo que mejor va contigo.'
   )
   useScrollAHash(IDS)
+  const { asesorias, estado, recargar } = useAsesoriasCatalogo()
+  // Ya cargada la API, solo se muestran las asesorías activas; mientras carga o si falla se ven todos los textos, sin precios.
+  const visibles = estado === 'listo' ? asesorias.filter((asesoria) => asesoria.servicio) : asesorias
 
   return (
     <div className="bg-black text-white">
@@ -28,10 +32,10 @@ const Asesorias = () => {
         </p>
       </section>
 
-      <ResumenAsesorias />
+      <ResumenAsesorias asesorias={visibles} />
 
-      {ASESORIAS.map((asesoria, i) => (
-        <SeccionAsesoria key={asesoria.id} asesoria={asesoria} indice={i} />
+      {visibles.map((asesoria, i) => (
+        <SeccionAsesoria key={asesoria.id} asesoria={asesoria} indice={i} estado={estado} onReintentar={recargar} />
       ))}
 
       <div className="border-t border-oro/20 px-4 py-12 text-center">

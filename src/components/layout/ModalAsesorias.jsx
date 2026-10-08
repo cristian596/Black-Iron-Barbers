@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { FaArrowRight } from 'react-icons/fa'
 import Modal from '../ui/Modal'
-import { ASESORIAS, rutaAsesoria } from '../../data/asesorias'
+import { rutaAsesoria } from '../../data/asesorias'
+import { useAsesoriasCatalogo } from '../../hooks/useAsesoriasCatalogo'
 import { formatearDuracion, formatearPrecio } from '../../utils/formato'
 
 const ID_TITULO = 'titulo-modal-asesorias'
@@ -16,6 +17,9 @@ const ModalAsesorias = ({ alCerrar, alNavegar }) => {
   const location = useLocation()
   const claveInicial = useRef(location.key)
   const navegarRef = useRef(alNavegar)
+  // Precio y duración vienen de la API; sin ella (cargando o error) las tarjetas muestran solo el texto, sin etiqueta.
+  const { asesorias, estado } = useAsesoriasCatalogo()
+  const visibles = estado === 'listo' ? asesorias.filter((asesoria) => asesoria.servicio) : asesorias
 
   useEffect(() => {
     navegarRef.current = alNavegar
@@ -45,24 +49,26 @@ const ModalAsesorias = ({ alCerrar, alNavegar }) => {
         </div>
 
         <ul className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {ASESORIAS.map(({ id, titulo, precio, duracion_min, resumen, Icono }) => (
+          {visibles.map(({ id, titulo, servicio, resumen, Icono }) => (
             <li key={id} className="grid min-w-0">
               <Link
                 to={rutaAsesoria(id)}
                 onClick={alNavegar}
                 className={`group flex min-h-11 min-w-0 flex-col gap-3 rounded-xl border bg-zinc-950 p-5 text-left duration-300 hover:-translate-y-0.5 hover:border-oro hover:bg-zinc-900 active:scale-[0.98] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 ${
-                  precio === 0 ? 'border-oro/60' : 'border-white/10'
+                  servicio?.precio === 0 ? 'border-oro/60' : 'border-white/10'
                 } ${foco}`}
               >
                 <Icono aria-hidden="true" size={28} className="shrink-0 text-oro" />
                 <h3 className="font-playfair text-xl font-semibold wrap-anywhere">{titulo}</h3>
-                <p
-                  className={`w-fit rounded-full px-3 py-1 font-poppins text-xs font-semibold ${
-                    precio === 0 ? 'bg-oro text-black' : 'border border-oro/50 text-oro'
-                  }`}
-                >
-                  {precio === 0 ? 'GRATIS' : formatearPrecio(precio)} · {formatearDuracion(duracion_min)}
-                </p>
+                {servicio && (
+                  <p
+                    className={`w-fit rounded-full px-3 py-1 font-poppins text-xs font-semibold ${
+                      servicio.precio === 0 ? 'bg-oro text-black' : 'border border-oro/50 text-oro'
+                    }`}
+                  >
+                    {servicio.precio === 0 ? 'GRATIS' : formatearPrecio(servicio.precio)} · {formatearDuracion(servicio.duracion_min)}
+                  </p>
+                )}
                 <p className="flex-1 font-poppins text-sm text-zinc-400">{resumen}</p>
                 <span className="flex items-center gap-2 font-poppins text-sm font-medium text-oro">
                   Conocer más

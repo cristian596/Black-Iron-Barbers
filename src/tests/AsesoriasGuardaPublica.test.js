@@ -10,7 +10,7 @@ const archivos = {
     eager: true,
   }),
   ...import.meta.glob('../pages/{Asesorias,Landingpage}.jsx', { query: '?raw', import: 'default', eager: true }),
-  ...import.meta.glob('../hooks/{useScrollAHash,useTitulo}.js', { query: '?raw', import: 'default', eager: true }),
+  ...import.meta.glob('../hooks/{useScrollAHash,useTitulo,useAsesoriasCatalogo}.js', { query: '?raw', import: 'default', eager: true }),
   ...import.meta.glob('../data/{asesorias,negocio}.js', { query: '?raw', import: 'default', eager: true }),
   ...import.meta.glob('../routes/RedirigirAsesoria.jsx', { query: '?raw', import: 'default', eager: true }),
 }

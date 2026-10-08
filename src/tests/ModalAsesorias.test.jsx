@@ -1,10 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
 import NavBar from '../components/layout/NavBar'
 import Modal from '../components/ui/Modal'
 import { ASESORIAS } from '../data/asesorias'
+import * as api from '../services/api'
+import { ASESORIAS_API } from './fixturesAsesorias'
+
+// Precio y duración de las asesorías salen de la API; el resto de la API real se conserva.
+vi.mock('../services/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  obtenerServiciosAsesoria: vi.fn(),
+}))
 
 const Ubicacion = () => {
   const { pathname, hash } = useLocation()
@@ -35,6 +43,7 @@ const dialogo = () => screen.queryByRole('dialog')
 
 beforeEach(() => {
   sessionStorage.clear()
+  vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue(ASESORIAS_API)
 })
 
 describe('Botón "Soy cliente nuevo"', () => {
@@ -94,7 +103,8 @@ describe('Modal de asesorías', () => {
     expect(d.getByRole('link', { name: /Asesoría de imagen gratis/ })).toHaveAttribute('href', '/asesorias#gratis')
     expect(d.getByRole('link', { name: /Asesoría Premium/ })).toHaveAttribute('href', '/asesorias#premium')
     expect(d.getByRole('link', { name: /Asesoría de barba/ })).toHaveAttribute('href', '/asesorias#barba')
-    expect(d.getByText('GRATIS · 15 min')).toBeInTheDocument()
+    // El precio y la duración llegan de la API: aparecen cuando responde.
+    expect(await d.findByText('GRATIS · 15 min')).toBeInTheDocument()
     expect(d.getByText('$60.000 · 1 h')).toBeInTheDocument()
     expect(d.getByText('$45.000 · 45 min')).toBeInTheDocument()
     expect(d.getByRole('link', { name: 'Solo quiero reservar mi corte' })).toHaveAttribute('href', '/reservar-corte')
@@ -207,9 +217,13 @@ describe('Modal compartido (props por defecto)', () => {
 })
 
 describe('Datos de asesorías', () => {
-  it('son tres, con ids estables y precios/duraciones válidos', () => {
+  it('son tres, con anclas y claves estables; el precio y la duración ya NO viven aquí (vienen de la API)', () => {
     expect(ASESORIAS.map((a) => a.id)).toEqual(['gratis', 'premium', 'barba'])
-    expect(ASESORIAS.map((a) => a.precio)).toEqual([0, 60000, 45000])
-    expect(ASESORIAS.map((a) => a.duracion_min)).toEqual([15, 60, 45])
+    expect(ASESORIAS.map((a) => a.clave)).toEqual(['asesoria-gratis', 'asesoria-premium', 'asesoria-barba'])
+    for (const a of ASESORIAS) {
+      expect(a).not.toHaveProperty('precio')
+      expect(a).not.toHaveProperty('duracion_min')
+      expect(a).not.toHaveProperty('mensajeWhatsApp')
+    }
   })
 })

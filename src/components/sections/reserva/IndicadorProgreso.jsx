@@ -1,6 +1,7 @@
 import { PASOS_RESERVA } from './pasos'
 
-const IndicadorProgreso = ({ pasoActual }) => {
+// `etiquetaProfesional`: cómo se llama el paso de profesionales según la reserva (Barbero / Asesor/a / Profesionales).
+const IndicadorProgreso = ({ pasoActual, etiquetaProfesional }) => {
   const indiceActual = PASOS_RESERVA.findIndex((paso) => paso.key === pasoActual)
 
   return (
@@ -38,7 +39,7 @@ const IndicadorProgreso = ({ pasoActual }) => {
                 activo ? 'font-semibold text-black' : 'text-zinc-500'
               }`}
             >
-              {paso.etiqueta}
+              {paso.key === 'barbero' && etiquetaProfesional ? etiquetaProfesional : paso.etiqueta}
             </span>
           </li>
         )

@@ -99,15 +99,33 @@ export const construirQuery = (filtros = {}) => {
 // { area: 'barberia' }: hay una guarda de pruebas que lo exige.
 export const obtenerServicios = (filtros) => request(`/servicios${construirQuery(filtros)}`);
 
+// Las asesorías (area 'asesoria') con su precio, duración e id reales. Función aparte de obtenerServicios: el flujo de
+// cortes (carta, carrito) nunca las pide ni las ve; solo /asesorias, el modal "Soy cliente nuevo" y la reserva.
+export const obtenerServiciosAsesoria = () => request(`/servicios${construirQuery({ area: 'asesoria' })}`);
+
 // `servicioIds`: lista de 1 a 3 ids (se atienden seguidos como un solo bloque); se admite un id suelto.
-export const obtenerDisponibilidad = (servicioIds, fecha, barberoId) => {
+// `asesorId` (opcional): asesor concreto cuando la reserva incluye una asesoría; sin él, "cualquier asesor". Con una
+// asesoría + barbería las horas devueltas son las de inicio de la asesoría (el corte empieza al terminar).
+export const obtenerDisponibilidad = (servicioIds, fecha, barberoId, asesorId) => {
   const ids = Array.isArray(servicioIds) ? servicioIds : [servicioIds];
   const params = new URLSearchParams({ servicios: ids.join(','), fecha });
   if (barberoId !== null && barberoId !== undefined && barberoId !== '') {
     params.set('barbero', barberoId);
   }
+  if (asesorId !== null && asesorId !== undefined && asesorId !== '') {
+    params.set('asesor', asesorId);
+  }
   return request(`/disponibilidad?${params.toString()}`);
 };
+
+// ¿Esta persona aún puede reservar la asesoría gratis? Solo comodidad de UX: la verdad la decide POST /citas. La
+// respuesta es { disponible } y nunca dice qué dato coincidió.
+export const comprobarAsesoriaGratis = (correo, telefono, signal) =>
+  request('/asesorias/gratis/comprobar', {
+    method: 'POST',
+    body: JSON.stringify({ correo, telefono }),
+    signal,
+  });
 
 export const crearCita = (cita) =>
   request('/citas', {

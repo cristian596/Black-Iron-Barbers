@@ -4,10 +4,15 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import Asesorias from '../pages/Asesorias'
 import { ASESORIAS } from '../data/asesorias'
+import * as api from '../services/api'
+import { ASESORIAS_API, PREMIUM_API } from './fixturesAsesorias'
+
+// Precio, duración e id de cada asesoría salen de la API; aquí solo se simula su respuesta.
+vi.mock('../services/api')
 
 const Ubicacion = () => {
-  const { pathname, hash } = useLocation()
-  return <output data-testid="ubicacion">{pathname + hash}</output>
+  const { pathname, search, hash } = useLocation()
+  return <output data-testid="ubicacion">{pathname + search + hash}</output>
 }
 
 const montar = (ruta = '/asesorias') =>
@@ -28,13 +33,12 @@ beforeEach(() => {
     llamadas.push({ id: this.id, opciones })
   })
   window.matchMedia = vi.fn().mockReturnValue({ matches: false })
-  vi.stubEnv('VITE_WHATSAPP_NUMERO', '570000000000')
+  vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue(ASESORIAS_API)
 })
 
 afterEach(() => {
   delete Element.prototype.scrollIntoView
   delete window.matchMedia
-  vi.unstubAllEnvs()
 })
 
 describe('Página /asesorias: estructura', () => {
@@ -52,14 +56,14 @@ describe('Página /asesorias: estructura', () => {
     expect(document.head.querySelector('meta[name="description"]')).toBeNull()
   })
 
-  it('franja resumen: tres enlaces con ancla, precio (Gratis) y duración', () => {
+  it('franja resumen: tres enlaces con ancla, precio (Gratis) y duración, tomados de la API', async () => {
     montar()
     const resumen = within(screen.getByRole('navigation', { name: 'Asesorías disponibles' }))
 
     expect(resumen.getByRole('link', { name: /Asesoría de imagen gratis/ })).toHaveAttribute('href', '/asesorias#gratis')
     expect(resumen.getByRole('link', { name: /Asesoría Premium/ })).toHaveAttribute('href', '/asesorias#premium')
     expect(resumen.getByRole('link', { name: /Asesoría de barba/ })).toHaveAttribute('href', '/asesorias#barba')
-    expect(resumen.getByText('Gratis · 15 min')).toBeInTheDocument()
+    expect(await resumen.findByText('Gratis · 15 min')).toBeInTheDocument()
     expect(resumen.getByText('$60.000 · 1 h')).toBeInTheDocument()
     expect(resumen.getByText('$45.000 · 45 min')).toBeInTheDocument()
   })
@@ -82,10 +86,10 @@ describe('Página /asesorias: estructura', () => {
     expect(dentro.getAllByRole('listitem').length).toBeGreaterThanOrEqual(asesoria.incluye.length + 3)
   })
 
-  it('el precio 0 se muestra como "Gratis" y no como $0', () => {
+  it('el precio 0 se muestra como "Gratis" y no como $0', async () => {
     const { container } = montar()
     const gratis = container.querySelector('section#gratis')
-    expect(within(gratis).getByText('Gratis · 15 min')).toBeInTheDocument()
+    expect(await within(gratis).findByText('Gratis · 15 min')).toBeInTheDocument()
     expect(gratis.textContent).not.toMatch(/\$0/)
   })
 
@@ -104,26 +108,77 @@ describe('Página /asesorias: estructura', () => {
   })
 })
 
-describe('Página /asesorias: botones de WhatsApp (temporales)', () => {
-  it('cada botón abre WhatsApp con un mensaje propio de su asesoría', () => {
+describe('Página /asesorias: reservar en línea', () => {
+  it('cada sección lleva "Reservar esta asesoría" a /reservar-corte?servicios=<id de la API>', async () => {
     const { container } = montar()
-    const mensajes = ASESORIAS.map(({ id, textoBoton, mensajeWhatsApp }) => {
-      const boton = within(container.querySelector(`section#${id}`)).getByRole('link', { name: new RegExp(textoBoton) })
-      expect(boton).toHaveAttribute('href', `https://wa.me/570000000000?text=${encodeURIComponent(mensajeWhatsApp)}`)
-      expect(boton).toHaveAttribute('target', '_blank')
-      expect(boton).toHaveAttribute('rel', 'noopener noreferrer')
-      return mensajeWhatsApp
-    })
-    expect(new Set(mensajes).size).toBe(3)
+    for (const servicio of ASESORIAS_API) {
+      const id = ASESORIAS.find((a) => a.clave === servicio.clave).id
+      const boton = await within(container.querySelector(`section#${id}`)).findByRole('link', { name: /Reservar esta asesoría/ })
+      expect(boton).toHaveAttribute('href', `/reservar-corte?servicios=${servicio.id}`)
+    }
   })
 
-  it('sin la variable de entorno usa el placeholder, nunca un número', () => {
-    vi.stubEnv('VITE_WHATSAPP_NUMERO', '')
+  it('el botón navega a la reserva con la asesoría preseleccionada por la URL', async () => {
+    const user = userEvent.setup()
     const { container } = montar()
-    const href = within(container.querySelector('section#premium'))
-      .getByRole('link', { name: /Reservar mi asesoría Premium/ })
-      .getAttribute('href')
-    expect(href.startsWith('https://wa.me/PENDIENTE_NUMERO?text=')).toBe(true)
+    await user.click(await within(container.querySelector('section#premium')).findByRole('link', { name: /Reservar esta asesoría/ }))
+    expect(screen.getByTestId('ubicacion')).toHaveTextContent(`/reservar-corte?servicios=${PREMIUM_API.id}`)
+  })
+
+  it('ya no hay WhatsApp en la página: ni botones, ni enlaces wa.me, ni la nota de coordinar por WhatsApp', async () => {
+    const { container } = montar()
+    await screen.findAllByRole('link', { name: /Reservar esta asesoría/ })
+    expect(container.querySelectorAll('a[href*="wa.me"]')).toHaveLength(0)
+    expect(container.textContent).not.toMatch(/WhatsApp/i)
+  })
+
+  it('el id del enlace sale de la API, no del código: si cambia el id, cambia el enlace', async () => {
+    vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue(
+      ASESORIAS_API.map((s) => (s.clave === 'asesoria-barba' ? { ...s, id: 999, nombre: 'Barba renombrada' } : s))
+    )
+    const { container } = montar()
+    const boton = await within(container.querySelector('section#barba')).findByRole('link', { name: /Reservar esta asesoría/ })
+    expect(boton).toHaveAttribute('href', '/reservar-corte?servicios=999')
+  })
+
+  it('una asesoría que la API ya no trae (inactiva) no se muestra', async () => {
+    vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue(ASESORIAS_API.filter((s) => s.clave !== 'asesoria-barba'))
+    const { container } = montar()
+    await screen.findAllByRole('link', { name: /Reservar esta asesoría/ })
+    expect(container.querySelector('section#barba')).toBeNull()
+    expect(container.querySelector('section#premium')).not.toBeNull()
+  })
+})
+
+describe('Página /asesorias: si la API falla', () => {
+  it('muestra los textos sin precios ni duraciones inventados, un aviso por sección y Reintentar', async () => {
+    vi.mocked(api.obtenerServiciosAsesoria).mockRejectedValue(new Error('No se pudo conectar con el servidor'))
+    const { container } = montar()
+
+    expect(await screen.findAllByRole('alert')).toHaveLength(3)
+    expect(container.querySelectorAll('section[id]')).toHaveLength(3) // los textos siguen ahí
+    expect(container.textContent).not.toMatch(/\$\d|Gratis ·|\d+ min\b|\d h\b/)
+    expect(screen.queryByRole('link', { name: /Reservar esta asesoría/ })).toBeNull()
+    expect(screen.getAllByRole('button', { name: 'Reintentar' })).toHaveLength(3)
+  })
+
+  it('Reintentar vuelve a pedir y, si responde, aparecen los precios y los botones', async () => {
+    const user = userEvent.setup()
+    vi.mocked(api.obtenerServiciosAsesoria)
+      .mockRejectedValueOnce(new Error('No se pudo conectar con el servidor'))
+      .mockResolvedValue(ASESORIAS_API)
+    montar()
+
+    await user.click((await screen.findAllByRole('button', { name: 'Reintentar' }))[0])
+    expect(await screen.findAllByRole('link', { name: /Reservar esta asesoría/ })).toHaveLength(3)
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('mientras carga: sin precios, sin botón de reservar y con un estado accesible', async () => {
+    vi.mocked(api.obtenerServiciosAsesoria).mockReturnValue(new Promise(() => {}))
+    montar()
+    expect(screen.queryByRole('link', { name: /Reservar esta asesoría/ })).toBeNull()
+    expect(screen.getAllByRole('status').length).toBeGreaterThanOrEqual(3)
   })
 })
 

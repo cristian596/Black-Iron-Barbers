@@ -1,30 +1,33 @@
 import { FaCrown, FaWandMagicSparkles } from 'react-icons/fa6'
 import { GiBeard } from 'react-icons/gi'
 
-// Asesorías de imagen (datos ficticios de portafolio): única fuente para el modal de "Soy cliente nuevo"
-// y para la página /asesorias.
-// Para cambiar un precio o una duración basta con editar `precio` (COP; 0 = "Gratis") o `duracion_min` aquí:
-// el modal, la franja resumen y cada sección se actualizan solos.
-// PROVISIONAL: las duraciones están por confirmar.
-// TEMPORAL: mientras las asesorías no se puedan reservar con el sistema de citas (fase siguiente), el botón de
-// cada sección abre WhatsApp con `mensajeWhatsApp`. Al llegar esa fase, ese botón pasa a la reserva.
+// Asesorías de imagen (datos ficticios de portafolio): SOLO TEXTOS (descripciones, beneficios, pasos, etiquetas) para
+// el modal de "Soy cliente nuevo" y la página /asesorias. El precio, la duración y el id de cada asesoría salen de la
+// API (GET /api/servicios?area=asesoria): aquí no se repiten.
+// Cada texto se une con su servicio por `clave`, el identificador estable público de los servicios del catálogo
+// (`clave` en /api/servicios, = clave_seed), nunca por id ni por nombre: renombrar la asesoría desde el admin no
+// rompe la unión. `id` es solo el ancla de la página (#gratis, #premium, #barba).
 export const RUTA_ASESORIAS = '/asesorias'
+export const RUTA_RESERVA = '/reservar-corte'
+export const CLAVE_ASESORIA_GRATIS = 'asesoria-gratis'
+export const TEXTO_RESERVAR_ASESORIA = 'Reservar esta asesoría'
 
 export const rutaAsesoria = (id) => `${RUTA_ASESORIAS}#${id}`
+// La reserva arranca con la asesoría ya elegida (?servicios=<id>, el id real que devuelve la API).
+export const rutaReservaAsesoria = (servicioId) => `${RUTA_RESERVA}?servicios=${servicioId}`
 
 export const ASESORIAS = [
   {
     id: 'gratis',
+    clave: CLAVE_ASESORIA_GRATIS,
     titulo: 'Asesoría de imagen gratis',
-    precio: 0,
-    duracion_min: 15,
     resumen:
-      'Conversamos 15 minutos sobre tu estilo y te recomendamos el corte ideal para tu rostro y tu rutina. Sin compromiso.',
+      'Una conversación breve sobre tu estilo y una recomendación del corte ideal para tu rostro y tu rutina. Sin compromiso.',
     Icono: FaWandMagicSparkles,
     descripcion:
       'Un primer encuentro sin costo ni compromiso para descubrir qué corte te favorece de verdad. Nuestra asesora de imagen te escucha, observa tu rostro y tu rutina, y te da una dirección clara antes de que te sientes en la silla.',
     incluye: [
-      'Conversación de 15 minutos sobre tu estilo, tu trabajo y tu rutina diaria',
+      'Conversación breve sobre tu estilo, tu trabajo y tu rutina diaria',
       'Lectura rápida de la forma de tu rostro y del tipo de tu cabello',
       'Recomendación del corte que mejor te queda',
       'Orientación para elegir tu siguiente servicio, sin ninguna presión',
@@ -32,18 +35,15 @@ export const ASESORIAS = [
     paraQuien:
       'Para quien llega por primera vez, quiere cambiar de look después de mucho tiempo o simplemente no sabe qué pedirle a su barbero.',
     pasos: [
-      { titulo: 'Escríbenos', texto: 'Cuéntanos por WhatsApp que quieres tu asesoría y elige un horario que te quede cómodo.' },
-      { titulo: 'Conversamos', texto: 'Llegas unos minutos antes y dedicamos 15 minutos a conocer tu estilo y tu rutina.' },
+      { titulo: 'Reserva en línea', texto: 'Elige el día y la hora que te queden cómodos; la asesoría gratuita es de una por persona.' },
+      { titulo: 'Conversamos', texto: 'Llegas unos minutos antes y dedicamos el tiempo a conocer tu estilo y tu rutina.' },
       { titulo: 'Decides', texto: 'Te vas con una recomendación clara y, si quieres, reservas tu corte con nosotros.' },
     ],
-    textoBoton: 'Quiero mi asesoría gratis',
-    mensajeWhatsApp: '¡Hola! Quiero agendar la asesoría de imagen gratis en Black Iron Barbers.',
   },
   {
     id: 'premium',
+    clave: 'asesoria-premium',
     titulo: 'Asesoría Premium',
-    precio: 60000,
-    duracion_min: 60,
     resumen:
       'Estudio completo de tu rostro, cabello y estructura. Te entregamos un plan de estilo y cuidado a tu medida.',
     Icono: FaCrown,
@@ -54,23 +54,20 @@ export const ASESORIAS = [
       'Propuesta de corte y acabados para tu tipo de cabello',
       'Plan de cuidado y rutina de productos para el día a día',
       'Resumen escrito de las recomendaciones para que lo conserves',
-      'Una hora con tu asesora, sin prisas',
+      'Una sesión completa con tu asesora, sin prisas',
     ],
     paraQuien:
       'Para quien quiere renovar su imagen por completo, se prepara para un evento importante o busca una guía profesional que dure más que un solo corte.',
     pasos: [
-      { titulo: 'Reserva tu hora', texto: 'Escríbenos por WhatsApp y acordamos el día y la hora de tu sesión de 60 minutos.' },
+      { titulo: 'Reserva tu hora', texto: 'Elige en línea el día y la hora de tu sesión; si quieres, añade tu corte justo después.' },
       { titulo: 'Estudio personalizado', texto: 'Analizamos tu rostro, tu cabello y tu estructura, y hablamos de cómo quieres verte.' },
       { titulo: 'Tu plan de estilo', texto: 'Recibes tus recomendaciones de corte, cuidado y productos para ponerlas en práctica desde el primer día.' },
     ],
-    textoBoton: 'Reservar mi asesoría Premium',
-    mensajeWhatsApp: '¡Hola! Quiero agendar la Asesoría Premium en Black Iron Barbers.',
   },
   {
     id: 'barba',
+    clave: 'asesoria-barba',
     titulo: 'Asesoría de barba',
-    precio: 45000,
-    duracion_min: 45,
     resumen:
       'Diseñamos el perfil de barba que mejor encaja con tu rostro y te enseñamos a mantenerla en casa.',
     Icono: GiBeard,
@@ -85,11 +82,14 @@ export const ASESORIAS = [
     paraQuien:
       'Para quien está dejando crecer su barba, quiere un cambio de forma o siente que no logra mantenerla como le gustaría.',
     pasos: [
-      { titulo: 'Agenda tu sesión', texto: 'Escríbenos por WhatsApp y elegimos juntos el horario de tus 45 minutos.' },
+      { titulo: 'Agenda tu sesión', texto: 'Elige en línea el día y la hora que mejor te queden.' },
       { titulo: 'Diseñamos tu perfil', texto: 'Evaluamos tu barba y definimos la forma y el largo que mejor te favorecen.' },
       { titulo: 'Aprendes a mantenerla', texto: 'Te mostramos paso a paso cómo cuidarla y perfilarla para conservar el resultado.' },
     ],
-    textoBoton: 'Quiero mi asesoría de barba',
-    mensajeWhatsApp: '¡Hola! Quiero agendar la asesoría de barba en Black Iron Barbers.',
   },
 ]
+
+// Une cada texto con su servicio de la API por `clave`. Devuelve los textos con `servicio` (el objeto de la API, con su
+// id, precio y duración) o null si esa asesoría no está activa. Sin lista (aún cargando o error) todos llevan null.
+export const unirAsesorias = (servicios) =>
+  ASESORIAS.map((texto) => ({ ...texto, servicio: servicios?.find((s) => s.clave === texto.clave) ?? null }))

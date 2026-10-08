@@ -456,7 +456,17 @@ describe('Estados finales', () => {
     expect((await cambiar(b, 'completada')).body.estado).toBe('completada'); // pendiente → completada
   });
 
-  it('reasignar una cita (admin) no depende del estado y sigue funcionando', async () => {
+  it.each(['completada', 'cancelada'])('reasignar (admin) una cita %s → 409 TRANSICION_INVALIDA y no cambia de barbero', async (estado) => {
+    const id = await crearCitaEn(estado);
+    const res = await request(app).patch(`/api/citas/${id}`).set(auth(admin)).send({ barbero_id: 2 });
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ codigo: 'TRANSICION_INVALIDA', estado_actual: estado });
+    expect((await pool.query('SELECT barbero_id FROM citas WHERE id = $1', [id])).rows[0].barbero_id).toBe(1);
+    // "Reasignar" al mismo barbero no cambia nada y no se rechaza.
+    expect((await request(app).patch(`/api/citas/${id}`).set(auth(admin)).send({ barbero_id: 1 })).status).toBe(200);
+  });
+
+  it('reasignar una cita pendiente (admin) sigue funcionando', async () => {
     const id = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '10:00' })).body.id;
     const res = await request(app).patch(`/api/citas/${id}`).set(auth(admin)).send({ barbero_id: 2 });
     expect(res.status).toBe(200);

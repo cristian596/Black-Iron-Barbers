@@ -1,10 +1,15 @@
-import { FaCheck, FaWhatsapp } from 'react-icons/fa6'
-import { enlaceWhatsApp } from '../../../data/negocio'
+import { Link } from 'react-router-dom'
+import { FaCheck } from 'react-icons/fa6'
+import { TEXTO_RESERVAR_ASESORIA, rutaReservaAsesoria } from '../../../data/asesorias'
 import EtiquetaAsesoria from './EtiquetaAsesoria'
 
-const SeccionAsesoria = ({ asesoria, indice }) => {
-  const { id, titulo, precio, duracion_min, Icono, descripcion, incluye, paraQuien, pasos, textoBoton, mensajeWhatsApp } =
-    asesoria
+const botonReservar =
+  'inline-flex min-h-12 max-w-full items-center justify-center gap-3 rounded-full bg-oro px-8 py-3 text-center font-poppins font-semibold text-black shadow-lg shadow-oro/20 duration-300 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-oro active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100'
+
+// `asesoria`: el texto (data/asesorias.js) con su `servicio` de la API (precio, duración e id) o null. `estado` es el de
+// la carga de la API: sin servicio no se inventan precios ni duración y el botón no lleva a ninguna parte.
+const SeccionAsesoria = ({ asesoria, indice, estado, onReintentar }) => {
+  const { id, titulo, servicio, Icono, descripcion, incluye, paraQuien, pasos } = asesoria
   const idTitulo = `titulo-${id}`
 
   return (
@@ -23,7 +28,7 @@ const SeccionAsesoria = ({ asesoria, indice }) => {
           >
             {titulo}
           </h2>
-          <EtiquetaAsesoria precio={precio} duracion_min={duracion_min} />
+          {servicio && <EtiquetaAsesoria precio={servicio.precio} duracion_min={servicio.duracion_min} />}
           <p className="max-w-3xl font-poppins text-base text-zinc-300 md:text-lg">{descripcion}</p>
         </div>
 
@@ -66,19 +71,30 @@ const SeccionAsesoria = ({ asesoria, indice }) => {
           </ol>
         </div>
 
-        {/* TEMPORAL: las asesorías aún no se reservan con el sistema de citas; por ahora se coordinan por WhatsApp. */}
         <div className="flex min-w-0 flex-col items-start gap-3">
-          <a
-            href={enlaceWhatsApp(mensajeWhatsApp)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-12 max-w-full items-center justify-center gap-3 rounded-full bg-oro px-8 py-3 text-center font-poppins font-semibold text-black shadow-lg shadow-oro/20 duration-300 hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-oro active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100"
-          >
-            <FaWhatsapp aria-hidden="true" size={22} className="shrink-0" />
-            {textoBoton}
-            <span className="sr-only"> (se abre WhatsApp en una pestaña nueva)</span>
-          </a>
-          <p className="font-poppins text-xs text-zinc-500">Por ahora coordinamos las asesorías por WhatsApp.</p>
+          {servicio ? (
+            <Link to={rutaReservaAsesoria(servicio.id)} className={botonReservar}>
+              {TEXTO_RESERVAR_ASESORIA}
+              <span className="sr-only">: {titulo}</span>
+            </Link>
+          ) : estado === 'error' ? (
+            <div className="flex flex-col items-start gap-3">
+              <p role="alert" className="font-poppins text-sm text-zinc-300">
+                No pudimos cargar el precio y la disponibilidad de esta asesoría.
+              </p>
+              <button
+                type="button"
+                onClick={onReintentar}
+                className="min-h-11 rounded-full border border-oro px-6 font-poppins text-sm font-semibold text-oro duration-300 hover:bg-oro hover:text-black focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro motion-reduce:transition-none"
+              >
+                Reintentar
+              </button>
+            </div>
+          ) : (
+            <p role="status" className="font-poppins text-sm text-zinc-400">
+              {estado === 'cargando' ? 'Cargando precio y disponibilidad…' : 'Esta asesoría no está disponible por ahora.'}
+            </p>
+          )}
         </div>
       </div>
     </section>

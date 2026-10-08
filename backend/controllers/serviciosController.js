@@ -12,7 +12,7 @@ const ID_MAXIMO_INT = 2147483647;
 const VISIBLE = '(s.categoria_id IS NULL OR c.activo = true)';
 
 const SELECT_SERVICIOS = `
-  SELECT s.id, s.nombre, s.descripcion, s.precio, s.duracion_min, s.tipo,
+  SELECT s.id, s.nombre, s.descripcion, s.precio, s.duracion_min, s.tipo, s.clave_seed,
          c.id AS categoria_id, c.nombre AS categoria_nombre, c.slug AS categoria_slug, c.orden AS categoria_orden
   FROM servicios s
   LEFT JOIN categorias c ON c.id = s.categoria_id`;
@@ -24,6 +24,9 @@ const aServicioPublico = (fila) => ({
   precio: fila.precio,
   duracion_min: fila.duracion_min,
   tipo: fila.tipo,
+  // Identificador estable de los servicios del catálogo del seed (p. ej. 'asesoria-premium'): el front une con él sus
+  // textos sin depender de ids. Los creados desde el admin no lo tienen y el campo se omite.
+  ...(fila.clave_seed ? { clave: fila.clave_seed } : {}),
   categoria: fila.categoria_id === null
     ? null
     : { id: fila.categoria_id, nombre: fila.categoria_nombre, slug: fila.categoria_slug },

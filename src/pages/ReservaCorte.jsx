@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { obtenerServicios, obtenerBarberos, crearCita } from '../services/api'
+import { obtenerServicios, obtenerServiciosAsesoria, obtenerBarberos, crearCita } from '../services/api'
 import { useCarrito } from '../context/CarritoContext'
 import IndicadorProgreso from '../components/sections/reserva/IndicadorProgreso'
 import PasoServicio from '../components/sections/reserva/PasoServicio'
@@ -10,15 +10,20 @@ import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
 import PantallaExito from '../components/sections/reserva/PantallaExito'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
 import ErrorCarga from '../components/ui/ErrorCarga'
-import { PASOS_RESERVA } from '../components/sections/reserva/pasos'
+import { PASOS_RESERVA, etiquetaPasoProfesional } from '../components/sections/reserva/pasos'
 import {
+  CODIGO_PROFESIONAL_INCOMPATIBLE,
+  MENSAJE_PROFESIONAL_INCOMPATIBLE,
   reservaReducer,
   estadoInicialReserva,
   mensajeErrorSeleccion,
 } from '../components/sections/reserva/reservaReducer'
 import { MAX_DURACION_COMBO_MIN, duracionTotal } from '../utils/carrito'
 import { leerServiciosDeUrl } from '../utils/seleccionReserva'
-import { AREA_BARBERIA, esDeBarberia, soloBarberia } from '../utils/areas'
+import { AREA_ASESORIA, AREA_BARBERIA, esDeBarberia, soloBarberia } from '../utils/areas'
+import { MENSAJE_LIMITE_ASESORIAS, esAsesoria, separarPorArea } from '../utils/reservaAsesoria'
+
+const CODIGO_GRATIS_YA_USADA = 'ASESORIA_GRATIS_YA_USADA'
 
 const pasoCompleto = (estado) => {
   switch (estado.paso) {
@@ -37,6 +42,8 @@ const pasoCompleto = (estado) => {
 // del carrito) o ?servicio=<id> (camino rápido desde una tarjeta)— y, a partir de ahí, lo que se cambie en el paso 1
 // no toca el carrito. Al reservar con éxito se vacía el carrito SOLO si la reserva llegó con ?servicios= (es decir,
 // desde el carrito); una reserva por el camino rápido deja el carrito como estaba.
+// La reserva admite además UNA asesoría (carta aparte, nunca en el carrito): llega preseleccionada por ?servicios=<id>
+// (desde /asesorias) o se añade en el paso Servicio. Con asesoría + barbería son dos citas con dos profesionales.
 const ReservaCorte = () => {
   const [searchParams] = useSearchParams()
   const [{ ids: serviciosIniciales, desdeCarrito }] = useState(() => leerServiciosDeUrl(searchParams))
@@ -50,7 +57,10 @@ const ReservaCorte = () => {
   )
 
   const [servicios, setServicios] = useState([])
+  // Las asesorías de la API, etiquetadas con area 'asesoria' (el catálogo de barbería no las mezcla).
+  const [asesorias, setAsesorias] = useState([])
   const [barberos, setBarberos] = useState([])
+  const [asesores, setAsesores] = useState([])
   const [cargandoDatos, setCargandoDatos] = useState(true)
   const [errorCarga, setErrorCarga] = useState('')
   // Se incrementa para volver a pedir servicios y barberos (Reintentar, o un servicio que dejó de estar activo).
@@ -78,6 +88,11 @@ const ReservaCorte = () => {
     dispatch({ type: 'ERROR_SELECCION', mensaje: mensajeErrorSeleccion(err.codigo) })
   }, [])
 
+  // El profesional elegido ya no atiende esos servicios: se vuelve al paso de profesionales.
+  const manejarErrorProfesional = useCallback(() => {
+    dispatch({ type: 'ERROR_PROFESIONAL', mensaje: MENSAJE_PROFESIONAL_INCOMPATIBLE })
+  }, [])
+
   // La carga asíncrona necesita los servicios elegidos más recientes (p. ej. los de ?servicios=...).
   const servicioIdsRef = useRef(estado.servicioIds)
   const barberoIdRef = useRef(estado.barberoId)
@@ -93,14 +108,18 @@ const ReservaCorte = () => {
     const cargarDatos = async () => {
       try {
         // La reserva de cortes solo ve servicios y barberos de barbería (la asesora y las asesorías quedan fuera).
-        const [serviciosData, todoElPersonal] = await Promise.all([
+        const [serviciosData, asesoriasApi, personal] = await Promise.all([
           obtenerServicios({ area: AREA_BARBERIA }),
+          obtenerServiciosAsesoria(),
           obtenerBarberos(),
         ])
         if (cancelado) return
-        const barberosData = soloBarberia(todoElPersonal)
+        const todoElPersonal = personal ?? []
+        const asesoriasData = (asesoriasApi ?? []).map((asesoria) => ({ ...asesoria, area: AREA_ASESORIA }))
         setServicios(serviciosData)
-        setBarberos(barberosData)
+        setAsesorias(asesoriasData)
+        setBarberos(soloBarberia(todoElPersonal))
+        setAsesores(todoElPersonal.filter((profesional) => !esDeBarberia(profesional)))
 
         // Un enlace viejo ?barbero=<asesora> no se puede reservar: se vuelve a "Cualquier barbero".
         const elegido = barberoIdRef.current
@@ -110,15 +129,22 @@ const ReservaCorte = () => {
 
         // Enlace viejo: ?servicios=... con ids inactivos o inexistentes. Solo esos se quitan; el resto se conserva.
         const elegidos = servicioIdsRef.current
-        const inactivos = elegidos.filter((id) => !serviciosData.some((servicio) => servicio.id === id))
+        const catalogo = [...serviciosData, ...asesoriasData]
+        const inactivos = elegidos.filter((id) => !catalogo.some((servicio) => servicio.id === id))
         if (inactivos.length > 0) {
           recargando = true
           manejarServicioNoDisponible({ servicios_no_disponibles: inactivos })
         } else if (elegidos.length > 1) {
-          // Un combo de la URL que pasa del tope de duración se avisa desde el principio (el servidor también lo rechaza).
-          const datos = elegidos.map((id) => serviciosData.find((servicio) => servicio.id === id))
-          if (duracionTotal(datos) > MAX_DURACION_COMBO_MIN) {
-            dispatch({ type: 'ERROR_SELECCION', mensaje: mensajeErrorSeleccion('DURACION_EXCEDIDA') })
+          // Un enlace con más de una asesoría o con un combo de barbería que pasa del tope de duración (por cita, no sumando la
+          // asesoría) se avisa desde el principio; el servidor también lo rechaza.
+          const datos = elegidos.map((id) => catalogo.find((servicio) => servicio.id === id))
+          if (datos.filter(esAsesoria).length > 1) {
+            dispatch({ type: 'ERROR_SELECCION', mensaje: MENSAJE_LIMITE_ASESORIAS })
+          } else {
+            const deBarberia = datos.filter((servicio) => !esAsesoria(servicio))
+            if (deBarberia.length > 1 && duracionTotal(deBarberia) > MAX_DURACION_COMBO_MIN) {
+              dispatch({ type: 'ERROR_SELECCION', mensaje: mensajeErrorSeleccion('DURACION_EXCEDIDA') })
+            }
           }
         }
       } catch (err) {
@@ -133,6 +159,15 @@ const ReservaCorte = () => {
       cancelado = true
     }
   }, [recarga, manejarServicioNoDisponible])
+
+  // Lo elegido, ya como objetos del catálogo (barbería + asesorías), y de qué áreas es: decide qué profesionales se piden.
+  const serviciosSeleccionados = estado.servicioIds
+    .map((id) => [...servicios, ...asesorias].find((servicio) => servicio.id === id))
+    .filter(Boolean)
+  const { asesoria: asesoriaElegida, barberia: barberiaElegida } = separarPorArea(serviciosSeleccionados)
+  const tieneAsesoria = Boolean(asesoriaElegida)
+  const tieneBarberia = barberiaElegida.length > 0
+  const soloAsesoria = tieneAsesoria && !tieneBarberia
 
   const indiceActual = PASOS_RESERVA.findIndex((paso) => paso.key === estado.paso)
   const esPrimerPaso = indiceActual === 0
@@ -150,6 +185,7 @@ const ReservaCorte = () => {
     }
   }
 
+  // El profesional elegido solo viaja si la reserva tiene servicios de su área (un id viejo no se envía).
   const confirmarReserva = async (datosContacto) => {
     try {
       const resumen = await crearCita({
@@ -158,7 +194,8 @@ const ReservaCorte = () => {
         telefono: datosContacto.telefono,
         consentimiento: datosContacto.consentimiento,
         servicios_ids: estado.servicioIds,
-        barbero_id: estado.barberoId === null ? undefined : estado.barberoId,
+        barbero_id: tieneBarberia && estado.barberoId !== null ? estado.barberoId : undefined,
+        asesor_id: tieneAsesoria && estado.asesorId !== null ? estado.asesorId : undefined,
         fecha: estado.fecha,
         hora: estado.hora,
       })
@@ -166,6 +203,14 @@ const ReservaCorte = () => {
       if (desdeCarrito) vaciarCarrito()
       dispatch({ type: 'RESERVA_CONFIRMADA', resumen })
     } catch (err) {
+      if (err.codigo === CODIGO_GRATIS_YA_USADA) {
+        // La persona ya usó su asesoría gratuita: no se creó nada. El modal muestra el aviso con sus dos salidas.
+        throw err
+      }
+      if (err.codigo === CODIGO_PROFESIONAL_INCOMPATIBLE) {
+        dispatch({ type: 'ERROR_PROFESIONAL', mensaje: MENSAJE_PROFESIONAL_INCOMPATIBLE })
+        return
+      }
       if (err.codigo === 'SERVICIO_NO_DISPONIBLE') {
         // Un servicio se desactivó mientras el usuario reservaba: se cierra el modal, se quitan solo los afectados y
         // se vuelve al paso Servicio.
@@ -187,14 +232,19 @@ const ReservaCorte = () => {
   }
 
   if (estado.paso === 'exito') {
-    return <PantallaExito resumen={estado.resumen} onNuevaReserva={() => dispatch({ type: 'REINICIAR' })} />
+    return (
+      <PantallaExito
+        resumen={estado.resumen}
+        areaUnica={soloAsesoria ? AREA_ASESORIA : AREA_BARBERIA}
+        onNuevaReserva={() => dispatch({ type: 'REINICIAR' })}
+      />
+    )
   }
 
-  const serviciosSeleccionados = estado.servicioIds
-    .map((id) => servicios.find((servicio) => servicio.id === id))
-    .filter(Boolean)
   const barberoSeleccionado =
     estado.barberoId === null ? null : barberos.find((barbero) => barbero.id === estado.barberoId)
+  const asesorSeleccionado =
+    estado.asesorId === null ? null : asesores.find((asesor) => asesor.id === estado.asesorId)
 
   const mostrarResumen = estado.paso !== 'confirmar'
 
@@ -210,7 +260,10 @@ const ReservaCorte = () => {
       <div className="mt-8 flex w-full max-w-5xl flex-col items-start gap-8 lg:flex-row lg:justify-center">
         <div className="flex w-full min-w-0 flex-col items-center lg:max-w-2xl">
           <div className="w-full">
-            <IndicadorProgreso pasoActual={estado.paso} />
+            <IndicadorProgreso
+              pasoActual={estado.paso}
+              etiquetaProfesional={etiquetaPasoProfesional(tieneAsesoria, tieneBarberia)}
+            />
           </div>
 
           {errorCarga && <ErrorCarga mensaje={errorCarga} onReintentar={recargarDatos} />}
@@ -231,21 +284,30 @@ const ReservaCorte = () => {
                 {estado.paso === 'servicio' && (
                   <PasoServicio
                     servicios={servicios}
+                    asesorias={asesorias}
                     idsSeleccionados={estado.servicioIds}
+                    enfocarAsesoria={estado.enfocarAsesoria}
                     onSeleccionar={(servicioIds) => dispatch({ type: 'SELECCIONAR_SERVICIOS', servicioIds })}
                   />
                 )}
                 {estado.paso === 'barbero' && (
                   <PasoBarbero
                     barberos={barberos}
+                    asesores={asesores}
+                    tieneBarberia={tieneBarberia}
+                    tieneAsesoria={tieneAsesoria}
                     barberoIdSeleccionado={estado.barberoId}
+                    asesorIdSeleccionado={estado.asesorId}
                     onSeleccionar={(barberoId) => dispatch({ type: 'SELECCIONAR_BARBERO', barberoId })}
+                    onSeleccionarAsesor={(asesorId) => dispatch({ type: 'SELECCIONAR_ASESOR', asesorId })}
                   />
                 )}
                 {estado.paso === 'fecha-hora' && (
                   <PasoFechaHora
                     servicioIds={estado.servicioIds}
-                    barberoId={estado.barberoId}
+                    servicios={serviciosSeleccionados}
+                    barberoId={tieneBarberia ? estado.barberoId : null}
+                    asesorId={tieneAsesoria ? estado.asesorId : null}
                     fecha={estado.fecha}
                     hora={estado.hora}
                     recargaHoras={estado.recargaHoras}
@@ -253,6 +315,7 @@ const ReservaCorte = () => {
                     onSeleccionarHora={(hora) => dispatch({ type: 'SELECCIONAR_HORA', hora })}
                     onServicioNoDisponible={manejarServicioNoDisponible}
                     onErrorSeleccion={manejarErrorSeleccion}
+                    onErrorProfesional={manejarErrorProfesional}
                   />
                 )}
               </>
@@ -277,6 +340,7 @@ const ReservaCorte = () => {
           <ResumenReserva
             servicios={serviciosSeleccionados}
             barbero={barberoSeleccionado}
+            asesor={asesorSeleccionado}
             mostrarBarbero={indiceActual >= 1}
             fecha={estado.fecha}
             hora={estado.hora}
@@ -290,10 +354,13 @@ const ReservaCorte = () => {
         <ModalConfirmacion
           servicios={serviciosSeleccionados}
           barbero={barberoSeleccionado}
+          asesor={asesorSeleccionado}
           fecha={estado.fecha}
           hora={estado.hora}
           onClose={() => dispatch({ type: 'IR_A_PASO', paso: 'fecha-hora' })}
           onConfirmar={confirmarReserva}
+          onQuitarGratis={(gratisId) => dispatch({ type: 'QUITAR_ASESORIA_GRATIS', gratisId, otra: false })}
+          onElegirOtraAsesoria={(gratisId) => dispatch({ type: 'QUITAR_ASESORIA_GRATIS', gratisId, otra: true })}
         />
       )}
     </div>
