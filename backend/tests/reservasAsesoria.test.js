@@ -388,11 +388,11 @@ describe('GET /api/disponibilidad: validaciones', () => {
     expect(res.body.horas).not.toContain('14:00');
   });
 
-  it('la asesoría gratis sigue bloqueada (sola o en combo)', async () => {
+  it('la asesoría gratis se ofrece como cualquier otra (sola o en combo): la disponibilidad no necesita identidad', async () => {
     for (const query of [{ servicios: String(GRATIS) }, { servicios: `${GRATIS},${CORTE_1}` }, { servicio: GRATIS }]) {
       const res = await disp(query);
-      expect(res.status).toBe(400);
-      expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [GRATIS] });
+      expect(res.status).toBe(200);
+      expect(res.body.horas).toContain('10:00');
     }
   });
 });
@@ -642,13 +642,13 @@ describe('POST /api/citas: errores', () => {
     expect(res.body.citas[1]).toMatchObject({ hora: '14:00:00' });
   });
 
-  it('la asesoría gratis sigue bloqueada, sola o combinada, sin crear nada', async () => {
-    for (const ids of [[GRATIS], [GRATIS, CORTE_1]]) {
-      const res = await reservar({ servicios_ids: ids });
-      expect(res.status).toBe(400);
-      expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [GRATIS] });
-    }
-    expect(await contarCitas()).toBe(0);
+  it('la asesoría gratis ya se reserva, sola o combinada (su límite por persona se prueba en asesoriaGratis.test.js)', async () => {
+    const sola = await reservar({ servicios_ids: [GRATIS], correo: 'uno@example.com', telefono: '3001111111' });
+    expect(sola.status).toBe(201);
+    expect(sola.body).toMatchObject({ servicio_id: GRATIS, precio: 0, duracion_min: 15 });
+    const combinada = await reservar({ servicios_ids: [GRATIS, CORTE_1], correo: 'dos@example.com', telefono: '3002222222', hora: '12:00' });
+    expect(combinada.status).toBe(201);
+    expect(combinada.body.citas).toHaveLength(2);
   });
 });
 

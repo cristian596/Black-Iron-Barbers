@@ -9,16 +9,16 @@ export const AREAS = [AREA_BARBERIA, AREA_ASESORIA];
 export const esAreaValida = (valor) => AREAS.includes(valor);
 
 export const CODIGO_PROFESIONAL_INCOMPATIBLE = 'PROFESIONAL_INCOMPATIBLE';
-// TEMPORAL: la asesoría GRATIS aún no se reserva (se habilita con el límite de una por persona). Pedirla a la reserva
-// o a la disponibilidad responde este código. Las demás asesorías ya se reservan.
-export const CODIGO_ASESORIA_NO_DISPONIBLE_AUN = 'ASESORIA_NO_DISPONIBLE_AUN';
+// Una asesoría gratis por persona (correo Y teléfono): si cualquiera de los dos ya la usó, 409 con este código.
+export const CODIGO_ASESORIA_GRATIS_YA_USADA = 'ASESORIA_GRATIS_YA_USADA';
+const CONSTRAINTS_GRATIS_USADA = ['asesoria_gratis_usos_correo_norm_key', 'asesoria_gratis_usos_telefono_norm_key'];
 export const CODIGO_LIMITE_ASESORIAS = 'LIMITE_ASESORIAS';
 // Una reserva lleva como máximo UNA asesoría (más hasta 2 servicios de barbería: 3 servicios en total).
 export const MAX_ASESORIAS_POR_RESERVA = 1;
 // clave_seed estable de la asesoría gratis (backend/db/data/servicios.js): la fase de "una por persona" la reutiliza.
 export const CLAVE_ASESORIA_GRATIS = 'asesoria-gratis';
 
-// ¿Es la asesoría gratis? Se decide por clave_seed (estable), no por nombre ni precio: renombrarla o cambiarle el
+// ¿Es la asesoría gratis? (la que está limitada a una por persona) Se decide por clave_seed (estable), no por nombre ni precio: renombrarla o cambiarle el
 // precio desde el admin no la convierte en otra cosa, y una asesoría creada por el admin (clave_seed nulo) nunca lo es.
 export const esAsesoriaGratis = (servicio) => servicio?.clave_seed === CLAVE_ASESORIA_GRATIS;
 
@@ -36,6 +36,10 @@ export const leerParametroArea = (query) => {
 // y debe traducirse a PROFESIONAL_INCOMPATIBLE, nunca a "horario ocupado" ni a un 500.
 export const esErrorAreaProfesional = (err) =>
   err?.code === 'BI001' || err?.constraint === 'cita_servicios_area_profesional';
+
+// ¿La UNIQUE de correo o de teléfono de asesoria_gratis_usos? Esa persona ya usó su asesoría gratis. Se reconoce por
+// err.constraint (nunca por el texto del error, que lleva el valor duplicado: datos personales).
+export const esAsesoriaGratisYaUsada = (err) => err?.code === '23505' && CONSTRAINTS_GRATIS_USADA.includes(err.constraint);
 
 // 23P01 (solapamiento) y 23505 (duplicado) son conflictos de HORARIO, salvo las restricciones propias de las
 // asesorías (una gratis por persona), que tienen otro significado y no deben disfrazarse de "horario ocupado".
@@ -58,12 +62,13 @@ export const errorProfesionalIncompatible = (campo, error) => ({
 export const serviciosDeAsesoria = (lista) => lista.filter((servicio) => servicio.area === AREA_ASESORIA);
 export const serviciosDeBarberia = (lista) => lista.filter((servicio) => servicio.area !== AREA_ASESORIA);
 
-export const errorAsesoriaNoDisponibleAun = (servicios) => ({
-  status: 400,
+// 409 sin revelar si coincidió el correo o el teléfono, ni nada de la otra persona: solo el servicio gratis pedido.
+export const errorAsesoriaGratisYaUsada = (servicioId) => ({
+  status: 409,
   cuerpo: {
-    error: 'La asesoría gratis todavía no se puede reservar en línea. Escríbenos por WhatsApp y la coordinamos.',
-    codigo: CODIGO_ASESORIA_NO_DISPONIBLE_AUN,
-    servicios_asesoria: servicios.map((servicio) => servicio.id),
+    error: 'Ya usaste tu asesoría gratis. Puedes elegir otra asesoría o reservar solo tu corte.',
+    codigo: CODIGO_ASESORIA_GRATIS_YA_USADA,
+    servicio_id: servicioId,
   },
 });
 

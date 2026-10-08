@@ -88,6 +88,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   vi.restoreAllMocks();
+  await pool.query('DELETE FROM citas WHERE id IN (SELECT cita_id FROM cita_servicios WHERE servicio_id = $1)', [SERV_GRATIS]);
   await pool.query('DELETE FROM servicios WHERE id = $1', [SERV_GRATIS]);
 });
 
@@ -317,18 +318,18 @@ describe('GET /api/disponibilidad y las áreas', () => {
     ['servicio', { servicio: SERV_GRATIS }],
     ['servicios', { servicios: String(SERV_GRATIS) }],
     ['mezclado con un corte', { servicios: `${SERV_CORTE},${SERV_GRATIS}` }],
-  ])('la asesoría gratis (%s) → 400 ASESORIA_NO_DISPONIBLE_AUN (temporal; las demás asesorías ya se ofrecen)', async (_n, query) => {
+  ])('la asesoría gratis (%s) ya se ofrece como cualquier otra (la disponibilidad no necesita identidad)', async (_n, query) => {
     await crearGratis();
     const res = await disponibilidad(query);
-    expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [SERV_GRATIS] });
+    expect(res.status).toBe(200);
+    expect(res.body.horas).toContain('10:00');
   });
 
-  it('asesoría gratis + id del asesor: gana el código de asesoría (el servicio se valida primero)', async () => {
+  it('asesoría gratis + id del asesor en barbero=: PROFESIONAL_INCOMPATIBLE (barbero= solo vale para barberos)', async () => {
     await crearGratis();
     const res = await disponibilidad({ servicio: SERV_GRATIS, barbero: ASESOR });
     expect(res.status).toBe(400);
-    expect(res.body.codigo).toBe('ASESORIA_NO_DISPONIBLE_AUN');
+    expect(res.body.codigo).toBe('PROFESIONAL_INCOMPATIBLE');
   });
 });
 
@@ -370,12 +371,11 @@ describe('POST /api/citas y las áreas', () => {
     ['servicio_id', { servicio_id: SERV_GRATIS }],
     ['servicios_ids', { servicio_id: undefined, servicios_ids: [SERV_GRATIS] }],
     ['combo con un corte', { servicio_id: undefined, servicios_ids: [SERV_CORTE, SERV_GRATIS] }],
-  ])('la asesoría gratis (%s) → 400 ASESORIA_NO_DISPONIBLE_AUN y no se crea nada (temporal)', async (_n, extra) => {
+  ])('la asesoría gratis (%s) ya se reserva: la primera vez se crea y se registra su uso', async (_n, extra) => {
     await crearGratis();
     const res = await reservar(extra);
-    expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [SERV_GRATIS] });
-    expect(await contarCitas()).toBe(0);
+    expect(res.status).toBe(201);
+    expect((await pool.query('SELECT COUNT(*)::int AS n FROM asesoria_gratis_usos')).rows[0].n).toBe(1);
   });
 
   it('el error del trigger (carrera: el barbero cambia de área justo antes del COMMIT) llega como 400 PROFESIONAL_INCOMPATIBLE, nunca 500 ni "horario ocupado"', async () => {

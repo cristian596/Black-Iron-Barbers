@@ -203,7 +203,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
     expect(res.status).toBe(409);
   });
 
-  it('reactivar una cita cancelada responde 409 si el hueco ya fue ocupado por otra cita', async () => {
+  it('una cita cancelada no se puede reabrir: 409 TRANSICION_INVALIDA, aunque el hueco siga libre u ocupado', async () => {
     const original = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
     await request(app)
       .patch(`/api/citas/${original.body.id}`)
@@ -219,6 +219,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
       .send({ estado: 'pendiente' });
 
     expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ codigo: 'TRANSICION_INVALIDA', estado_actual: 'cancelada' });
 
     const { rows } = await pool.query('SELECT estado FROM citas WHERE id = $1', [original.body.id]);
     expect(rows[0].estado).toBe('cancelada');

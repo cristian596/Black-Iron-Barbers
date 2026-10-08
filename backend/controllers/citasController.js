@@ -13,10 +13,14 @@ import { leerServiciosDelCuerpo, cargarServicios } from '../utils/serviciosCita.
 import { COLUMNAS_SERVICIOS, unirServiciosDeCita, serviciosDeCita } from '../db/citaServicios.js';
 import {
   CODIGO_PROFESIONAL_INCOMPATIBLE,
+  errorAsesoriaGratisYaUsada,
   errorProfesionalIncompatible,
+  esAsesoriaGratis,
+  esAsesoriaGratisYaUsada,
   esConflictoDeHorario,
   esErrorAreaProfesional,
 } from '../utils/areas.js';
+import { identidadAsesoria } from '../utils/identidadAsesoria.js';
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESTADOS_VALIDOS = ['pendiente', 'completada', 'cancelada'];
@@ -24,6 +28,13 @@ const ESTADOS_VALIDOS = ['pendiente', 'completada', 'cancelada'];
 // esConflictoDeHorario (utils/areas.js), que distingue por err.constraint: las restricciones de asesoria_gratis_usos y el
 // error BI001 del emparejamiento de áreas NO son "horario ocupado".
 const CODIGO_DEADLOCK = '40P01';
+// completada y cancelada son finales: no cambian de estado (409 TRANSICION_INVALIDA, con el estado actual y el pedido).
+const ESTADOS_FINALES = ['completada', 'cancelada'];
+const errorTransicionInvalida = (actual, pedido) => ({
+  error: `Una cita ${actual} no puede pasar a ${pedido}`,
+  codigo: 'TRANSICION_INVALIDA',
+  estado_actual: actual,
+});
 const MAX_REINTENTOS_DEADLOCK = 3;
 
 const errorFueraDeHorario = (cantidadServicios) => ({
@@ -46,11 +57,16 @@ const errorFueraDeHorario = (cantidadServicios) => ({
 // Postgres para EXCLUDE). Un deadlock aborta la transacción sin indicar si el hueco está
 // realmente ocupado, así que reintentamos el mismo candidato (con una transacción nueva) antes de darlo por conflicto.
 //
-// Si falla, el error lleva `etapa` (qué parte de la transacción estaba en curso: 'asesoria', 'barberia' o 'commit'), que
-// permite avanzar SOLO al siguiente candidato del profesional que falló, sin probar todas las combinaciones.
+// Si la reserva incluye la asesoría GRATIS, tras insertar su cita se registra el uso en asesoria_gratis_usos (correo y
+// teléfono normalizados, `identidad`) dentro de la MISMA transacción: la UNIQUE de la base decide quién la gana aunque
+// dos reservas de la misma persona lleguen a la vez. Si choca, el 23505 (constraint asesoria_gratis_usos_*_key) deshace
+// todo, también el corte de una combinada, y NO es un conflicto de horario: no se reintenta con otro candidato.
+//
+// Si falla, el error lleva `etapa` (qué parte de la transacción estaba en curso: 'asesoria', 'barberia', 'gratis' o
+// 'commit'), que permite avanzar SOLO al siguiente candidato del profesional que falló, sin probar todas las combinaciones.
 // `segmentos`: [{ clave: 'asesoria' | 'barberia', profesionalId }] en el orden en que se atienden.
 // Devuelve { citas: [{ cita, lista }] } o { error } (error de validación de los servicios, ya en forma { status, cuerpo }).
-const insertarReserva = async ({ idsServicios, segmentos, reservaId, cliente, correo, telefono, fecha, hora, consentimientoEn }) => {
+const insertarReserva = async ({ idsServicios, segmentos, reservaId, identidad, cliente, correo, telefono, fecha, hora, consentimientoEn }) => {
   for (let intento = 1; intento <= MAX_REINTENTOS_DEADLOCK; intento += 1) {
     const conexion = await pool.connect();
     let fallaRollback = false;
@@ -100,6 +116,13 @@ const insertarReserva = async ({ idsServicios, segmentos, reservaId, cliente, co
             grupo.lista.map((servicio) => servicio.precio),
           ]
         );
+        if (grupo.lista.some(esAsesoriaGratis)) {
+          etapa = 'gratis';
+          await conexion.query(
+            'INSERT INTO asesoria_gratis_usos (cita_id, correo_norm, telefono_norm) VALUES ($1, $2, $3)',
+            [cita.id, identidad.correo_norm, identidad.telefono_norm]
+          );
+        }
         citas.push({ cita, lista: grupo.lista });
         inicioMin += grupo.duracion; // la siguiente cita (el corte) empieza cuando termina esta
       }
@@ -209,6 +232,10 @@ export const crearCita = async (req, res, next) => {
     if (pedidos.error) return res.status(pedidos.error.status).json(pedidos.error.cuerpo);
     const idsServicios = pedidos.ids;
 
+    // Identidad para el límite de la asesoría gratis (el correo ya pasó la validación de formato).
+    const identidad = identidadAsesoria(correo, telefonoNormalizado);
+    if (!identidad) return res.status(400).json({ error: 'El correo no es válido' });
+
     const lecturaBarbero = leerIdProfesional(barbero_id, 'barbero');
     if (lecturaBarbero.error) return res.status(lecturaBarbero.error.status).json(lecturaBarbero.error.cuerpo);
     const lecturaAsesor = leerIdProfesional(asesor_id, 'asesor');
@@ -296,6 +323,7 @@ export const crearCita = async (req, res, next) => {
           idsServicios,
           segmentos: segmentos.map(({ clave }) => ({ clave, profesionalId: candidatos[clave][indices[clave]] })),
           reservaId,
+          identidad,
           cliente: cliente.trim(),
           correo,
           telefono: telefonoNormalizado,
@@ -322,6 +350,11 @@ export const crearCita = async (req, res, next) => {
         delete plana.reserva_id; // una cita suelta conserva la forma de siempre (sin reserva_id)
         return res.status(201).json(plana);
       } catch (err) {
+        // La persona ya usó su asesoría gratis: 409 sin más datos (ni qué campo coincidió) y sin probar otro candidato.
+        if (esAsesoriaGratisYaUsada(err)) {
+          const { status, cuerpo } = errorAsesoriaGratisYaUsada(servicios.asesoria.lista.find(esAsesoriaGratis).id);
+          return res.status(status).json(cuerpo);
+        }
         // Última barrera: el trigger de la base rechazó el emparejamiento profesional/servicio al COMMIT.
         if (esErrorAreaProfesional(err)) {
           const campo = combinada ? 'profesional' : TEXTOS_AREA[segmentos[0].clave].campo;
@@ -436,7 +469,7 @@ export const actualizarCita = async (req, res, next) => {
       return res.status(403).json({ error: 'Solo un administrador puede reasignar el barbero' });
     }
 
-    const { rows: citas } = await pool.query('SELECT id, barbero_id, fecha::text AS fecha FROM citas WHERE id = $1', [citaId]);
+    const { rows: citas } = await pool.query('SELECT id, barbero_id, estado, fecha::text AS fecha FROM citas WHERE id = $1', [citaId]);
     const cita = citas[0];
 
     if (!cita) {
@@ -445,6 +478,12 @@ export const actualizarCita = async (req, res, next) => {
 
     if (rol === 'barbero' && cita.barbero_id !== barberoToken) {
       return res.status(404).json({ error: 'Cita no encontrada' });
+    }
+
+    // Estados finales: una cita completada o cancelada no vuelve a cambiar de estado (ni se reabre una cancelada: su
+    // hueco pudo ser tomado y, si era una asesoría gratis, el derecho ya se liberó). Repetir el mismo estado es inocuo.
+    if (estado !== undefined && estado !== cita.estado && ESTADOS_FINALES.includes(cita.estado)) {
+      return res.status(409).json(errorTransicionInvalida(cita.estado, estado));
     }
 
     // Una cita solo se puede completar el día en que ocurre o después (hora de Bogotá).
@@ -488,13 +527,25 @@ export const actualizarCita = async (req, res, next) => {
     }
 
     try {
+      // Una sola sentencia (atómica): el UPDATE y, si se cancela, la liberación de la asesoría gratis de ESA cita (cancelar
+      // el corte hermano no toca la fila de la asesoría). El UPDATE repite la regla de estados finales en su WHERE: si otra
+      // petición cerró la cita entre la lectura y aquí, no actualiza nada (y tampoco libera nada).
       const { rows } = await pool.query(
-        `UPDATE citas
-         SET estado = COALESCE($1, estado), barbero_id = $2
-         WHERE id = $3
-         RETURNING id, cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado`,
+        `WITH actualizada AS (
+           UPDATE citas
+           SET estado = COALESCE($1, estado), barbero_id = $2
+           WHERE id = $3 AND ($1::text IS NULL OR estado = 'pendiente' OR estado = $1::text)
+           RETURNING id, cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado
+         ), liberada AS (
+           DELETE FROM asesoria_gratis_usos
+           WHERE $1::text = 'cancelada' AND cita_id IN (SELECT id FROM actualizada)
+         )
+         SELECT * FROM actualizada`,
         [estado ?? null, nuevoBarberoId, citaId]
       );
+      if (rows.length === 0) {
+        return res.status(409).json(errorTransicionInvalida(cita.estado, estado));
+      }
 
       res.json({ ...rows[0], ...(await serviciosDeCita(pool, citaId)) });
     } catch (err) {

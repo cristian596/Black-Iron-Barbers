@@ -5,9 +5,7 @@
 
 import {
   MAX_ASESORIAS_POR_RESERVA,
-  errorAsesoriaNoDisponibleAun,
   errorLimiteAsesorias,
-  esAsesoriaGratis,
   serviciosDeAsesoria,
   serviciosDeBarberia,
 } from './areas.js';
@@ -109,7 +107,8 @@ const armarGrupo = (lista) => {
 //  - `asesoria` y `barberia`: cada grupo ({ lista, duracion, precio }, con `orden` propio) o null si no hay servicios de
 //    esa área. Cada grupo es UNA cita, atendida por un profesional de su área.
 // Reglas de la reserva (los errores salen en este orden): servicios inexistentes/inactivos → máximo UNA asesoría
-// (LIMITE_ASESORIAS) → la asesoría gratis sigue bloqueada (ASESORIA_NO_DISPONIBLE_AUN) → tope de duración.
+// (LIMITE_ASESORIAS) → tope de duración. La asesoría gratis se ofrece como cualquier otra: su límite de una por persona
+// necesita la identidad del cliente y lo decide POST /api/citas dentro de la transacción.
 // El tope de 240 min se aplica POR CITA (por grupo), no a la suma de asesoría + corte: lo que protege es el bloque
 // continuo de un solo profesional (los combos de barbería ya lo tenían), y cada profesional atiende solo su cita. Sumar
 // los dos castigaría al cliente por una asesoría larga que no ocupa al barbero. Siguen acotando la reserva el máximo de
@@ -133,7 +132,6 @@ export const cargarServicios = async (db, ids, { bloquear = false } = {}) => {
   const deBarberia = serviciosDeBarberia(pedidos);
 
   if (deAsesoria.length > MAX_ASESORIAS_POR_RESERVA) return { error: errorLimiteAsesorias() };
-  if (deAsesoria.some(esAsesoriaGratis)) return { error: errorAsesoriaNoDisponibleAun(deAsesoria.filter(esAsesoriaGratis)) };
 
   const grupos = [deAsesoria, deBarberia];
   for (const grupo of grupos) {
