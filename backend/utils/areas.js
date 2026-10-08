@@ -9,9 +9,18 @@ export const AREAS = [AREA_BARBERIA, AREA_ASESORIA];
 export const esAreaValida = (valor) => AREAS.includes(valor);
 
 export const CODIGO_PROFESIONAL_INCOMPATIBLE = 'PROFESIONAL_INCOMPATIBLE';
-// TEMPORAL: hasta la fase de reservas de asesorías, pedir un servicio de asesoría a la reserva o a la disponibilidad
-// responde este código (el front sigue ofreciendo WhatsApp). Al llegar esa fase se quita.
+// TEMPORAL: la asesoría GRATIS aún no se reserva (se habilita con el límite de una por persona). Pedirla a la reserva
+// o a la disponibilidad responde este código. Las demás asesorías ya se reservan.
 export const CODIGO_ASESORIA_NO_DISPONIBLE_AUN = 'ASESORIA_NO_DISPONIBLE_AUN';
+export const CODIGO_LIMITE_ASESORIAS = 'LIMITE_ASESORIAS';
+// Una reserva lleva como máximo UNA asesoría (más hasta 2 servicios de barbería: 3 servicios en total).
+export const MAX_ASESORIAS_POR_RESERVA = 1;
+// clave_seed estable de la asesoría gratis (backend/db/data/servicios.js): la fase de "una por persona" la reutiliza.
+export const CLAVE_ASESORIA_GRATIS = 'asesoria-gratis';
+
+// ¿Es la asesoría gratis? Se decide por clave_seed (estable), no por nombre ni precio: renombrarla o cambiarle el
+// precio desde el admin no la convierte en otra cosa, y una asesoría creada por el admin (clave_seed nulo) nunca lo es.
+export const esAsesoriaGratis = (servicio) => servicio?.clave_seed === CLAVE_ASESORIA_GRATIS;
 
 // Valida el parámetro opcional ?area= de las rutas públicas. Devuelve { area } (undefined si no vino) o { error }.
 export const leerParametroArea = (query) => {
@@ -47,13 +56,23 @@ export const errorProfesionalIncompatible = (campo, error) => ({
 });
 
 export const serviciosDeAsesoria = (lista) => lista.filter((servicio) => servicio.area === AREA_ASESORIA);
+export const serviciosDeBarberia = (lista) => lista.filter((servicio) => servicio.area !== AREA_ASESORIA);
 
 export const errorAsesoriaNoDisponibleAun = (servicios) => ({
   status: 400,
   cuerpo: {
-    error: 'Las asesorías todavía no se pueden reservar en línea. Escríbenos por WhatsApp y las coordinamos.',
+    error: 'La asesoría gratis todavía no se puede reservar en línea. Escríbenos por WhatsApp y la coordinamos.',
     codigo: CODIGO_ASESORIA_NO_DISPONIBLE_AUN,
     servicios_asesoria: servicios.map((servicio) => servicio.id),
+  },
+});
+
+export const errorLimiteAsesorias = () => ({
+  status: 400,
+  cuerpo: {
+    error: `Solo puedes reservar ${MAX_ASESORIAS_POR_RESERVA} asesoría por reserva`,
+    codigo: CODIGO_LIMITE_ASESORIAS,
+    maximo: MAX_ASESORIAS_POR_RESERVA,
   },
 });
 

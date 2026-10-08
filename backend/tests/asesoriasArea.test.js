@@ -22,7 +22,8 @@ const SERV_CORTE = 9102; // area barberia, 30 min
 const SERV_CORTE_2 = 9103; // area barberia
 const SERV_MIXTO_ASESORIA = 9104; // area asesoria, dentro de la categoría mixta
 const SERV_MIXTO_CORTE = 9105; // area barberia, dentro de la categoría mixta
-const IDS_SERVICIOS = [SERV_ASESORIA, SERV_CORTE, SERV_CORTE_2, SERV_MIXTO_ASESORIA, SERV_MIXTO_CORTE];
+const SERV_GRATIS = 9106; // area asesoria, clave_seed 'asesoria-gratis': la única asesoría que sigue bloqueada en la fase 3
+const IDS_SERVICIOS = [SERV_ASESORIA, SERV_CORTE, SERV_CORTE_2, SERV_MIXTO_ASESORIA, SERV_MIXTO_CORTE, SERV_GRATIS];
 
 let admin;
 let barbero1;
@@ -85,9 +86,19 @@ beforeEach(async () => {
   await pool.query('UPDATE barberos SET area = $1, activo = true WHERE id IN (1, 2)', ['barberia']);
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.restoreAllMocks();
+  await pool.query('DELETE FROM servicios WHERE id = $1', [SERV_GRATIS]);
 });
+
+// La asesoría gratis (clave_seed 'asesoria-gratis') solo existe en las pruebas que la necesitan: así no altera los
+// listados por área de las demás.
+const crearGratis = () =>
+  pool.query(
+    `INSERT INTO servicios (id, nombre, duracion_min, precio, tipo, descripcion, area, clave_seed)
+     VALUES ($1, 'Prueba Area asesoría gratis', 15, 0, 'original', 'x', 'asesoria', 'asesoria-gratis')`,
+    [SERV_GRATIS]
+  );
 
 afterAll(async () => {
   await limpiar();
@@ -303,17 +314,19 @@ describe('GET /api/disponibilidad y las áreas', () => {
   });
 
   it.each([
-    ['servicio', { servicio: SERV_ASESORIA }],
-    ['servicios', { servicios: String(SERV_ASESORIA) }],
-    ['mezclado con un corte', { servicios: `${SERV_CORTE},${SERV_ASESORIA}` }],
-  ])('un servicio de asesoría (%s) → 400 ASESORIA_NO_DISPONIBLE_AUN (temporal)', async (_n, query) => {
+    ['servicio', { servicio: SERV_GRATIS }],
+    ['servicios', { servicios: String(SERV_GRATIS) }],
+    ['mezclado con un corte', { servicios: `${SERV_CORTE},${SERV_GRATIS}` }],
+  ])('la asesoría gratis (%s) → 400 ASESORIA_NO_DISPONIBLE_AUN (temporal; las demás asesorías ya se ofrecen)', async (_n, query) => {
+    await crearGratis();
     const res = await disponibilidad(query);
     expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [SERV_ASESORIA] });
+    expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [SERV_GRATIS] });
   });
 
-  it('asesoría + id del asesor: gana el código de asesoría (el servicio se valida primero)', async () => {
-    const res = await disponibilidad({ servicio: SERV_ASESORIA, barbero: ASESOR });
+  it('asesoría gratis + id del asesor: gana el código de asesoría (el servicio se valida primero)', async () => {
+    await crearGratis();
+    const res = await disponibilidad({ servicio: SERV_GRATIS, barbero: ASESOR });
     expect(res.status).toBe(400);
     expect(res.body.codigo).toBe('ASESORIA_NO_DISPONIBLE_AUN');
   });
@@ -354,13 +367,14 @@ describe('POST /api/citas y las áreas', () => {
   });
 
   it.each([
-    ['servicio_id', { servicio_id: SERV_ASESORIA }],
-    ['servicios_ids', { servicio_id: undefined, servicios_ids: [SERV_ASESORIA] }],
-    ['combo con un corte', { servicio_id: undefined, servicios_ids: [SERV_CORTE, SERV_ASESORIA] }],
-  ])('un servicio de asesoría (%s) → 400 ASESORIA_NO_DISPONIBLE_AUN y no se crea nada', async (_n, extra) => {
+    ['servicio_id', { servicio_id: SERV_GRATIS }],
+    ['servicios_ids', { servicio_id: undefined, servicios_ids: [SERV_GRATIS] }],
+    ['combo con un corte', { servicio_id: undefined, servicios_ids: [SERV_CORTE, SERV_GRATIS] }],
+  ])('la asesoría gratis (%s) → 400 ASESORIA_NO_DISPONIBLE_AUN y no se crea nada (temporal)', async (_n, extra) => {
+    await crearGratis();
     const res = await reservar(extra);
     expect(res.status).toBe(400);
-    expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [SERV_ASESORIA] });
+    expect(res.body).toMatchObject({ codigo: 'ASESORIA_NO_DISPONIBLE_AUN', servicios_asesoria: [SERV_GRATIS] });
     expect(await contarCitas()).toBe(0);
   });
 
@@ -400,11 +414,11 @@ describe('PATCH /api/citas/:id (reasignación del admin) y las áreas', () => {
   const reasignar = (citaId, barberoId) =>
     request(app).patch(`/api/citas/${citaId}`).set(auth(admin)).send({ barbero_id: barberoId });
 
-  it('un corte no se puede reasignar al asesor: 409 PROFESIONAL_INCOMPATIBLE y la cita no cambia', async () => {
+  it('un corte no se puede reasignar al asesor: 400 PROFESIONAL_INCOMPATIBLE y la cita no cambia', async () => {
     const citaId = await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
 
     const res = await reasignar(citaId, ASESOR);
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
     expect(res.body).toMatchObject({ codigo: 'PROFESIONAL_INCOMPATIBLE', campo: 'barbero_id' });
     expect((await pool.query('SELECT barbero_id FROM citas WHERE id = $1', [citaId])).rows[0].barbero_id).toBe(1);
   });
@@ -420,7 +434,7 @@ describe('PATCH /api/citas/:id (reasignación del admin) y las áreas', () => {
     const citaId = await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: ASESOR, estado: 'pendiente', servicio_id: SERV_ASESORIA });
 
     const res = await reasignar(citaId, 1);
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
     expect(res.body.codigo).toBe('PROFESIONAL_INCOMPATIBLE');
     expect((await pool.query('SELECT barbero_id FROM citas WHERE id = $1', [citaId])).rows[0].barbero_id).toBe(ASESOR);
   });

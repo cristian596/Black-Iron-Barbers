@@ -1,6 +1,16 @@
 // Servicios de una cita (de 1 a 3, atendidos seguidos por el mismo barbero como un solo bloque). Una sola fuente de
 // verdad para la reserva y la disponibilidad: los límites, la lectura estricta de ids y la carga de los servicios.
+// Una reserva puede mezclar UNA asesoría con hasta 2 servicios de barbería: se parte en dos grupos (una cita por grupo).
 // La duración y el precio de la cita SIEMPRE se calculan aquí con lo que hay en la base; jamás con lo que mande el cliente.
+
+import {
+  MAX_ASESORIAS_POR_RESERVA,
+  errorAsesoriaNoDisponibleAun,
+  errorLimiteAsesorias,
+  esAsesoriaGratis,
+  serviciosDeAsesoria,
+  serviciosDeBarberia,
+} from './areas.js';
 
 export const MAX_SERVICIOS_POR_CITA = 3;
 // Tope de duración SOLO para combos (2 o más servicios). Un servicio individual se puede reservar aunque dure más
@@ -82,13 +92,31 @@ export const leerServiciosCsv = (texto) => {
   return { ids, error: validarListaIds(ids) ?? undefined };
 };
 
-// Carga los servicios ACTIVOS pedidos (en el orden pedido) con su duración y precio actuales, y calcula los totales.
-// Con `bloquear` toma FOR SHARE sobre las filas (ordenadas por id para no provocar deadlocks entre reservas): una baja
-// del servicio queda esperando hasta que la reserva termine, así nunca se reserva algo que se desactiva a mitad.
-// Devuelve { lista, duracion, precio } o { error }.
+const sumar = (lista, campo) => lista.reduce((suma, servicio) => suma + servicio[campo], 0);
+
+// Totales de un grupo de servicios que va en UNA cita; sus líneas se numeran de nuevo 1..n (UNIQUE (cita_id, orden)).
+const armarGrupo = (lista) => {
+  const numerada = lista.map((servicio, indice) => ({ ...servicio, orden: indice + 1 }));
+  return { lista: numerada, duracion: sumar(numerada, 'duracion_min'), precio: sumar(numerada, 'precio') };
+};
+
+// Carga los servicios ACTIVOS pedidos (en el orden pedido) con su duración, precio, área y clave_seed actuales, y calcula
+// los totales. Con `bloquear` toma FOR SHARE sobre las filas (ordenadas por id para no provocar deadlocks entre
+// reservas): una baja del servicio queda esperando hasta que la reserva termine, así nunca se reserva algo que se
+// desactiva a mitad.
+// Devuelve { lista, duracion, precio, asesoria, barberia } o { error }.
+//  - `lista`/`duracion`/`precio`: toda la reserva, con `orden` global (1..3).
+//  - `asesoria` y `barberia`: cada grupo ({ lista, duracion, precio }, con `orden` propio) o null si no hay servicios de
+//    esa área. Cada grupo es UNA cita, atendida por un profesional de su área.
+// Reglas de la reserva (los errores salen en este orden): servicios inexistentes/inactivos → máximo UNA asesoría
+// (LIMITE_ASESORIAS) → la asesoría gratis sigue bloqueada (ASESORIA_NO_DISPONIBLE_AUN) → tope de duración.
+// El tope de 240 min se aplica POR CITA (por grupo), no a la suma de asesoría + corte: lo que protege es el bloque
+// continuo de un solo profesional (los combos de barbería ya lo tenían), y cada profesional atiende solo su cita. Sumar
+// los dos castigaría al cliente por una asesoría larga que no ocupa al barbero. Siguen acotando la reserva el máximo de
+// 3 servicios y el horario de atención, que sí se mide sobre la duración total encadenada.
 export const cargarServicios = async (db, ids, { bloquear = false } = {}) => {
   const { rows } = await db.query(
-    `SELECT id, nombre, duracion_min, precio, area
+    `SELECT id, nombre, duracion_min, precio, area, clave_seed
      FROM servicios
      WHERE id = ANY($1::int[]) AND activo = true
      ORDER BY id
@@ -100,19 +128,34 @@ export const cargarServicios = async (db, ids, { bloquear = false } = {}) => {
   const faltantes = ids.filter((id) => !porId.has(id));
   if (faltantes.length > 0) return { error: errorServiciosNoDisponibles(faltantes, ids.length) };
 
-  const lista = ids.map((id, indice) => ({ ...porId.get(id), orden: indice + 1 }));
-  const duracion = lista.reduce((suma, servicio) => suma + servicio.duracion_min, 0);
-  const precio = lista.reduce((suma, servicio) => suma + servicio.precio, 0);
+  const pedidos = ids.map((id) => porId.get(id));
+  const deAsesoria = serviciosDeAsesoria(pedidos);
+  const deBarberia = serviciosDeBarberia(pedidos);
 
-  if (lista.length >= 2 && duracion > MAX_DURACION_TOTAL_MIN) {
-    return {
-      error: falla({
-        error: `La duración total de los servicios (${duracion} min) supera el máximo de ${MAX_DURACION_TOTAL_MIN} min por reserva`,
-        codigo: 'DURACION_EXCEDIDA',
-        duracion_total_min: duracion,
-        maximo_min: MAX_DURACION_TOTAL_MIN,
-      }),
-    };
+  if (deAsesoria.length > MAX_ASESORIAS_POR_RESERVA) return { error: errorLimiteAsesorias() };
+  if (deAsesoria.some(esAsesoriaGratis)) return { error: errorAsesoriaNoDisponibleAun(deAsesoria.filter(esAsesoriaGratis)) };
+
+  const grupos = [deAsesoria, deBarberia];
+  for (const grupo of grupos) {
+    const duracion = sumar(grupo, 'duracion_min');
+    if (grupo.length >= 2 && duracion > MAX_DURACION_TOTAL_MIN) {
+      return {
+        error: falla({
+          error: `La duración total de los servicios (${duracion} min) supera el máximo de ${MAX_DURACION_TOTAL_MIN} min por reserva`,
+          codigo: 'DURACION_EXCEDIDA',
+          duracion_total_min: duracion,
+          maximo_min: MAX_DURACION_TOTAL_MIN,
+        }),
+      };
+    }
   }
-  return { lista, duracion, precio };
+
+  const lista = pedidos.map((servicio, indice) => ({ ...servicio, orden: indice + 1 }));
+  return {
+    lista,
+    duracion: sumar(lista, 'duracion_min'),
+    precio: sumar(lista, 'precio'),
+    asesoria: deAsesoria.length > 0 ? armarGrupo(deAsesoria) : null,
+    barberia: deBarberia.length > 0 ? armarGrupo(deBarberia) : null,
+  };
 };

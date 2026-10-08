@@ -1,16 +1,21 @@
+import { randomUUID } from 'node:crypto';
 import { pool } from '../db/connection.js';
-import { esFechaValida, esHoraValida, esFechaAnterior, intervaloDentroDeHorario, hoyISO } from '../utils/fechas.js';
+import {
+  esFechaValida,
+  esHoraValida,
+  esFechaAnterior,
+  intervaloDentroDeHorario,
+  hoyISO,
+  minutosDesdeMedianoche,
+} from '../utils/fechas.js';
 import { normalizarTelefono, esTelefonoValido } from '../utils/telefono.js';
 import { leerServiciosDelCuerpo, cargarServicios } from '../utils/serviciosCita.js';
 import { COLUMNAS_SERVICIOS, unirServiciosDeCita, serviciosDeCita } from '../db/citaServicios.js';
 import {
-  AREA_BARBERIA,
   CODIGO_PROFESIONAL_INCOMPATIBLE,
-  errorAsesoriaNoDisponibleAun,
   errorProfesionalIncompatible,
   esConflictoDeHorario,
   esErrorAreaProfesional,
-  serviciosDeAsesoria,
 } from '../utils/areas.js';
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,18 +36,25 @@ const errorFueraDeHorario = (cantidadServicios) => ({
   },
 });
 
-// Una reserva = UNA transacción: bloquea los servicios (FOR SHARE, ordenados por id), inserta la cita con la suma de
-// duración y precio y sus líneas con el snapshot. Si algo falla, ROLLBACK completo: no quedan citas ni líneas huérfanas.
+// Una reserva = UNA transacción: bloquea los servicios (FOR SHARE, ordenados por id) y, por cada grupo (asesoría primero,
+// corte después), inserta la cita con la suma de duración y precio de SUS líneas y esas líneas con el snapshot. En una
+// reserva combinada el corte empieza justo cuando termina la asesoría. Si algo falla, ROLLBACK completo: no quedan citas
+// ni líneas huérfanas (tampoco la primera cita si falla la segunda).
 //
 // Dos inserciones concurrentes que chocan contra la misma restricción EXCLUDE (índice GiST)
 // pueden terminar en deadlock en vez de un conflicto limpio (comportamiento documentado de
 // Postgres para EXCLUDE). Un deadlock aborta la transacción sin indicar si el hueco está
 // realmente ocupado, así que reintentamos el mismo candidato (con una transacción nueva) antes de darlo por conflicto.
-// Devuelve { cita, lista } o { error } (error de validación de los servicios, ya en forma { status, cuerpo }).
-const insertarCita = async ({ idsServicios, barberoId, cliente, correo, telefono, fecha, hora, consentimientoEn }) => {
+//
+// Si falla, el error lleva `etapa` (qué parte de la transacción estaba en curso: 'asesoria', 'barberia' o 'commit'), que
+// permite avanzar SOLO al siguiente candidato del profesional que falló, sin probar todas las combinaciones.
+// `segmentos`: [{ clave: 'asesoria' | 'barberia', profesionalId }] en el orden en que se atienden.
+// Devuelve { citas: [{ cita, lista }] } o { error } (error de validación de los servicios, ya en forma { status, cuerpo }).
+const insertarReserva = async ({ idsServicios, segmentos, reservaId, cliente, correo, telefono, fecha, hora, consentimientoEn }) => {
   for (let intento = 1; intento <= MAX_REINTENTOS_DEADLOCK; intento += 1) {
     const conexion = await pool.connect();
     let fallaRollback = false;
+    let etapa = 'servicios';
     try {
       await conexion.query('BEGIN');
 
@@ -52,36 +64,49 @@ const insertarCita = async ({ idsServicios, barberoId, cliente, correo, telefono
         await conexion.query('ROLLBACK');
         return { error: servicios.error };
       }
-      const { lista, duracion, precio } = servicios;
-      if (!intervaloDentroDeHorario(hora, duracion)) {
+      if (!intervaloDentroDeHorario(hora, servicios.duracion)) {
         await conexion.query('ROLLBACK');
-        return { error: errorFueraDeHorario(lista.length) };
+        return { error: errorFueraDeHorario(servicios.lista.length) };
+      }
+      const gruposActuales = ['asesoria', 'barberia'].filter((clave) => servicios[clave]);
+      if (gruposActuales.length !== segmentos.length || segmentos.some(({ clave }) => !servicios[clave])) {
+        await conexion.query('ROLLBACK');
+        return { error: { status: 409, cuerpo: { error: 'Los servicios cambiaron mientras reservabas, intenta de nuevo' } } };
       }
 
-      const { rows } = await conexion.query(
-        `INSERT INTO citas
-           (cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, consentimiento_en)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         RETURNING id, cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado`,
-        [cliente, correo, telefono, lista[0].id, barberoId, fecha, hora, duracion, precio, consentimientoEn]
-      );
-      const cita = rows[0];
+      const citas = [];
+      let inicioMin = minutosDesdeMedianoche(hora);
+      for (const { clave, profesionalId } of segmentos) {
+        const grupo = servicios[clave];
+        etapa = clave;
+        const { rows } = await conexion.query(
+          `INSERT INTO citas
+             (cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, consentimiento_en, reserva_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+           RETURNING id, cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado, reserva_id`,
+          [cliente, correo, telefono, grupo.lista[0].id, profesionalId, fecha, horaDesdeMinutos(inicioMin), grupo.duracion, grupo.precio, consentimientoEn, reservaId]
+        );
+        const cita = rows[0];
 
-      await conexion.query(
-        `INSERT INTO cita_servicios (cita_id, servicio_id, orden, nombre, duracion_min, precio)
-         SELECT $1, * FROM unnest($2::int[], $3::int[], $4::text[], $5::int[], $6::int[])`,
-        [
-          cita.id,
-          lista.map((servicio) => servicio.id),
-          lista.map((servicio) => servicio.orden),
-          lista.map((servicio) => servicio.nombre),
-          lista.map((servicio) => servicio.duracion_min),
-          lista.map((servicio) => servicio.precio),
-        ]
-      );
+        await conexion.query(
+          `INSERT INTO cita_servicios (cita_id, servicio_id, orden, nombre, duracion_min, precio)
+           SELECT $1, * FROM unnest($2::int[], $3::int[], $4::text[], $5::int[], $6::int[])`,
+          [
+            cita.id,
+            grupo.lista.map((servicio) => servicio.id),
+            grupo.lista.map((servicio) => servicio.orden),
+            grupo.lista.map((servicio) => servicio.nombre),
+            grupo.lista.map((servicio) => servicio.duracion_min),
+            grupo.lista.map((servicio) => servicio.precio),
+          ]
+        );
+        citas.push({ cita, lista: grupo.lista });
+        inicioMin += grupo.duracion; // la siguiente cita (el corte) empieza cuando termina esta
+      }
 
+      etapa = 'commit'; // aquí salta el trigger diferido de emparejamiento profesional/servicio
       await conexion.query('COMMIT');
-      return { cita, lista };
+      return { citas };
     } catch (err) {
       try {
         await conexion.query('ROLLBACK');
@@ -94,6 +119,7 @@ const insertarCita = async ({ idsServicios, barberoId, cliente, correo, telefono
       if (err.code === CODIGO_DEADLOCK) {
         err.code = '23P01'; // reintentos agotados: se trata como el conflicto real que probablemente es
       }
+      err.etapa = etapa;
       throw err;
     } finally {
       conexion.release(fallaRollback || undefined);
@@ -102,9 +128,10 @@ const insertarCita = async ({ idsServicios, barberoId, cliente, correo, telefono
   return undefined;
 };
 
-// Barberos activos cuyo intervalo completo está libre para esa fecha/hora/duración,
-// ordenados por menos citas ese día (solo pendientes y completadas) y desempate por id.
-const elegirCandidatosAutomaticos = async ({ fecha, hora, duracionMin }) => {
+// Profesionales activos DEL ÁREA indicada con el intervalo completo libre para esa fecha/hora/duración, ordenados por
+// menos citas ese día (solo pendientes y completadas) y desempate por id. El área separa los pools: "cualquier barbero"
+// nunca incluye a un asesor y "cualquier asesor" nunca a un barbero.
+const elegirCandidatosAutomaticos = async ({ fecha, hora, duracionMin, area }) => {
   const { rows } = await pool.query(
     `SELECT b.id,
             COUNT(c.id) AS citas_hoy
@@ -124,15 +151,43 @@ const elegirCandidatosAutomaticos = async ({ fecha, hora, duracionMin }) => {
        )
      GROUP BY b.id
      ORDER BY citas_hoy ASC, b.id ASC`,
-    [fecha, hora, duracionMin, AREA_BARBERIA] // la asignación automática solo considera a los barberos de barbería
+    [fecha, hora, duracionMin, area]
   );
   return rows.map((row) => row.id);
 };
 
+const horaDesdeMinutos = (minutos) =>
+  `${String(Math.floor(minutos / 60)).padStart(2, '0')}:${String(minutos % 60).padStart(2, '0')}`;
+
+// Id opcional del cuerpo (barbero_id / asesor_id): vacío = no vino. Devuelve { id } (null si no vino) o { error }.
+const leerIdProfesional = (valor, etiqueta) => {
+  if (valor === undefined || valor === null || valor === '') return { id: null };
+  const id = Number(valor);
+  if (!Number.isInteger(id)) return { error: { status: 400, cuerpo: { error: `El ${etiqueta} debe ser un id numérico` } } };
+  return { id };
+};
+
+const TEXTOS_AREA = {
+  barberia: {
+    campo: 'barbero_id',
+    sustantivo: 'barbero',
+    plural: 'barberos',
+    incompatible: 'Ese profesional no atiende cortes ni servicios de barbería',
+    sinServicios: 'Esta reserva no incluye servicios de barbería',
+  },
+  asesoria: {
+    campo: 'asesor_id',
+    sustantivo: 'asesor',
+    plural: 'asesores',
+    incompatible: 'Ese profesional no atiende asesorías',
+    sinServicios: 'Esta reserva no incluye una asesoría',
+  },
+};
+
 export const crearCita = async (req, res, next) => {
   try {
-    // Cualquier total, precio o duración que mande el cliente se ignora: solo se leen estos campos.
-    const { cliente, correo, telefono, barbero_id, fecha, hora, consentimiento } = req.body;
+    // Cualquier total, precio, duración o área que mande el cliente se ignora: solo se leen estos campos.
+    const { cliente, correo, telefono, barbero_id, asesor_id, fecha, hora, consentimiento } = req.body;
 
     if (!cliente || typeof cliente !== 'string' || cliente.trim().length === 0) {
       return res.status(400).json({ error: 'El nombre del cliente es obligatorio' });
@@ -154,14 +209,12 @@ export const crearCita = async (req, res, next) => {
     if (pedidos.error) return res.status(pedidos.error.status).json(pedidos.error.cuerpo);
     const idsServicios = pedidos.ids;
 
-    const hayBarberoEspecifico = barbero_id !== undefined && barbero_id !== null && barbero_id !== '';
-    let barberoIdEspecifico = null;
-    if (hayBarberoEspecifico) {
-      barberoIdEspecifico = Number(barbero_id);
-      if (!Number.isInteger(barberoIdEspecifico)) {
-        return res.status(400).json({ error: 'El barbero debe ser un id numérico' });
-      }
-    }
+    const lecturaBarbero = leerIdProfesional(barbero_id, 'barbero');
+    if (lecturaBarbero.error) return res.status(lecturaBarbero.error.status).json(lecturaBarbero.error.cuerpo);
+    const lecturaAsesor = leerIdProfesional(asesor_id, 'asesor');
+    if (lecturaAsesor.error) return res.status(lecturaAsesor.error.status).json(lecturaAsesor.error.cuerpo);
+    // Profesional elegido por el cliente en cada área (null = asignación automática dentro del pool de esa área).
+    const elegidos = { barberia: lecturaBarbero.id, asesoria: lecturaAsesor.id };
 
     if (!esFechaValida(fecha)) {
       return res.status(400).json({ error: 'La fecha debe tener el formato AAAA-MM-DD' });
@@ -173,51 +226,76 @@ export const crearCita = async (req, res, next) => {
       return res.status(400).json({ error: 'La hora no es válida' });
     }
 
-    // Validación previa (sin bloqueo) para responder rápido y buscar barbero con la duración total. La transacción de
-    // insertarCita vuelve a validar con bloqueo, así que esto no es la barrera final.
+    // Validación previa (sin bloqueo) para responder rápido y buscar profesional con las duraciones. La transacción de
+    // insertarReserva vuelve a validar con bloqueo, así que esto no es la barrera final. El área de cada servicio sale
+    // de la base: el cliente no declara si es asesoría o corte.
     const servicios = await cargarServicios(pool, idsServicios);
     if (servicios.error) return res.status(servicios.error.status).json(servicios.error.cuerpo);
-    // TEMPORAL: las asesorías existen en el catálogo pero todavía no se reservan (fase siguiente).
-    const deAsesoria = serviciosDeAsesoria(servicios.lista);
-    if (deAsesoria.length > 0) {
-      const { status, cuerpo } = errorAsesoriaNoDisponibleAun(deAsesoria);
-      return res.status(status).json(cuerpo);
-    }
-    const duracionMin = servicios.duracion;
 
-    if (!intervaloDentroDeHorario(hora, duracionMin)) {
+    // Una cita por grupo, la asesoría primero.
+    const segmentos = ['asesoria', 'barberia'].filter((clave) => servicios[clave]).map((clave) => ({ clave, grupo: servicios[clave] }));
+    const combinada = segmentos.length === 2;
+
+    if (!intervaloDentroDeHorario(hora, servicios.duracion)) {
       const { status, cuerpo } = errorFueraDeHorario(idsServicios.length);
       return res.status(status).json(cuerpo);
     }
 
-    let candidatos;
-    if (hayBarberoEspecifico) {
-      const { rows: barberos } = await pool.query(
-        'SELECT id, area FROM barberos WHERE id = $1 AND activo = true',
-        [barberoIdEspecifico]
-      );
-      if (barberos.length === 0) {
-        return res.status(400).json({ error: 'El barbero seleccionado no existe o no está activo' });
-      }
-      if (barberos[0].area !== AREA_BARBERIA) {
-        const { status, cuerpo } = errorProfesionalIncompatible('barbero_id', 'Ese profesional no atiende cortes ni servicios de barbería');
+    // Cada profesional elegido debe existir, estar activo y ser del área de SUS servicios.
+    const elegidosIds = Object.values(elegidos).filter((id) => id !== null);
+    const encontrados =
+      elegidosIds.length > 0
+        ? (await pool.query('SELECT id, area FROM barberos WHERE id = ANY($1::int[]) AND activo = true', [elegidosIds])).rows
+        : [];
+    for (const area of ['barberia', 'asesoria']) {
+      const id = elegidos[area];
+      if (id === null) continue;
+      const textos = TEXTOS_AREA[area];
+      if (!servicios[area]) {
+        const { status, cuerpo } = errorProfesionalIncompatible(textos.campo, textos.sinServicios);
         return res.status(status).json(cuerpo);
       }
-      candidatos = [barberoIdEspecifico];
-    } else {
-      candidatos = await elegirCandidatosAutomaticos({ fecha, hora, duracionMin });
-      if (candidatos.length === 0) {
-        return res.status(409).json({ error: 'No hay barberos disponibles en ese horario' });
+      const profesional = encontrados.find((fila) => fila.id === id);
+      if (!profesional) {
+        return res.status(400).json({ error: `El ${textos.sustantivo} seleccionado no existe o no está activo` });
+      }
+      if (profesional.area !== area) {
+        const { status, cuerpo } = errorProfesionalIncompatible(textos.campo, textos.incompatible);
+        return res.status(status).json(cuerpo);
       }
     }
 
-    const consentimientoEn = new Date();
+    // Candidatos por área: el elegido, o el pool libre de esa área (el corte de una combinada se busca desde que termina
+    // la asesoría).
+    const candidatos = {};
+    let desplazamientoMin = 0;
+    for (const { clave, grupo } of segmentos) {
+      if (elegidos[clave] !== null) {
+        candidatos[clave] = [elegidos[clave]];
+      } else {
+        candidatos[clave] = await elegirCandidatosAutomaticos({
+          fecha,
+          hora: horaDesdeMinutos(minutosDesdeMedianoche(hora) + desplazamientoMin),
+          duracionMin: grupo.duracion,
+          area: clave,
+        });
+        if (candidatos[clave].length === 0) {
+          return res.status(409).json({ error: `No hay ${TEXTOS_AREA[clave].plural} disponibles en ese horario` });
+        }
+      }
+      desplazamientoMin += grupo.duracion;
+    }
 
-    for (const candidatoId of candidatos) {
+    const consentimientoEn = new Date();
+    const reservaId = combinada ? randomUUID() : null; // solo las reservas combinadas comparten reserva_id
+    const indices = { barberia: 0, asesoria: 0 };
+
+    for (;;) {
       try {
-        const resultado = await insertarCita({
+        const resultado = await insertarReserva({
           idsServicios,
-          barberoId: candidatoId,
+          segmentos: segmentos.map(({ clave }) => ({ clave, profesionalId: candidatos[clave][indices[clave]] })),
+          reservaId,
           cliente: cliente.trim(),
           correo,
           telefono: telefonoNormalizado,
@@ -227,32 +305,45 @@ export const crearCita = async (req, res, next) => {
         });
         if (resultado.error) return res.status(resultado.error.status).json(resultado.error.cuerpo);
 
-        const { cita, lista } = resultado;
-        const { rows: barbero } = await pool.query('SELECT nombre FROM barberos WHERE id = $1', [candidatoId]);
-
-        return res.status(201).json({
+        const { rows: nombres } = await pool.query('SELECT id, nombre FROM barberos WHERE id = ANY($1::int[])', [
+          resultado.citas.map(({ cita }) => cita.barbero_id),
+        ]);
+        const armar = ({ cita, lista }) => ({
           ...cita,
           servicio_nombre: lista.map((servicio) => servicio.nombre).join(' + '),
           servicios: lista.map(({ id, nombre, duracion_min, precio }) => ({ id, nombre, duracion_min, precio })),
-          barbero_nombre: barbero[0].nombre,
+          barbero_nombre: nombres.find((fila) => fila.id === cita.barbero_id).nombre,
         });
+
+        if (combinada) {
+          return res.status(201).json({ reserva_id: reservaId, citas: resultado.citas.map(armar) });
+        }
+        const plana = armar(resultado.citas[0]);
+        delete plana.reserva_id; // una cita suelta conserva la forma de siempre (sin reserva_id)
+        return res.status(201).json(plana);
       } catch (err) {
         // Última barrera: el trigger de la base rechazó el emparejamiento profesional/servicio al COMMIT.
         if (esErrorAreaProfesional(err)) {
-          const { status, cuerpo } = errorProfesionalIncompatible('barbero_id');
+          const campo = combinada ? 'profesional' : TEXTOS_AREA[segmentos[0].clave].campo;
+          const { status, cuerpo } = errorProfesionalIncompatible(campo);
           return res.status(status).json(cuerpo);
         }
         if (esConflictoDeHorario(err)) {
-          if (hayBarberoEspecifico) {
-            return res.status(409).json({ error: 'Ese horario ya está reservado para este barbero, elige otro' });
+          // El profesional que chocó es el de la etapa que falló; el otro conserva su candidato.
+          const clave = segmentos.some((segmento) => segmento.clave === err.etapa) ? err.etapa : segmentos[segmentos.length - 1].clave;
+          const textos = TEXTOS_AREA[clave];
+          if (elegidos[clave] !== null) {
+            return res.status(409).json({ error: `Ese horario ya está reservado para este ${textos.sustantivo}, elige otro` });
           }
-          continue; // intenta con el siguiente barbero libre
+          indices[clave] += 1; // intenta con el siguiente libre de ESE pool
+          if (indices[clave] >= candidatos[clave].length) {
+            return res.status(409).json({ error: `No hay ${textos.plural} disponibles en ese horario, intenta con otra hora` });
+          }
+          continue;
         }
         throw err;
       }
     }
-
-    return res.status(409).json({ error: 'No hay barberos disponibles en ese horario, intenta con otra hora' });
   } catch (err) {
     next(err);
   }
@@ -379,7 +470,7 @@ export const actualizarCita = async (req, res, next) => {
         return res.status(400).json({ error: 'El barbero seleccionado no existe o no está activo' });
       }
       // El nuevo profesional debe ser del área de TODOS los servicios de la cita (cortes con barberos, asesorías con
-      // asesores). Es un conflicto con el contenido actual de la cita, por eso 409 con código estable.
+      // asesores). 400 con código estable (igual que al reservar con un profesional de otra área).
       if (nuevoBarberoId !== cita.barbero_id) {
         const { rows: incompatibles } = await pool.query(
           `SELECT 1 FROM cita_servicios cs JOIN servicios s ON s.id = cs.servicio_id
@@ -387,7 +478,7 @@ export const actualizarCita = async (req, res, next) => {
           [citaId, barberos[0].area]
         );
         if (incompatibles.length > 0) {
-          return res.status(409).json({
+          return res.status(400).json({
             error: 'Ese profesional no atiende el tipo de servicio de esta cita. Elige a alguien de la misma área.',
             codigo: CODIGO_PROFESIONAL_INCOMPATIBLE,
             campo: 'barbero_id',
@@ -409,7 +500,7 @@ export const actualizarCita = async (req, res, next) => {
     } catch (err) {
       // Última barrera (carrera con un cambio de área o de servicios): el trigger de la base rechazó la reasignación.
       if (esErrorAreaProfesional(err)) {
-        return res.status(409).json({
+        return res.status(400).json({
           error: 'Ese profesional no atiende el tipo de servicio de esta cita. Elige a alguien de la misma área.',
           codigo: CODIGO_PROFESIONAL_INCOMPATIBLE,
           campo: 'barbero_id',
