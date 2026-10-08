@@ -103,7 +103,7 @@ const PanelConPerfil = ({ barberoPublico, token, children }) => {
 //   3. contenido.
 // Tras recargar la página la vigencia no se conoce (undefined): se consulta /auth/sesion antes de mostrar nada.
 const PanelLayout = () => {
-  const { usuario, token, vigencia, actualizarVigencia } = useAuth()
+  const { usuario, token, vigencia, actualizarVigencia, actualizarArea } = useAuth()
   const { pedirCierreSesion, dialogoCierreSesion } = useConfirmarCierreSesion()
   const { barberosActivos } = useBarberosActivos()
   // Nombre, cargo y foto PÚBLICOS (los de la web): salen de la lista de barberos activos; sin ella, el nombre de usuario.
@@ -116,14 +116,18 @@ const PanelLayout = () => {
     if (vigencia !== undefined) return undefined
     let activo = true
     obtenerSesion(token)
-      .then((datos) => activo && actualizarVigencia(datos.vigencia))
+      .then((datos) => {
+        if (!activo) return
+        actualizarArea?.(datos.usuario?.area) // tras recargar el área no está en el JWT: viene de la sesión
+        actualizarVigencia(datos.vigencia)
+      })
       // Sin respuesta se muestra el panel: el back-end sigue bloqueando todo si la contraseña está caducada
       // y ese 403 lleva igualmente a la pantalla obligatoria.
       .catch(() => activo && actualizarVigencia(null))
     return () => {
       activo = false
     }
-  }, [token, vigencia, actualizarVigencia])
+  }, [token, vigencia, actualizarVigencia, actualizarArea])
 
   if (vigencia === undefined) return <CargandoPagina />
 

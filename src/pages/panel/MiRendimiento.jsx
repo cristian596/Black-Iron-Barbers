@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { obtenerMisEstadisticas, obtenerMisIngresos, obtenerMisServiciosTop } from '../../services/api'
-import { INDICADORES_BARBERO } from '../../data/indicadoresBarbero'
+import { indicadoresBarbero } from '../../data/indicadoresBarbero'
+import { vocabularioPanel } from '../../utils/areas'
 import SelectorPeriodo from '../../components/admin/SelectorPeriodo'
 import PanelIndicadores from '../../components/admin/PanelIndicadores'
 import PanelIngresos from '../../components/admin/PanelIngresos'
@@ -10,8 +11,11 @@ import PanelServiciosTop from '../../components/admin/PanelServiciosTop'
 // /panel/rendimiento: las estadísticas del admin, pero solo con las citas del barbero (el back-end lo decide por su
 // sesión). Reutiliza los mismos paneles y gráficos cambiando únicamente de dónde piden los datos.
 const MiRendimiento = () => {
-  const { token } = useAuth()
+  const { token, usuario } = useAuth()
   const [periodo, setPeriodo] = useState('hoy')
+  // Solo textos: quien atiende asesorías ve "Asesorías" donde un barbero ve "Cortes". Los datos son los mismos.
+  const vocabulario = vocabularioPanel(usuario?.area)
+  const indicadores = useMemo(() => indicadoresBarbero(usuario?.area), [usuario?.area])
 
   return (
     <div className="flex min-w-0 flex-col gap-6">
@@ -27,12 +31,17 @@ const MiRendimiento = () => {
         token={token}
         periodo={periodo}
         obtener={obtenerMisEstadisticas}
-        indicadores={INDICADORES_BARBERO}
-        mensajeVacio="No tienes cortes completados en este período."
+        indicadores={indicadores}
+        mensajeVacio={vocabulario.sinCompletadas}
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <PanelIngresos token={token} obtener={obtenerMisIngresos} className="lg:col-span-2" />
+        <PanelIngresos
+          token={token}
+          obtener={obtenerMisIngresos}
+          vocabulario={vocabulario}
+          className="lg:col-span-2"
+        />
         <PanelServiciosTop token={token} periodo={periodo} obtener={obtenerMisServiciosTop} />
       </div>
     </div>

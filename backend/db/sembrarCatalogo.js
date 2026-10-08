@@ -1,6 +1,7 @@
 import categoriasYServicios from './data/servicios.js';
 import descripciones from './data/descripciones.js';
 import { aplicarMigracionesCatalogo, NOMBRES_SERVICIOS_LEGADOS } from './migracionesCatalogo.js';
+import { AREA_BARBERIA, esAreaValida } from '../utils/areas.js';
 
 export const TIPOS_VALIDOS = ['original', 'elite', 'vip'];
 export { NOMBRES_SERVICIOS_LEGADOS };
@@ -56,6 +57,9 @@ export const validarCatalogo = (catalogo, listaDescripciones) => {
   const clavesCategoriaRepetidas = [...new Set(duplicados(catalogo.filter((c) => !claveInvalida(c.clave)).map((c) => c.clave)))];
   if (clavesCategoriaRepetidas.length > 0) problemas.push(`claves de categoría repetidas: ${clavesCategoriaRepetidas.join(', ')}`);
 
+  const areasInvalidas = catalogo.filter((c) => c.area !== undefined && !esAreaValida(c.area)).map((c) => c.slug);
+  if (areasInvalidas.length > 0) problemas.push(`area inválida en categorías: ${areasInvalidas.join(', ')}`);
+
   return problemas;
 };
 
@@ -93,11 +97,12 @@ export const sembrarCatalogo = async (
     await cliente.query('BEGIN');
 
     for (const [indice, categoria] of catalogo.entries()) {
+      const area = categoria.area ?? AREA_BARBERIA; // sus servicios la heredan
       const { rowCount } = await cliente.query(
-        `INSERT INTO categorias (nombre, slug, orden, clave_seed)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO categorias (nombre, slug, orden, clave_seed, area)
+         VALUES ($1, $2, $3, $4, $5)
          ON CONFLICT DO NOTHING`,
-        [categoria.categoria, categoria.slug, indice + 1, categoria.clave]
+        [categoria.categoria, categoria.slug, indice + 1, categoria.clave, area]
       );
       if (rowCount === 1) resultado.categorias.insertadas += 1;
       else resultado.categorias.existentes += 1;
@@ -112,10 +117,10 @@ export const sembrarCatalogo = async (
 
       for (const servicio of categoria.servicios) {
         const { rowCount: insertado } = await cliente.query(
-          `INSERT INTO servicios (nombre, duracion_min, precio, categoria_id, tipo, descripcion, activo, clave_seed)
-           VALUES ($1, $2, $3, $4, $5, $6, true, $7)
+          `INSERT INTO servicios (nombre, duracion_min, precio, categoria_id, tipo, descripcion, activo, clave_seed, area)
+           VALUES ($1, $2, $3, $4, $5, $6, true, $7, $8)
            ON CONFLICT DO NOTHING`,
-          [servicio.nombre, servicio.duracion, servicio.precio, categoriaId, servicio.tipo, descripcionPorId.get(servicio.id), servicio.clave]
+          [servicio.nombre, servicio.duracion, servicio.precio, categoriaId, servicio.tipo, descripcionPorId.get(servicio.id), servicio.clave, area]
         );
         if (insertado === 1) resultado.servicios.insertados += 1;
         else resultado.servicios.existentes += 1;
@@ -137,7 +142,7 @@ export const sembrarCatalogo = async (
 
 // --- Restablecer el catálogo a los datos de los archivos (SOLO desarrollo; ver seed.js) ---------------------------
 
-const CAMPOS_SERVICIO = ['nombre', 'descripcion', 'duracion_min', 'precio', 'tipo', 'activo'];
+const CAMPOS_SERVICIO = ['nombre', 'descripcion', 'duracion_min', 'precio', 'tipo', 'activo', 'area'];
 
 // Compara la base con el catálogo y devuelve qué se sobrescribiría, sin escribir nada.
 // Casa por clave_seed (o, en una base aún sin migrar, por nombre exacto).
@@ -149,12 +154,13 @@ export const calcularRestablecimiento = async (db, { catalogo = categoriasYServi
 
   for (const [indice, categoria] of catalogo.entries()) {
     const { rows: cats } = await db.query(
-      `SELECT id, nombre, orden, activo FROM categorias
+      `SELECT id, nombre, orden, activo, area FROM categorias
        WHERE clave_seed = $1 OR (clave_seed IS NULL AND slug = $2)
        ORDER BY (clave_seed = $1) DESC NULLS LAST LIMIT 1`,
       [categoria.clave, categoria.slug]
     );
-    const esperadaCat = { nombre: categoria.categoria, orden: indice + 1, activo: true };
+    const area = categoria.area ?? AREA_BARBERIA;
+    const esperadaCat = { nombre: categoria.categoria, orden: indice + 1, activo: true, area };
     const actualCat = cats[0];
     if (!actualCat) {
       faltantes.push(`categoría "${categoria.categoria}"`);
@@ -173,9 +179,10 @@ export const calcularRestablecimiento = async (db, { catalogo = categoriasYServi
         precio: servicio.precio,
         tipo: servicio.tipo,
         activo: true,
+        area,
       };
       const { rows } = await db.query(
-        `SELECT id, nombre, descripcion, duracion_min, precio, tipo, activo, categoria_id FROM servicios
+        `SELECT id, nombre, descripcion, duracion_min, precio, tipo, activo, area, categoria_id FROM servicios
          WHERE clave_seed = $1 OR (clave_seed IS NULL AND nombre = $2)
          ORDER BY (clave_seed = $1) DESC NULLS LAST LIMIT 1`,
         [servicio.clave, servicio.nombre]

@@ -26,7 +26,7 @@ const crearVerificador = ({ permitirCaducada }) => async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.usuario, u.rol, u.barbero_id, u.activo, u.contrasena_cambiada_en, u.nombre_perfil, u.foto_perfil,
-              b.activo AS barbero_activo, b.nombre AS barbero_nombre, b.foto AS barbero_foto
+              b.activo AS barbero_activo, b.nombre AS barbero_nombre, b.foto AS barbero_foto, b.area AS barbero_area
        FROM usuarios u
        LEFT JOIN barberos b ON b.id = u.barbero_id
        WHERE u.id = $1`,
@@ -57,6 +57,8 @@ const crearVerificador = ({ permitirCaducada }) => async (req, res, next) => {
       foto_perfil: actual.foto_perfil,
       barbero_nombre: actual.barbero_nombre,
       barbero_foto: actual.barbero_foto,
+      // 'barberia' | 'asesoria' (el del barbero ligado); null para el admin, que no tiene área.
+      area: actual.barbero_area ?? null,
     };
     next();
   } catch (err) {

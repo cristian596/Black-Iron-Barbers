@@ -1,8 +1,9 @@
 import { pool } from '../db/connection.js';
+import { leerParametroArea } from '../utils/areas.js';
 
 const TIPOS_VALIDOS = ['original', 'elite', 'vip'];
 const COLUMNAS_ORDEN = { precio: 's.precio', duracion: 's.duracion_min', nombre: 's.nombre' };
-const PARAMETROS_ADMITIDOS = ['categoria', 'tipo', 'q', 'ordenar', 'direccion', 'agrupar'];
+const PARAMETROS_ADMITIDOS = ['categoria', 'tipo', 'q', 'ordenar', 'direccion', 'agrupar', 'area'];
 const MAX_LONGITUD_Q = 100;
 const ID_MAXIMO_INT = 2147483647;
 
@@ -44,6 +45,11 @@ const leerParametros = (query) => {
 
   const { categoria, tipo, q, ordenar, direccion, agrupar } = query;
 
+  // Sin ?area= se devuelve todo (compatible con quien ya consumía la API); el front del flujo de cortes pasa area=barberia.
+  const lecturaArea = leerParametroArea(query);
+  if (lecturaArea.error) return { error: lecturaArea.error };
+  const { area } = lecturaArea;
+
   if (tipo !== undefined && !TIPOS_VALIDOS.includes(tipo)) {
     return { error: `El parámetro 'tipo' debe ser uno de: ${TIPOS_VALIDOS.join(', ')}` };
   }
@@ -66,7 +72,7 @@ const leerParametros = (query) => {
     return { error: `El parámetro 'q' no puede superar ${MAX_LONGITUD_Q} caracteres` };
   }
 
-  return { valores: { categoria, tipo, q: q?.trim() || undefined, ordenar, direccion, agrupar } };
+  return { valores: { categoria, tipo, q: q?.trim() || undefined, ordenar, direccion, agrupar, area } };
 };
 
 export const listarServicios = async (req, res, next) => {
@@ -75,7 +81,7 @@ export const listarServicios = async (req, res, next) => {
     if (error) {
       return res.status(400).json({ error });
     }
-    const { categoria, tipo, q, ordenar, direccion, agrupar } = valores;
+    const { categoria, tipo, q, ordenar, direccion, agrupar, area } = valores;
 
     if (categoria) {
       const { rows } = await pool.query('SELECT 1 FROM categorias WHERE slug = $1', [categoria]);
@@ -94,6 +100,10 @@ export const listarServicios = async (req, res, next) => {
     if (tipo) {
       parametros.push(tipo);
       condiciones.push(`s.tipo = $${parametros.length}`);
+    }
+    if (area) {
+      parametros.push(area);
+      condiciones.push(`s.area = $${parametros.length}`);
     }
     if (q) {
       parametros.push(`%${escaparLike(q)}%`);

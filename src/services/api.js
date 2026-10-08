@@ -94,8 +94,9 @@ export const construirQuery = (filtros = {}) => {
   return texto ? `?${texto}` : '';
 };
 
-// Sin argumentos devuelve todos los servicios activos; los filtros (categoria, tipo, q, ordenar,
-// direccion) los resuelve el back-end.
+// Sin argumentos devuelve todos los servicios activos (también las asesorías); los filtros (area, categoria, tipo, q,
+// ordenar, direccion) los resuelve el back-end. El flujo de cortes (carta, carrito y reserva) SIEMPRE pasa
+// { area: 'barberia' }: hay una guarda de pruebas que lo exige.
 export const obtenerServicios = (filtros) => request(`/servicios${construirQuery(filtros)}`);
 
 // `servicioIds`: lista de 1 a 3 ids (se atienden seguidos como un solo bloque); se admite un id suelto.

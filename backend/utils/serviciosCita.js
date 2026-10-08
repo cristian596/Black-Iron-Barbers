@@ -88,7 +88,7 @@ export const leerServiciosCsv = (texto) => {
 // Devuelve { lista, duracion, precio } o { error }.
 export const cargarServicios = async (db, ids, { bloquear = false } = {}) => {
   const { rows } = await db.query(
-    `SELECT id, nombre, duracion_min, precio
+    `SELECT id, nombre, duracion_min, precio, area
      FROM servicios
      WHERE id = ANY($1::int[]) AND activo = true
      ORDER BY id

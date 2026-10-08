@@ -10,6 +10,7 @@ import Revelar from '../ui/Revelar'
 import CarritoServicios from '../carrito/CarritoServicios'
 import { AvisoSeleccion } from '../carrito/ContenidoCarrito'
 import { retrasoEscalonado } from '../../utils/escalonado'
+import { AREA_BARBERIA } from '../../utils/areas'
 
 // Columnas de la rejilla de tarjetas en pantallas grandes (xl:grid-cols-3, con el carrito a la derecha)
 const COLUMNAS_MAX = 3
@@ -28,7 +29,7 @@ const CatalogoServicios = () => {
 
     const cargarServicios = async () => {
       try {
-        const data = await obtenerServicios()
+        const data = await obtenerServicios({ area: AREA_BARBERIA }) // la carta solo ofrece servicios de barbería
         if (!cancelado) {
           setServicios(data)
           // Quita de la selección guardada lo que ya no está activo (con aviso).

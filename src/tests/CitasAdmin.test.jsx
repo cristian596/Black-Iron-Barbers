@@ -385,6 +385,23 @@ describe('/admin/citas: acciones sobre una cita', () => {
     expect(api.actualizarCita).not.toHaveBeenCalled()
   })
 
+  it('el selector de reasignar solo ofrece barberos de barbería; el filtro de arriba lista a todos (incluida la asesora, por su historial)', async () => {
+    vi.mocked(api.obtenerBarberos).mockResolvedValue([
+      { id: 1, nombre: 'Leo', area: 'barberia' },
+      { id: 2, nombre: 'Dani', area: 'barberia' },
+      { id: 9, nombre: 'Camila', area: 'asesoria' },
+    ])
+    montar('/admin/citas?pestana=proximas')
+    await screen.findByText('Mostrando 1–15 de 435')
+
+    const opciones = (select) => within(select).getAllByRole('option').map((o) => o.textContent)
+    expect(opciones(screen.getByLabelText('Barbero'))).toEqual(['Todos los barberos', 'Leo', 'Dani', 'Camila'])
+    const reasignar = screen.getAllByLabelText(/Reasignar barbero de la cita de Cliente 1$/)[0]
+    expect(opciones(reasignar)).toContain('Leo')
+    expect(opciones(reasignar)).toContain('Dani')
+    expect(opciones(reasignar)).not.toContain('Camila')
+  })
+
   it('las pendientes vencidas se siguen marcando como "Vencida" (informativo: las cierra el barbero)', async () => {
     vi.mocked(api.obtenerCitasAdmin).mockResolvedValue({
       items: [cita(1, { vencida: true, fecha: '2026-09-01' }), cita(2)],

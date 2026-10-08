@@ -5,6 +5,8 @@
 // por ella (columna clave_seed), así un servicio que el admin renombre no se vuelve a crear. Nunca la cambies una vez
 // publicada; para un servicio nuevo usa una clave nueva.
 // `duracion` está en minutos y se guarda como duracion_min.
+// `area` (opcional, por defecto 'barberia') va en la categoría y la heredan sus servicios: 'asesoria' separa las
+// asesorías de imagen de los cortes (no confundir con `tipo`, que es original/elite/vip).
 
 export default [
   // 1. CORTES
@@ -99,6 +101,22 @@ export default [
       { id: 37, clave: "ondulado-medio-corte", nombre: "Ondulado medio + corte", tipo: "vip", precio: 90000, duracion: 130 },
       { id: 38, clave: "ondulado-cabello-largo", nombre: "Ondulado cabello largo", tipo: "vip", precio: 110000, duracion: 150 },
       { id: 39, clave: "ondulado-largo-corte-premium", nombre: "Ondulado largo + corte premium", tipo: "vip", precio: 130000, duracion: 180 },
+    ],
+  },
+
+  // 7. ASESORÍAS (area "asesoria": las atiende la asesora de imagen, nunca un barbero). Datos ficticios de portafolio.
+  // Los ids 40-42 son solo para casar con descripciones.js (no son ids de la base). Precio y duración: la API es la
+  // fuente de verdad; src/data/asesorias.js (front) los repite solo para el texto de /asesorias hasta la fase de reservas.
+  // `tipo` es el nivel de la oferta (original/elite/vip), no el área: gratis = original, barba = elite, premium = vip.
+  {
+    categoria: "Asesorías",
+    slug: "asesorias",
+    clave: "asesorias",
+    area: "asesoria",
+    servicios: [
+      { id: 40, clave: "asesoria-gratis", nombre: "Asesoría de imagen gratis", tipo: "original", precio: 0, duracion: 15 },
+      { id: 41, clave: "asesoria-premium", nombre: "Asesoría Premium", tipo: "vip", precio: 60000, duracion: 60 },
+      { id: 42, clave: "asesoria-barba", nombre: "Asesoría de barba", tipo: "elite", precio: 45000, duracion: 45 },
     ],
   },
 ];

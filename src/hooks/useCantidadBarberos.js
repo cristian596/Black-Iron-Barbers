@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
 import { obtenerBarberos } from '../services/api'
+import { soloBarberia } from '../utils/areas'
 
 // Caché en memoria: el hero y las estadísticas comparten una sola petición.
 let peticion = null
 
 const cargarCantidad = () => {
   if (!peticion) {
+    // Solo cuentan los barberos de barbería: la asesora de imagen está en el equipo pero no es un barbero.
     peticion = obtenerBarberos().then((barberos) =>
-      Array.isArray(barberos) ? barberos.length : 0
+      Array.isArray(barberos) ? soloBarberia(barberos).length : 0
     )
     // Un fallo no se guarda: la siguiente consulta vuelve a intentarlo
     peticion.catch(() => {

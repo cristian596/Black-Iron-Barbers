@@ -3,10 +3,21 @@ import { esFechaValida, esHoraValida, esFechaAnterior, intervaloDentroDeHorario,
 import { normalizarTelefono, esTelefonoValido } from '../utils/telefono.js';
 import { leerServiciosDelCuerpo, cargarServicios } from '../utils/serviciosCita.js';
 import { COLUMNAS_SERVICIOS, unirServiciosDeCita, serviciosDeCita } from '../db/citaServicios.js';
+import {
+  AREA_BARBERIA,
+  CODIGO_PROFESIONAL_INCOMPATIBLE,
+  errorAsesoriaNoDisponibleAun,
+  errorProfesionalIncompatible,
+  esConflictoDeHorario,
+  esErrorAreaProfesional,
+  serviciosDeAsesoria,
+} from '../utils/areas.js';
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESTADOS_VALIDOS = ['pendiente', 'completada', 'cancelada'];
-const CODIGOS_CONFLICTO = ['23505', '23P01']; // doble reserva exacta / solapamiento por duración
+// Conflicto de horario = 23P01 (solapamiento) o 23505 (doble reserva exacta) de las restricciones de citas. Se decide con
+// esConflictoDeHorario (utils/areas.js), que distingue por err.constraint: las restricciones de asesoria_gratis_usos y el
+// error BI001 del emparejamiento de áreas NO son "horario ocupado".
 const CODIGO_DEADLOCK = '40P01';
 const MAX_REINTENTOS_DEADLOCK = 3;
 
@@ -100,6 +111,7 @@ const elegirCandidatosAutomaticos = async ({ fecha, hora, duracionMin }) => {
      FROM barberos b
      LEFT JOIN citas c ON c.barbero_id = b.id AND c.fecha = $1 AND c.estado <> 'cancelada'
      WHERE b.activo = true
+       AND b.area = $4
        AND NOT EXISTS (
          SELECT 1 FROM citas c2
          WHERE c2.barbero_id = b.id
@@ -112,7 +124,7 @@ const elegirCandidatosAutomaticos = async ({ fecha, hora, duracionMin }) => {
        )
      GROUP BY b.id
      ORDER BY citas_hoy ASC, b.id ASC`,
-    [fecha, hora, duracionMin]
+    [fecha, hora, duracionMin, AREA_BARBERIA] // la asignación automática solo considera a los barberos de barbería
   );
   return rows.map((row) => row.id);
 };
@@ -165,6 +177,12 @@ export const crearCita = async (req, res, next) => {
     // insertarCita vuelve a validar con bloqueo, así que esto no es la barrera final.
     const servicios = await cargarServicios(pool, idsServicios);
     if (servicios.error) return res.status(servicios.error.status).json(servicios.error.cuerpo);
+    // TEMPORAL: las asesorías existen en el catálogo pero todavía no se reservan (fase siguiente).
+    const deAsesoria = serviciosDeAsesoria(servicios.lista);
+    if (deAsesoria.length > 0) {
+      const { status, cuerpo } = errorAsesoriaNoDisponibleAun(deAsesoria);
+      return res.status(status).json(cuerpo);
+    }
     const duracionMin = servicios.duracion;
 
     if (!intervaloDentroDeHorario(hora, duracionMin)) {
@@ -175,11 +193,15 @@ export const crearCita = async (req, res, next) => {
     let candidatos;
     if (hayBarberoEspecifico) {
       const { rows: barberos } = await pool.query(
-        'SELECT id FROM barberos WHERE id = $1 AND activo = true',
+        'SELECT id, area FROM barberos WHERE id = $1 AND activo = true',
         [barberoIdEspecifico]
       );
       if (barberos.length === 0) {
         return res.status(400).json({ error: 'El barbero seleccionado no existe o no está activo' });
+      }
+      if (barberos[0].area !== AREA_BARBERIA) {
+        const { status, cuerpo } = errorProfesionalIncompatible('barbero_id', 'Ese profesional no atiende cortes ni servicios de barbería');
+        return res.status(status).json(cuerpo);
       }
       candidatos = [barberoIdEspecifico];
     } else {
@@ -215,7 +237,12 @@ export const crearCita = async (req, res, next) => {
           barbero_nombre: barbero[0].nombre,
         });
       } catch (err) {
-        if (CODIGOS_CONFLICTO.includes(err.code)) {
+        // Última barrera: el trigger de la base rechazó el emparejamiento profesional/servicio al COMMIT.
+        if (esErrorAreaProfesional(err)) {
+          const { status, cuerpo } = errorProfesionalIncompatible('barbero_id');
+          return res.status(status).json(cuerpo);
+        }
+        if (esConflictoDeHorario(err)) {
           if (hayBarberoEspecifico) {
             return res.status(409).json({ error: 'Ese horario ya está reservado para este barbero, elige otro' });
           }
@@ -345,11 +372,27 @@ export const actualizarCita = async (req, res, next) => {
         return res.status(400).json({ error: 'El barbero_id debe ser un id numérico' });
       }
       const { rows: barberos } = await pool.query(
-        'SELECT id FROM barberos WHERE id = $1 AND activo = true',
+        'SELECT id, area FROM barberos WHERE id = $1 AND activo = true',
         [nuevoBarberoId]
       );
       if (barberos.length === 0) {
         return res.status(400).json({ error: 'El barbero seleccionado no existe o no está activo' });
+      }
+      // El nuevo profesional debe ser del área de TODOS los servicios de la cita (cortes con barberos, asesorías con
+      // asesores). Es un conflicto con el contenido actual de la cita, por eso 409 con código estable.
+      if (nuevoBarberoId !== cita.barbero_id) {
+        const { rows: incompatibles } = await pool.query(
+          `SELECT 1 FROM cita_servicios cs JOIN servicios s ON s.id = cs.servicio_id
+           WHERE cs.cita_id = $1 AND s.area <> $2 LIMIT 1`,
+          [citaId, barberos[0].area]
+        );
+        if (incompatibles.length > 0) {
+          return res.status(409).json({
+            error: 'Ese profesional no atiende el tipo de servicio de esta cita. Elige a alguien de la misma área.',
+            codigo: CODIGO_PROFESIONAL_INCOMPATIBLE,
+            campo: 'barbero_id',
+          });
+        }
       }
     }
 
@@ -364,7 +407,15 @@ export const actualizarCita = async (req, res, next) => {
 
       res.json({ ...rows[0], ...(await serviciosDeCita(pool, citaId)) });
     } catch (err) {
-      if (CODIGOS_CONFLICTO.includes(err.code) || err.code === CODIGO_DEADLOCK) {
+      // Última barrera (carrera con un cambio de área o de servicios): el trigger de la base rechazó la reasignación.
+      if (esErrorAreaProfesional(err)) {
+        return res.status(409).json({
+          error: 'Ese profesional no atiende el tipo de servicio de esta cita. Elige a alguien de la misma área.',
+          codigo: CODIGO_PROFESIONAL_INCOMPATIBLE,
+          campo: 'barbero_id',
+        });
+      }
+      if (esConflictoDeHorario(err) || err.code === CODIGO_DEADLOCK) {
         return res.status(409).json({ error: 'Ese barbero ya tiene una cita que se cruza con ese horario' });
       }
       throw err;

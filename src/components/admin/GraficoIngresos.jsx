@@ -37,7 +37,10 @@ const sumar = (lista) => lista.reduce((total, p) => total + p.ingresos, 0)
 // Barras de ingresos (oro) con el período anterior como línea discontinua (zinc). Se dibuja a 1 unidad = 1 px
 // del ancho real. El SVG es solo la imagen (role="img" + aria-label + tabla de datos oculta); la interacción
 // (hover, foco con flechas, toque) la hacen botones colocados encima, así no hay controles dentro de un role="img".
-const GraficoIngresos = ({ agrupar, puntos, anteriores }) => {
+const VOCABULARIO_CORTES = { unidad: 'corte', unidades: 'cortes', etiquetaTotal: 'Cortes' }
+
+// `vocabulario` (opcional, solo textos): { unidad, unidades, etiquetaTotal }; sin él, "corte(s)" como siempre.
+const GraficoIngresos = ({ agrupar, puntos, anteriores, vocabulario = VOCABULARIO_CORTES }) => {
   const contenedorRef = useRef(null)
   const botonesRef = useRef([])
   const ancho = useAnchoElemento(contenedorRef)
@@ -161,7 +164,7 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores }) => {
                 {formatearDinero(tooltip.punto.ingresos)}
               </text>
               <text x={10} y={55} className="fill-zinc-300 text-xs">
-                {tooltip.punto.cortes} {tooltip.punto.cortes === 1 ? 'corte' : 'cortes'}
+                {tooltip.punto.cortes} {tooltip.punto.cortes === 1 ? vocabulario.unidad : vocabulario.unidades}
               </text>
               <text x={10} y={70} className="fill-zinc-400 text-xs">
                 Antes: {formatearDinero(tooltip.previo.ingresos)}
@@ -183,7 +186,7 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores }) => {
               }}
               type="button"
               tabIndex={i === (activo ?? n - 1) ? 0 : -1}
-              aria-label={`${etiquetaCompleta(agrupar, p)}: ${formatearDinero(p.ingresos)}, ${p.cortes} ${p.cortes === 1 ? 'corte' : 'cortes'}`}
+              aria-label={`${etiquetaCompleta(agrupar, p)}: ${formatearDinero(p.ingresos)}, ${p.cortes} ${p.cortes === 1 ? vocabulario.unidad : vocabulario.unidades}`}
               onMouseEnter={() => setActivo(i)}
               onFocus={() => setActivo(i)}
               onBlur={() => setActivo(null)}
@@ -213,7 +216,7 @@ const GraficoIngresos = ({ agrupar, puntos, anteriores }) => {
             <tr>
               <th scope="col">{agrupar === 'dia' ? 'Día' : 'Mes'}</th>
               <th scope="col">Ingresos</th>
-              <th scope="col">Cortes</th>
+              <th scope="col">{vocabulario.etiquetaTotal}</th>
               <th scope="col">Ingresos del período anterior</th>
             </tr>
           </thead>

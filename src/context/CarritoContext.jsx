@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { obtenerServicios } from '../services/api'
+import { AREA_BARBERIA } from '../utils/areas'
 import { MAX_SERVICIOS, evaluarAgregado, guardarSeleccion, leerSeleccionGuardada } from '../utils/carrito'
 
 const CarritoContext = createContext(null)
@@ -101,7 +102,7 @@ export const ProveedorCarrito = ({ children }) => {
   // Al abrir el carrito: se vuelve a pedir el catálogo. Si falla, se conserva lo que hay.
   const revalidar = useCallback(async () => {
     try {
-      sincronizar(await obtenerServicios())
+      sincronizar(await obtenerServicios({ area: AREA_BARBERIA })) // el carrito solo guarda servicios de barbería
     } catch {
       // sin conexión: la validación definitiva la hace el servidor al reservar
     }

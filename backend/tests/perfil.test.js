@@ -641,6 +641,7 @@ describe('La web pública no cambia', () => {
   it('la sesión y el login siguen devolviendo el mismo usuario (no el nombre de perfil)', async () => {
     await cambiarNombre(tokenB1, { nombre_perfil: 'Nombre De Perfil' });
     const sesion = await request(app).get('/api/auth/sesion').set(auth(tokenB1));
-    expect(sesion.body.usuario).toEqual({ id: expect.any(Number), usuario: 'barbero1_test', rol: 'barbero', barbero_id: 1 });
+    // `area` se añadió a la sesión en la fase 2 de asesorías (es el área del barbero ligado); lo demás no cambia.
+    expect(sesion.body.usuario).toEqual({ id: expect.any(Number), usuario: 'barbero1_test', rol: 'barbero', barbero_id: 1, area: 'barberia' });
   });
 });

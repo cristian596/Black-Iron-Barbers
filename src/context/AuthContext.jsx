@@ -63,6 +63,12 @@ export const AuthProvider = ({ children }) => {
     setSesion((actual) => ({ ...actual, vigencia }))
   }, [])
 
+  // El área ('barberia' | 'asesoria') no viaja en el JWT: llega con el login y, tras recargar la página, con /auth/sesion.
+  // Solo cambia textos del panel (el back-end decide los permisos).
+  const actualizarArea = useCallback((area) => {
+    setSesion((actual) => (actual.usuario && area ? { ...actual, usuario: { ...actual.usuario, area } } : actual))
+  }, [])
+
   const login = useCallback((data) => {
     localStorage.setItem('token', data.token)
     olvidarBienvenida() // cada inicio de sesión muestra la ventana de bienvenida una vez
@@ -73,6 +79,7 @@ export const AuthProvider = ({ children }) => {
         usuario: data.usuario.usuario,
         rol: data.usuario.rol,
         barbero_id: data.usuario.barbero_id,
+        area: data.usuario.area ?? null,
       },
       vigencia: data.vigencia ?? null,
       sesionExpirada: false,
@@ -97,7 +104,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, sesionExpirada: sesion.sesionExpirada, actualizarVigencia, cargando, login, logout }}
+      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, sesionExpirada: sesion.sesionExpirada, actualizarVigencia, actualizarArea, cargando, login, logout }}
     >
       {children}
     </AuthContext.Provider>

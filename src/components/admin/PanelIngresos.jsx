@@ -12,7 +12,8 @@ const AGRUPACIONES = [
 
 const hayDatos = (datos) => [...datos.puntos, ...datos.anteriores].some((p) => p.ingresos > 0)
 
-const PanelIngresos = ({ token, obtener = obtenerIngresos, className = '' }) => {
+// `vocabulario` (opcional, solo textos): { unidad, unidades, etiquetaTotal } de vocabularioPanel; sin él, "corte(s)" como siempre.
+const PanelIngresos = ({ token, obtener = obtenerIngresos, vocabulario, className = '' }) => {
   const [agrupar, setAgrupar] = useState('dia')
   const { datos, cargando, error, recargar } = useCarga(() => obtener(token, agrupar), agrupar)
   const { descripcion } = AGRUPACIONES.find((a) => a.id === agrupar)
@@ -56,7 +57,7 @@ const PanelIngresos = ({ token, obtener = obtenerIngresos, className = '' }) => 
       ) : !hayDatos(datos) ? (
         <SinResultados variante="oscuro" mensaje="Todavía no hay ingresos en este rango." />
       ) : (
-        <GraficoIngresos key={agrupar} agrupar={agrupar} puntos={datos.puntos} anteriores={datos.anteriores} />
+        <GraficoIngresos key={agrupar} agrupar={agrupar} puntos={datos.puntos} anteriores={datos.anteriores} vocabulario={vocabulario} />
       )}
     </section>
   )

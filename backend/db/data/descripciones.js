@@ -50,4 +50,9 @@ export default [
   { id: 37, descripcion: "Ondulación para cabello medio acompañada de un corte personalizado para dar forma al peinado." },
   { id: 38, descripcion: "Ondulación para cabello largo que aporta volumen, textura y movimiento." },
   { id: 39, descripcion: "Ondulación para cabello largo combinada con un corte premium para conseguir un estilo completo." },
+
+  // ASESORÍAS
+  { id: 40, descripcion: "Un primer encuentro sin costo ni compromiso: conversamos sobre tu estilo y te recomendamos el corte ideal para tu rostro y tu rutina." },
+  { id: 41, descripcion: "Estudio completo de tu rostro, cabello y estructura. Sales con un plan de estilo y de cuidado hecho a tu medida." },
+  { id: 42, descripcion: "Diseñamos el perfil de barba que mejor encaja con tu rostro y te enseñamos a mantenerla en casa." },
 ];

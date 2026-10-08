@@ -1,9 +1,14 @@
 import TarjetaIndicador from '../admin/TarjetaIndicador'
+import { useAuth } from '../../context/AuthContext'
 import { formatearDinero, fechaLegible, soloHora } from '../../utils/formato'
+import { vocabularioPanel } from '../../utils/areas'
 
 // Las cuatro tarjetas del Resumen del barbero (todo es suyo: el back-end ya filtra por su barbero_id).
 const TarjetasResumen = ({ resumen }) => {
   const { proxima_cita: proxima } = resumen
+  const sesion = useAuth()
+  // Solo textos: quien atiende asesorías ve "Asesorías del mes" en vez de "Cortes del mes".
+  const { delMes } = vocabularioPanel(sesion?.usuario?.area)
   return (
     <section aria-labelledby="titulo-cifras-barbero" className="min-w-0">
       <h2 id="titulo-cifras-barbero" className="sr-only">Cifras de hoy y del mes</h2>
@@ -15,7 +20,7 @@ const TarjetasResumen = ({ resumen }) => {
         />
         <TarjetaIndicador etiqueta="Ingresos hoy" valor={formatearDinero(resumen.ingresos_hoy)} nota="De tus citas completadas" />
         <TarjetaIndicador
-          etiqueta="Cortes del mes"
+          etiqueta={delMes}
           valor={resumen.cortes_mes}
           nota={`${formatearDinero(resumen.ingresos_mes)} en ingresos`}
         />

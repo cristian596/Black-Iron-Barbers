@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import AvatarBarbero from '../../ui/AvatarBarbero'
-import { enlaceReserva } from '../../../utils/equipo'
+import { enlaceReserva, textoReserva } from '../../../utils/equipo'
 
 // Tarjeta editorial de la galería del equipo (propia de esta sección: TarjetaBarbero queda como estaba).
 // Foto 4:5 a sangre completa con degradado inferior. En móvil, táctil y pantallas < 1024 px el botón va siempre
@@ -45,7 +45,7 @@ const TarjetaEquipo = ({ barbero, entrada = false }) => (
       to={enlaceReserva(barbero)}
       className="flex min-h-11 w-full grow items-center justify-center bg-oro px-3 py-2 text-center font-poppins text-sm font-semibold wrap-anywhere text-black hover:bg-white focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-white motion-safe:transition-colors motion-safe:duration-200 lg:pointer-fine:absolute lg:pointer-fine:inset-x-3 lg:pointer-fine:bottom-3 lg:pointer-fine:w-auto lg:pointer-fine:rounded-full lg:pointer-fine:opacity-0 lg:pointer-fine:group-hover:opacity-100 lg:pointer-fine:focus-visible:opacity-100 lg:pointer-fine:group-focus-within:opacity-100 motion-safe:lg:pointer-fine:transition-opacity"
     >
-      Reservar con {barbero.nombre}
+      {textoReserva(barbero)}
     </Link>
   </article>
 )

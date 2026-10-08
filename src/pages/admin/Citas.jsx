@@ -5,6 +5,7 @@ import { useCarga } from '../../hooks/useCarga'
 import { useBarberosActivos } from '../../hooks/useBarberosActivos'
 import { useFiltrosCitasUrl, useCorregirPagina } from '../../hooks/useFiltrosCitasUrl'
 import { PESTANAS_CITAS } from '../../data/periodos'
+import { soloBarberia } from '../../utils/areas'
 import TablaCitas from '../../components/dashboard/TablaCitas'
 import PestanasCitas from '../../components/admin/PestanasCitas'
 import FiltrosCitasAdmin from '../../components/admin/FiltrosCitasAdmin'
@@ -117,8 +118,8 @@ const Citas = () => {
               <TablaCitas
                 citas={datos.items}
                 mostrarBarbero
-                onReasignar={accionCitaId ? undefined : handleReasignar}
-                barberosActivos={barberosActivos}
+                onReasignar={accionCitaId ? undefined : handleReasignar} // solo se reasigna entre barberos de barbería (el filtro de arriba sí lista a todos)
+                barberosActivos={soloBarberia(barberosActivos)}
               />
             </div>
             <Paginacion pagina={datos.pagina} total={datos.total} limite={LIMITE} alCambiar={irAPagina} />

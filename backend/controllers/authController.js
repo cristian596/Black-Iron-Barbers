@@ -15,7 +15,10 @@ export const login = async (req, res, next) => {
     }
 
     const { rows } = await pool.query(
-      'SELECT id, usuario, contrasena, rol, barbero_id, activo, contrasena_cambiada_en FROM usuarios WHERE usuario = $1',
+      `SELECT u.id, u.usuario, u.contrasena, u.rol, u.barbero_id, u.activo, u.contrasena_cambiada_en, b.area AS area
+       FROM usuarios u
+       LEFT JOIN barberos b ON b.id = u.barbero_id
+       WHERE u.usuario = $1`,
       [usuario]
     );
     const usuarioEncontrado = rows[0];
@@ -48,6 +51,7 @@ export const login = async (req, res, next) => {
         usuario: usuarioEncontrado.usuario,
         rol: usuarioEncontrado.rol,
         barbero_id: usuarioEncontrado.barbero_id,
+        area: usuarioEncontrado.area ?? null, // del barbero ligado; null para el admin
       },
       // Estado de la contraseña (solo barberos; el admin no caduca). Con "caducada" el token solo sirve para cambiarla.
       vigencia: usuarioEncontrado.rol === 'barbero' ? estadoContrasena(usuarioEncontrado.contrasena_cambiada_en) : null,
@@ -59,8 +63,8 @@ export const login = async (req, res, next) => {
 
 // GET /api/auth/sesion → quién es el usuario de la sesión y el estado de su contraseña (null para el admin).
 export const obtenerSesion = (req, res) => {
-  const { id, usuario, rol, barbero_id, vigencia } = req.usuario;
-  res.json({ usuario: { id, usuario, rol, barbero_id }, vigencia });
+  const { id, usuario, rol, barbero_id, area, vigencia } = req.usuario;
+  res.json({ usuario: { id, usuario, rol, barbero_id, area }, vigencia });
 };
 
 const fallo = (res, estado, codigo, error, extra = {}) => res.status(estado).json({ error, codigo, ...extra });

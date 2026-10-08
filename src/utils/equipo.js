@@ -1,4 +1,6 @@
 import { ordenarEmpleados } from './empleados'
+import { esDeBarberia } from './areas'
+import { RUTA_ASESORIAS } from '../data/asesorias'
 
 // Utilidades de la sección "Nuestro Equipo" del inicio.
 
@@ -25,4 +27,11 @@ export const filtrarPorCargo = (barberos, cargo) =>
   cargo ? barberos.filter((barbero) => cargoDe(barbero) === cargo) : barberos
 
 // Reserva con el barbero ya elegido (el paso Barbero lo lee de ?barbero=) o sin él ("Cualquier barbero").
-export const enlaceReserva = (barbero) => (barbero ? `/reservar-corte?barbero=${barbero.id}` : '/reservar-corte')
+// La asesora de imagen no corta: su tarjeta lleva a las asesorías en vez de a una reserva de corte que no podría hacer.
+export const enlaceReserva = (barbero) => {
+  if (!barbero) return '/reservar-corte'
+  return esDeBarberia(barbero) ? `/reservar-corte?barbero=${barbero.id}` : RUTA_ASESORIAS
+}
+
+// Texto del botón de la tarjeta: "Reservar con Leo" para quien corta, "Ver asesorías" para la asesora.
+export const textoReserva = (barbero) => (esDeBarberia(barbero) ? `Reservar con ${barbero.nombre}` : 'Ver asesorías')

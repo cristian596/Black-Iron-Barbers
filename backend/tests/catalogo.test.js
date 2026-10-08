@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 import pg from 'pg';
@@ -12,19 +13,49 @@ import {
   calcularRestablecimiento,
   NOMBRES_SERVICIOS_LEGADOS,
 } from '../db/sembrarCatalogo.js';
-import { aplicarMigracionesCatalogo, MIGRACION_CLAVES, MIGRACION_LEGADO } from '../db/migracionesCatalogo.js';
+import {
+  aplicarMigracionesCatalogo,
+  MIGRACION_CLAVES,
+  MIGRACION_LEGADO,
+  MIGRACION_PERSONAL_AREA,
+} from '../db/migracionesCatalogo.js';
+import { sembrarPersonal, BARBEROS } from '../db/sembrarPersonal.js';
 
 const { Pool } = pg;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const schema = readFileSync(path.resolve(__dirname, '../db/schema.sql'), 'utf-8');
 
-const NOMBRE_BD = 'black_iron_catalogo_test';
+// CREATE/DROP DATABASE fuerza un checkpoint en Postgres: en Docker/Windows puede tardar más de 5 s (el timeout por
+// defecto) según lo que haya escrito la suite antes. Si un hook expiraba, su DROP seguía vivo en el servidor y la
+// siguiente corrida (mismo nombre de base) chocaba con él. Por eso: tiempos holgados, un nombre de base único por
+// corrida y una limpieza que borra con FORCE solo bases cuyo nombre empieza por este prefijo (mismo arreglo que
+// migracion.test.js).
+vi.setConfig({ testTimeout: 30_000, hookTimeout: 120_000 });
+
+const PREFIJO_BD = 'black_iron_catalogo_test';
+const NOMBRE_BD = `${PREFIJO_BD}_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
 const credenciales = () => ({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
 });
+
+// Borra con FORCE las bases de este archivo (la de esta corrida y las que haya dejado una corrida abortada).
+const borrarBasesDePrueba = async () => {
+  const admin = new Pool({ ...credenciales(), database: 'postgres' });
+  try {
+    const { rows } = await admin.query('SELECT datname FROM pg_database WHERE left(datname, $2) = $1', [
+      PREFIJO_BD,
+      PREFIJO_BD.length,
+    ]);
+    for (const { datname } of rows) {
+      await admin.query(`DROP DATABASE IF EXISTS "${datname}" WITH (FORCE)`);
+    }
+  } finally {
+    await admin.end();
+  }
+};
 
 const LEGADOS = [
   ['Corte de Cabello', 35, 55000],
@@ -62,9 +93,9 @@ const estadoDeLasCitas = async () => {
 };
 
 beforeAll(async () => {
+  await borrarBasesDePrueba();
   const admin = new Pool({ ...credenciales(), database: 'postgres' });
   try {
-    await admin.query(`DROP DATABASE IF EXISTS "${NOMBRE_BD}" WITH (FORCE)`);
     await admin.query(`CREATE DATABASE "${NOMBRE_BD}"`);
   } finally {
     await admin.end();
@@ -74,20 +105,15 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await bd.end();
-  const admin = new Pool({ ...credenciales(), database: 'postgres' });
-  try {
-    await admin.query(`DROP DATABASE IF EXISTS "${NOMBRE_BD}" WITH (FORCE)`);
-  } finally {
-    await admin.end();
-  }
+  await bd?.end();
+  await borrarBasesDePrueba();
 });
 
 describe('Datos del catálogo (backend/db/data)', () => {
-  it('son coherentes: 39 servicios, 39 descripciones, sin repetidos ni huérfanos', () => {
+  it('son coherentes: 42 servicios (39 de barbería + 3 de asesoría), 42 descripciones, sin repetidos ni huérfanos', () => {
     expect(validarCatalogo(catalogoReal, descripcionesReales)).toEqual([]);
-    expect(catalogoReal.flatMap((c) => c.servicios)).toHaveLength(39);
-    expect(descripcionesReales).toHaveLength(39);
+    expect(catalogoReal.flatMap((c) => c.servicios)).toHaveLength(42);
+    expect(descripcionesReales).toHaveLength(42);
   });
 
   it('validarCatalogo detecta ids repetidos, descripciones faltantes, tipos y slugs inválidos', () => {
@@ -126,7 +152,7 @@ describe('Datos del catálogo (backend/db/data)', () => {
     const servicios = catalogoReal.flatMap((c) => c.servicios);
     expect(servicios.every((x) => typeof x.clave === 'string' && x.clave.length > 0)).toBe(true);
     expect(catalogoReal.every((c) => typeof c.clave === 'string' && c.clave.length > 0)).toBe(true);
-    expect(new Set(servicios.map((x) => x.clave)).size).toBe(39);
+    expect(new Set(servicios.map((x) => x.clave)).size).toBe(42);
   });
 
   it('sembrarCatalogo rechaza datos incoherentes antes de tocar la base', async () => {
@@ -167,13 +193,13 @@ describe('Seed del catálogo sobre el escenario de desarrollo (catálogo viejo +
     await sembrarCatalogo(bd);
   });
 
-  it('deja los 39 servicios nuevos activos, con categoría, tipo y descripción válidos', async () => {
+  it('deja los 42 servicios nuevos activos, con categoría, tipo y descripción válidos', async () => {
     const { rows } = await bd.query(
       `SELECT s.nombre, s.tipo, s.descripcion, s.categoria_id, s.activo, c.slug
        FROM servicios s JOIN categorias c ON c.id = s.categoria_id
        WHERE s.activo = true`
     );
-    expect(rows).toHaveLength(39);
+    expect(rows).toHaveLength(42);
     for (const fila of rows) {
       expect(['original', 'elite', 'vip']).toContain(fila.tipo);
       expect(fila.descripcion.trim().length).toBeGreaterThan(0);
@@ -190,10 +216,10 @@ describe('Seed del catálogo sobre el escenario de desarrollo (catálogo viejo +
     }
   });
 
-  it('crea las 6 categorías con el orden de aparición en el archivo', async () => {
+  it('crea las 7 categorías con el orden de aparición en el archivo', async () => {
     const { rows } = await bd.query('SELECT nombre, slug, orden FROM categorias ORDER BY orden');
     expect(rows.map((r) => r.slug)).toEqual(catalogoReal.map((c) => c.slug));
-    expect(rows.map((r) => r.orden)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(rows.map((r) => r.orden)).toEqual([1, 2, 3, 4, 5, 6, 7]);
   });
 
   it('desactiva (sin borrar) los 6 servicios viejos y conserva sus ids', async () => {
@@ -213,7 +239,7 @@ describe('Seed del catálogo sobre el escenario de desarrollo (catálogo viejo +
   it('los servicios nuevos reciben ids de la secuencia (posteriores a 33) y ninguno reutiliza un id viejo', async () => {
     const { rows } = await bd.query('SELECT MIN(id)::int AS minimo, COUNT(DISTINCT id)::int AS distintos FROM servicios WHERE activo = true');
     expect(rows[0].minimo).toBeGreaterThan(33);
-    expect(rows[0].distintos).toBe(39);
+    expect(rows[0].distintos).toBe(42);
   });
 
   it('"Exfoliación Facial" (viejo, inactivo) y "Exfoliación facial" (nuevo, activo) conviven sin chocar', async () => {
@@ -254,8 +280,8 @@ describe('Idempotencia del seed', () => {
     const despues = await fotografia();
 
     expect(despues).toEqual(antes);
-    expect(despues.rows).toHaveLength(45); // 39 nuevos + 6 viejos
-    expect(despues.categorias).toHaveLength(6);
+    expect(despues.rows).toHaveLength(48); // 42 nuevos (39 de barbería + 3 de asesoría) + 6 viejos
+    expect(despues.categorias).toHaveLength(7);
     expect(resultado.servicios.insertados).toBe(0);
     expect(resultado.categorias.insertadas).toBe(0);
     expect(resultado.migraciones.legado.aplicada).toBe(false); // el paso único ya estaba registrado
@@ -272,7 +298,7 @@ describe('Idempotencia del seed', () => {
     const { rows } = await bd.query('SELECT precio, descripcion FROM servicios WHERE nombre = $1', [catalogoReal[0].servicios[0].nombre]);
     expect(rows[0]).toEqual({ precio: catalogoReal[0].servicios[0].precio, descripcion: descripcionesReales[0].descripcion });
     const { rows: total } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios');
-    expect(total[0].n).toBe(45);
+    expect(total[0].n).toBe(48);
   });
 
   it('NO reactiva un servicio nuevo que el admin desactivó', async () => {
@@ -413,9 +439,9 @@ describe('Migración de claves y apagado del catálogo anterior (pasos únicos)'
     const resultado = await aplicarMigracionesCatalogo(bd);
 
     expect(resultado.claves.aplicada).toBe(true);
-    expect(resultado.claves.detalle).toEqual({ categorias: 6, servicios: 39 });
+    expect(resultado.claves.detalle).toEqual({ categorias: 7, servicios: 42 });
     const { rows } = await bd.query('SELECT COUNT(*)::int AS n FROM servicios WHERE clave_seed IS NOT NULL');
-    expect(rows[0].n).toBe(39);
+    expect(rows[0].n).toBe(42);
     const { rows: libre } = await bd.query("SELECT clave_seed FROM servicios WHERE nombre = 'Servicio del admin sin clave'");
     expect(libre[0].clave_seed).toBeNull();
     const { rows: registro } = await bd.query('SELECT clave FROM migraciones_aplicadas ORDER BY clave');
@@ -534,5 +560,193 @@ describe('--restablecer-catalogo (solo desarrollo)', () => {
     const { rows: admin } = await bd.query("SELECT precio FROM servicios WHERE nombre = 'Solo del admin'");
     expect(admin[0].precio).toBe(5000);
     expect(await calcularRestablecimiento(bd)).toEqual({ cambios: [], faltantes: [] });
+  });
+});
+
+describe('Asesorías en el catálogo (area asesoria)', () => {
+  beforeAll(async () => {
+    await prepararEscenarioLegado();
+    await sembrarCatalogo(bd);
+  });
+
+  it('crea la categoría "Asesorías" (clave asesorias, area asesoria) y las demás quedan en barbería', async () => {
+    const { rows } = await bd.query('SELECT slug, clave_seed, area, activo FROM categorias ORDER BY orden');
+    const asesorias = rows.filter((r) => r.area === 'asesoria');
+    expect(asesorias).toEqual([{ slug: 'asesorias', clave_seed: 'asesorias', area: 'asesoria', activo: true }]);
+    expect(rows.filter((r) => r.area === 'barberia')).toHaveLength(6);
+  });
+
+  it('siembra las 3 asesorías con clave estable, precio, duración, tipo válido y descripción', async () => {
+    const { rows } = await bd.query(
+      `SELECT clave_seed, nombre, precio, duracion_min, tipo, area, activo, descripcion
+       FROM servicios WHERE area = 'asesoria' ORDER BY precio`
+    );
+    expect(rows.map((r) => [r.clave_seed, r.precio, r.duracion_min, r.area, r.activo])).toEqual([
+      ['asesoria-gratis', 0, 15, 'asesoria', true],
+      ['asesoria-barba', 45000, 45, 'asesoria', true],
+      ['asesoria-premium', 60000, 60, 'asesoria', true],
+    ]);
+    for (const fila of rows) {
+      expect(['original', 'elite', 'vip']).toContain(fila.tipo); // sin valores nuevos en el CHECK de tipo
+      expect(fila.descripcion.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('todos los demás servicios activos del catálogo son de barbería', async () => {
+    const { rows } = await bd.query("SELECT COUNT(*)::int AS n FROM servicios WHERE activo AND area = 'barberia'");
+    expect(rows[0].n).toBe(39);
+  });
+
+  it('correr el seed otra vez no duplica las asesorías ni cambia su área', async () => {
+    const antes = (await bd.query("SELECT clave_seed, area FROM servicios WHERE area = 'asesoria' ORDER BY clave_seed")).rows;
+    const resultado = await sembrarCatalogo(bd);
+    const despues = (await bd.query("SELECT clave_seed, area FROM servicios WHERE area = 'asesoria' ORDER BY clave_seed")).rows;
+    expect(despues).toEqual(antes);
+    expect(despues).toHaveLength(3);
+    expect(resultado.servicios.insertados).toBe(0);
+    expect(resultado.categorias.insertadas).toBe(0);
+  });
+
+  it('el área del catálogo se valida: un valor desconocido se rechaza antes de tocar la base', async () => {
+    const roto = [{ categoria: 'A', slug: 'a', clave: 'a', area: 'otra', servicios: [] }];
+    expect(validarCatalogo(roto, []).join(' | ')).toMatch(/area inválida en categorías: a/);
+  });
+
+  it('--restablecer-catalogo también reconoce el área (la compara y la restablece)', async () => {
+    await bd.query("UPDATE servicios SET area = 'barberia' WHERE clave_seed = 'asesoria-gratis'");
+    const plan = await calcularRestablecimiento(bd);
+    const cambio = plan.cambios.find((c) => c.etiqueta === 'Asesoría de imagen gratis');
+    expect(cambio.campos).toEqual([{ campo: 'area', actual: 'barberia', nuevo: 'asesoria' }]);
+    await restablecerCatalogo(bd);
+    const { rows } = await bd.query("SELECT area FROM servicios WHERE clave_seed = 'asesoria-gratis'");
+    expect(rows[0].area).toBe('asesoria');
+  });
+});
+
+describe('Personal: seed con área y migración única personal-area-asesoria-v1', () => {
+  const limpiarPersonal = async () => {
+    await bd.query('TRUNCATE citas, usuarios, servicios, categorias, barberos, migraciones_aplicadas RESTART IDENTITY CASCADE');
+  };
+  const crearCamila = async (area = 'barberia') => {
+    const { rows } = await bd.query(
+      `INSERT INTO barberos (nombre, cargo, especialidad, area) VALUES ('Camila', 'Asesora de Imagen', 'Asesoria', $1) RETURNING id`,
+      [area]
+    );
+    return rows[0].id;
+  };
+  const crearBarbero = async (nombre = 'Barbero Migracion') => {
+    const { rows } = await bd.query(`INSERT INTO barberos (nombre, cargo) VALUES ($1, 'Barbero') RETURNING id`, [nombre]);
+    return rows[0].id;
+  };
+  const cita = async (barberoId, fecha, estado) => {
+    const { rows } = await bd.query(
+      `INSERT INTO servicios (nombre, duracion_min, precio) VALUES ('Servicio ' || $1::text, 30, 1000) RETURNING id`,
+      [`${barberoId}-${fecha}-${estado}`]
+    );
+    await bd.query(
+      `INSERT INTO citas (cliente, correo, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado)
+       VALUES ('C', 'c@c.com', $1, $2, $3, '10:00', 30, 1000, $4)`,
+      [rows[0].id, barberoId, fecha, estado]
+    );
+  };
+  const areaDe = async (id) => (await bd.query('SELECT area FROM barberos WHERE id = $1', [id])).rows[0].area;
+  const registrada = async () =>
+    (await bd.query('SELECT 1 FROM migraciones_aplicadas WHERE clave = $1', [MIGRACION_PERSONAL_AREA])).rowCount === 1;
+
+  it('el seed siembra a Camila con area asesoria y al resto como barbería, y es idempotente', async () => {
+    await limpiarPersonal();
+    expect(await sembrarPersonal(bd)).toBe(BARBEROS.length);
+    expect(await sembrarPersonal(bd)).toBe(0);
+    const { rows } = await bd.query('SELECT nombre, area FROM barberos ORDER BY id');
+    expect(rows.filter((r) => r.area === 'asesoria')).toEqual([{ nombre: 'Camila', area: 'asesoria' }]);
+    expect(rows).toHaveLength(BARBEROS.length);
+  });
+
+  it('el seed no cambia el área de quien ya existe', async () => {
+    await limpiarPersonal();
+    await crearCamila('barberia'); // base anterior: Camila sin marcar
+    await sembrarPersonal(bd);
+    expect(await areaDe((await bd.query("SELECT id FROM barberos WHERE nombre = 'Camila'")).rows[0].id)).toBe('barberia');
+  });
+
+  it('marca a Camila (nombre + cargo) una sola vez y deja el registro; los demás no cambian', async () => {
+    await limpiarPersonal();
+    const camila = await crearCamila();
+    const otro = await crearBarbero();
+    await bd.query("INSERT INTO barberos (nombre, cargo) VALUES ('Camila', 'Barbera')"); // misma nombre, otro cargo: no es la asesora
+    await cita(camila, '2020-01-10', 'completada'); // historial pasado (como las citas 449 y 450): no bloquea
+
+    const resultado = await aplicarMigracionesCatalogo(bd);
+
+    expect(resultado.personal).toEqual({ aplicada: true, detalle: { marcados: 1 } });
+    expect(await areaDe(camila)).toBe('asesoria');
+    expect(await areaDe(otro)).toBe('barberia');
+    const { rows } = await bd.query("SELECT cargo, area FROM barberos WHERE nombre = 'Camila' ORDER BY id");
+    expect(rows).toEqual([
+      { cargo: 'Asesora de Imagen', area: 'asesoria' },
+      { cargo: 'Barbera', area: 'barberia' },
+    ]);
+    expect(await registrada()).toBe(true);
+    // Sus citas pasadas siguen intactas
+    expect((await bd.query('SELECT estado, fecha::text FROM citas WHERE barbero_id = $1', [camila])).rows).toEqual([
+      { estado: 'completada', fecha: '2020-01-10' },
+    ]);
+
+    const otra = await aplicarMigracionesCatalogo(bd);
+    expect(otra.personal.aplicada).toBe(false); // no se repite
+  });
+
+  it('no se repite: si después alguien vuelve a poner a Camila en barbería, ninguna ejecución la vuelve a marcar', async () => {
+    await limpiarPersonal();
+    const camila = await crearCamila();
+    await aplicarMigracionesCatalogo(bd);
+    await bd.query("UPDATE barberos SET area = 'barberia' WHERE id = $1", [camila]);
+    await aplicarMigracionesCatalogo(bd);
+    await sembrarCatalogo(bd);
+    expect(await areaDe(camila)).toBe('barberia');
+  });
+
+  it('con citas pendientes o futuras ABORTA con un mensaje claro: no marca, no registra y no rompe el arranque', async () => {
+    for (const [fecha, estado] of [
+      ['2020-01-10', 'pendiente'], // pendiente (aunque su fecha ya pasó)
+      ['2099-01-10', 'completada'], // futura
+    ]) {
+      await limpiarPersonal();
+      const camila = await crearCamila();
+      await cita(camila, fecha, estado);
+
+      const resultado = await aplicarMigracionesCatalogo(bd);
+
+      expect(resultado.personal.aplicada).toBe(false);
+      expect(resultado.personal.abortada).toMatch(/Camila.*1 cita\(s\) pendientes o futuras/);
+      expect(await areaDe(camila)).toBe('barberia');
+      expect(await registrada()).toBe(false);
+    }
+  });
+
+  it('una cita cancelada, aunque sea futura, no bloquea; y al cerrar las pendientes el paso se aplica solo', async () => {
+    await limpiarPersonal();
+    const camila = await crearCamila();
+    await cita(camila, '2099-02-10', 'cancelada');
+    await cita(camila, '2020-02-10', 'pendiente');
+
+    expect((await aplicarMigracionesCatalogo(bd)).personal.abortada).toBeDefined();
+    await bd.query("UPDATE citas SET estado = 'completada' WHERE barbero_id = $1 AND estado = 'pendiente'", [camila]);
+
+    const resultado = await aplicarMigracionesCatalogo(bd);
+    expect(resultado.personal).toEqual({ aplicada: true, detalle: { marcados: 1 } });
+    expect(await areaDe(camila)).toBe('asesoria');
+  });
+
+  it('sin ninguna asesora en la base queda pendiente (no se registra); si ya viene marcada solo se registra', async () => {
+    await limpiarPersonal();
+    await crearBarbero();
+    const sinCamila = await aplicarMigracionesCatalogo(bd);
+    expect(sinCamila.personal).toEqual({ aplicada: false, detalle: null });
+    expect(await registrada()).toBe(false);
+
+    await crearCamila('asesoria');
+    const yaMarcada = await aplicarMigracionesCatalogo(bd);
+    expect(yaMarcada.personal).toEqual({ aplicada: true, detalle: { marcados: 0 } });
   });
 });

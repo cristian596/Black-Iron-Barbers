@@ -150,6 +150,30 @@ describe('sembrarDemo / limpiarDemo contra la base de pruebas', () => {
     expect(rows[0].n).toBe(1);
   });
 
+  it('nunca asigna citas demo a una asesora ni usa servicios de asesoría (solo barbería)', async () => {
+    await pool.query(`DELETE FROM servicios WHERE id = 9301`);
+    await pool.query(`DELETE FROM barberos WHERE id = 9301`);
+    await pool.query(`INSERT INTO barberos (id, nombre, area) VALUES (9301, 'Prueba Demo Asesora', 'asesoria')`);
+    await pool.query(`INSERT INTO servicios (id, nombre, duracion_min, precio, area) VALUES (9301, 'Prueba Demo asesoría', 15, 0, 'asesoria')`);
+    try {
+      await sembrarDemo(pool);
+      const { rows } = await pool.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM citas WHERE barbero_id = 9301) AS de_la_asesora,
+           (SELECT COUNT(*)::int FROM citas WHERE servicio_id = 9301) AS de_asesoria,
+           (SELECT COUNT(*)::int FROM citas WHERE starts_with(cliente, $1)) AS demo`,
+        [MARCA_DEMO]
+      );
+      expect(rows[0].demo).toBeGreaterThan(100);
+      expect(rows[0].de_la_asesora).toBe(0);
+      expect(rows[0].de_asesoria).toBe(0);
+    } finally {
+      await pool.query('TRUNCATE citas RESTART IDENTITY CASCADE');
+      await pool.query(`DELETE FROM servicios WHERE id = 9301`);
+      await pool.query(`DELETE FROM barberos WHERE id = 9301`);
+    }
+  });
+
   it('guarda el precio de la cita igual al del servicio en ese momento', async () => {
     await sembrarDemo(pool);
     const { rows } = await pool.query(

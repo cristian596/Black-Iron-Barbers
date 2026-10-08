@@ -18,6 +18,7 @@ import {
 } from '../components/sections/reserva/reservaReducer'
 import { MAX_DURACION_COMBO_MIN, duracionTotal } from '../utils/carrito'
 import { leerServiciosDeUrl } from '../utils/seleccionReserva'
+import { AREA_BARBERIA, esDeBarberia, soloBarberia } from '../utils/areas'
 
 const pasoCompleto = (estado) => {
   switch (estado.paso) {
@@ -79,9 +80,11 @@ const ReservaCorte = () => {
 
   // La carga asíncrona necesita los servicios elegidos más recientes (p. ej. los de ?servicios=...).
   const servicioIdsRef = useRef(estado.servicioIds)
+  const barberoIdRef = useRef(estado.barberoId)
   useEffect(() => {
     servicioIdsRef.current = estado.servicioIds
-  }, [estado.servicioIds])
+    barberoIdRef.current = estado.barberoId
+  }, [estado.servicioIds, estado.barberoId])
 
   useEffect(() => {
     let cancelado = false
@@ -89,10 +92,21 @@ const ReservaCorte = () => {
 
     const cargarDatos = async () => {
       try {
-        const [serviciosData, barberosData] = await Promise.all([obtenerServicios(), obtenerBarberos()])
+        // La reserva de cortes solo ve servicios y barberos de barbería (la asesora y las asesorías quedan fuera).
+        const [serviciosData, todoElPersonal] = await Promise.all([
+          obtenerServicios({ area: AREA_BARBERIA }),
+          obtenerBarberos(),
+        ])
         if (cancelado) return
+        const barberosData = soloBarberia(todoElPersonal)
         setServicios(serviciosData)
         setBarberos(barberosData)
+
+        // Un enlace viejo ?barbero=<asesora> no se puede reservar: se vuelve a "Cualquier barbero".
+        const elegido = barberoIdRef.current
+        if (elegido !== null && todoElPersonal.some((b) => b.id === elegido && !esDeBarberia(b))) {
+          dispatch({ type: 'SELECCIONAR_BARBERO', barberoId: null })
+        }
 
         // Enlace viejo: ?servicios=... con ids inactivos o inexistentes. Solo esos se quitan; el resto se conserva.
         const elegidos = servicioIdsRef.current

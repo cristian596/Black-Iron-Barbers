@@ -8,9 +8,16 @@ import {
   minutosDesdeMedianoche,
 } from '../utils/fechas.js';
 import { cargarServicios, leerServiciosCsv } from '../utils/serviciosCita.js';
+import {
+  AREA_BARBERIA,
+  errorAsesoriaNoDisponibleAun,
+  errorProfesionalIncompatible,
+  serviciosDeAsesoria,
+} from '../utils/areas.js';
 
+// El pool de "cualquier barbero" son solo los de barbería: quien atiende asesorías (area 'asesoria') no corta.
 const obtenerBarberosActivos = async () => {
-  const { rows } = await pool.query('SELECT id FROM barberos WHERE activo = true ORDER BY id');
+  const { rows } = await pool.query('SELECT id FROM barberos WHERE activo = true AND area = $1 ORDER BY id', [AREA_BARBERIA]);
   return rows.map((row) => row.id);
 };
 
@@ -77,6 +84,12 @@ export const obtenerDisponibilidad = async (req, res, next) => {
 
     const cargados = await cargarServicios(pool, idsServicios);
     if (cargados.error) return res.status(cargados.error.status).json(cargados.error.cuerpo);
+    // TEMPORAL: las asesorías existen en el catálogo pero todavía no se reservan (fase siguiente).
+    const deAsesoria = serviciosDeAsesoria(cargados.lista);
+    if (deAsesoria.length > 0) {
+      const { status, cuerpo } = errorAsesoriaNoDisponibleAun(deAsesoria);
+      return res.status(status).json(cuerpo);
+    }
     const duracionMin = cargados.duracion; // suma de los servicios: el cierre y los solapamientos usan el bloque completo
 
     let grid = generarHorasDisponibles().filter((hora) => intervaloDentroDeHorario(hora, duracionMin));
@@ -93,11 +106,15 @@ export const obtenerDisponibilidad = async (req, res, next) => {
       }
 
       const { rows: barberos } = await pool.query(
-        'SELECT id FROM barberos WHERE id = $1 AND activo = true',
+        'SELECT id, area FROM barberos WHERE id = $1 AND activo = true',
         [barberoId]
       );
       if (barberos.length === 0) {
         return res.status(404).json({ error: 'Barbero no encontrado o inactivo' });
+      }
+      if (barberos[0].area !== AREA_BARBERIA) {
+        const { status, cuerpo } = errorProfesionalIncompatible('barbero', 'Ese profesional no atiende cortes ni servicios de barbería');
+        return res.status(status).json(cuerpo);
       }
 
       const ocupadas = await obtenerCitasOcupadas([barberoId], fecha);

@@ -8,6 +8,7 @@ import { ahoraBogota, hoyISO } from '../utils/fechas.js';
 import { primerDiaDelMes, sumarMeses } from '../utils/periodos.js';
 import { validarParametros } from '../utils/parametrosQuery.js';
 import { estadoContrasena, MIN_CONTRASENA, MAX_CONTRASENA } from '../utils/contrasenas.js';
+import { AREAS, AREA_BARBERIA, esAreaValida, contarCitasAbiertas } from '../utils/areas.js';
 
 const ID_MAXIMO_INT = 2147483647;
 const MAX_NOMBRE = 100;
@@ -33,6 +34,7 @@ const REGLAS_EMPLEADO = {
   cargo: textoOpcional(MAX_CARGO, 'El cargo'),
   especialidad: textoOpcional(MAX_ESPECIALIDAD, 'La especialidad'),
   activo: (v) => (typeof v === 'boolean' ? { valor: v } : { mensaje: 'El campo activo debe ser verdadero o falso' }),
+  area: (v) => (esAreaValida(v) ? { valor: v } : { mensaje: `El área debe ser una de: ${AREAS.join(', ')}` }),
 };
 const REGLAS_ALTA = {
   ...REGLAS_EMPLEADO,
@@ -63,7 +65,7 @@ const leerCampos = (cuerpo, reglas) => {
 // Si hay varios usuarios ligados al mismo barbero (pasó con usuarios de prueba), se muestra uno solo: el activo, y si
 // no hay ninguno activo el más reciente. `usuarios_total` deja ver que existen más.
 const SELECT_EMPLEADOS = `
-  SELECT b.id, b.nombre, b.cargo, b.especialidad, b.foto, b.activo,
+  SELECT b.id, b.nombre, b.cargo, b.especialidad, b.foto, b.activo, b.area,
          u.id AS usuario_id, u.usuario AS usuario_nombre, u.activo AS usuario_activo, u.contrasena_cambiada_en,
          (SELECT COUNT(*)::int FROM usuarios WHERE barbero_id = b.id AND rol = 'barbero') AS usuarios_total,
          (SELECT COUNT(*)::int FROM citas c
@@ -85,6 +87,7 @@ const aEmpleado = (f) => ({
   especialidad: f.especialidad,
   foto: f.foto,
   activo: f.activo,
+  area: f.area,
   usuario:
     f.usuario_id === null
       ? null
@@ -153,8 +156,8 @@ export const crearEmpleado = async (req, res, next) => {
     cliente = await pool.connect();
     await cliente.query('BEGIN');
     const { rows } = await cliente.query(
-      `INSERT INTO barberos (nombre, cargo, especialidad) VALUES ($1, $2, $3) RETURNING id`,
-      [datos.nombre, datos.cargo ?? null, datos.especialidad ?? null]
+      `INSERT INTO barberos (nombre, cargo, especialidad, area) VALUES ($1, $2, $3, $4) RETURNING id`,
+      [datos.nombre, datos.cargo ?? null, datos.especialidad ?? null, datos.area ?? AREA_BARBERIA]
     );
     const barberoId = rows[0].id;
     await cliente.query(
@@ -188,10 +191,26 @@ export const actualizarEmpleado = async (req, res, next) => {
 
     cliente = await pool.connect();
     await cliente.query('BEGIN');
-    const { rows: existente } = await cliente.query('SELECT id FROM barberos WHERE id = $1 FOR UPDATE', [id]);
+    const { rows: existente } = await cliente.query('SELECT id, area FROM barberos WHERE id = $1 FOR UPDATE', [id]);
     if (existente.length === 0) {
       await cliente.query('ROLLBACK');
       return fallo(res, 404, 'EMPLEADO_NO_ENCONTRADO', 'Empleado no encontrado');
+    }
+
+    // Cambiar de área con citas abiertas (pendientes o de hoy en adelante) dejaría citas con un profesional que ya
+    // no atiende ese servicio: se rechaza hasta que las reasigne o las cierre.
+    if (datos.area !== undefined && datos.area !== existente[0].area) {
+      const abiertas = await contarCitasAbiertas(cliente, id, hoyISO());
+      if (abiertas > 0) {
+        await cliente.query('ROLLBACK');
+        return fallo(
+          res,
+          409,
+          'AREA_CON_CITAS_PENDIENTES',
+          `No se puede cambiar el área: tiene ${abiertas} cita(s) pendientes o futuras. Reasígnalas o ciérralas primero.`,
+          { campo: 'area', citas_pendientes: abiertas }
+        );
+      }
     }
 
     const columnas = Object.keys(datos);

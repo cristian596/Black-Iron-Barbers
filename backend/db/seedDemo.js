@@ -145,8 +145,9 @@ export const sembrarDemo = async (pool, { simular = false, semilla } = {}) => {
 
   const hoy = hoyISO();
   const [{ rows: barberos }, { rows: servicios }, { rows: ocupadas }] = await Promise.all([
-    pool.query('SELECT id FROM barberos WHERE activo = true ORDER BY id'),
-    pool.query('SELECT id, duracion_min, precio FROM servicios WHERE activo = true ORDER BY id'),
+    // Solo barbería: ni Camila (asesora) ni las asesorías entran en las citas de demostración.
+    pool.query("SELECT id FROM barberos WHERE activo = true AND area = 'barberia' ORDER BY id"),
+    pool.query("SELECT id, duracion_min, precio FROM servicios WHERE activo = true AND area = 'barberia' ORDER BY id"),
     pool.query(
       `SELECT barbero_id, fecha::text AS fecha, hora::text AS hora, duracion_min
        FROM citas WHERE estado <> 'cancelada' AND fecha BETWEEN $1::date AND $2::date`,
