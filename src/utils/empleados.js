@@ -1,5 +1,7 @@
 // Reglas y utilidades de /admin/empleados. Las validaciones repiten las del back-end (que sigue siendo la
 // autoridad) para dar el error junto al campo sin esperar la respuesta.
+import { AREA_ASESORIA, AREA_BARBERIA } from './areas'
+
 export const LIMITES_EMPLEADO = { nombre: 100, cargo: 100, especialidad: 150, usuario: 50, contrasenaMin: 8, contrasenaMax: 72 }
 
 // "Ángel Mejía" → "ÁM"; una sola palabra → su inicial; vacío → "?".
@@ -47,6 +49,7 @@ export const validarFormularioEmpleado = (valores, { conAcceso }) => {
   const nombre = valores.nombre.trim()
   const cargo = valores.cargo.trim()
   const especialidad = valores.especialidad.trim()
+  const area = valores.area === AREA_ASESORIA ? AREA_ASESORIA : AREA_BARBERIA
 
   if (nombre.length < 1 || nombre.length > LIMITES_EMPLEADO.nombre) {
     errores.nombre = `El nombre es obligatorio (máximo ${LIMITES_EMPLEADO.nombre} caracteres).`
@@ -63,7 +66,7 @@ export const validarFormularioEmpleado = (valores, { conAcceso }) => {
   }
 
   if (Object.keys(errores).length > 0) return { errores, datos: null }
-  const datos = { nombre, cargo, especialidad }
+  const datos = { nombre, cargo, especialidad, area }
   if (conAcceso) Object.assign(datos, { usuario: valores.usuario.trim(), contrasena: valores.contrasena })
   return { errores, datos }
 }
@@ -87,6 +90,14 @@ export const interpretarErrorEmpleado = (err) => {
       return { campo: 'usuario', mensaje: 'Ese nombre de usuario ya existe. Elige otro.' }
     case 'DATOS_INVALIDOS':
       return { campo: err.campo ?? null, mensaje: err.message }
+    case 'AREA_CON_CITAS_PENDIENTES': {
+      const n = err.citas_pendientes
+      const cuantas = n === 1 ? '1 cita pendiente o futura' : n > 1 ? `${n} citas pendientes o futuras` : 'citas pendientes o futuras'
+      return {
+        campo: 'area',
+        mensaje: `No se puede cambiar el área: tiene ${cuantas}. Reasígnalas o ciérralas primero y vuelve a intentarlo; no se guardó ningún cambio.`,
+      }
+    }
     case 'EMPLEADO_NO_ENCONTRADO':
       return { campo: null, mensaje: 'Ese empleado ya no existe. Recarga la página para ver la lista actualizada.' }
     case 'BARBERO_INACTIVO':
@@ -95,6 +106,9 @@ export const interpretarErrorEmpleado = (err) => {
       return { campo: null, mensaje: err.message }
   }
 }
+
+// Cómo se llama lo que cuenta la columna «este mes» de un empleado según su área.
+export const unidadesDelMes = (area) => (area === AREA_ASESORIA ? 'asesorías' : 'cortes')
 
 // Citas próximas de ese barbero en /admin/citas, para reasignarlas.
 export const enlaceCitasPendientes = (empleado) => `/admin/citas?barbero=${empleado.id}&pestana=proximas`

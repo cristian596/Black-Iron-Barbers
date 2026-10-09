@@ -54,6 +54,8 @@ const request = async (path, options = {}) => {
     // Campo del formulario al que se refiere el error y datos de apoyo (p. ej. cuántos servicios activos tiene una categoría).
     if (data?.campo) error.campo = data.campo;
     if (data?.total_servicios !== undefined) error.total_servicios = data.total_servicios;
+    // Citas abiertas que impiden cambiar el área de un empleado (AREA_CON_CITAS_PENDIENTES).
+    if (Number.isFinite(data?.citas_pendientes)) error.citas_pendientes = data.citas_pendientes;
     // Ids de servicios que ya no están disponibles (SERVICIO_NO_DISPONIBLE al reservar o pedir horas).
     if (Array.isArray(data?.servicios_no_disponibles)) error.servicios_no_disponibles = data.servicios_no_disponibles;
     // Segundos que faltan para poder reintentar (429 del login); viene en el cuerpo porque el CORS no expone Retry-After.

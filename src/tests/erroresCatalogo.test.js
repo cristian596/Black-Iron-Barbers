@@ -43,7 +43,8 @@ describe('validarFormularioServicio', () => {
   it('convierte tipos, recorta textos y no devuelve errores', () => {
     expect(validarFormularioServicio(validos)).toEqual({
       errores: {},
-      datos: { nombre: 'Corte', categoria_id: 3, tipo: 'elite', precio: 25000, duracion_min: 40, descripcion: 'Desc' },
+      // MODIFICADO (fase 7): + area (barbería por defecto)
+      datos: { nombre: 'Corte', area: 'barberia', categoria_id: 3, tipo: 'elite', precio: 25000, duracion_min: 40, descripcion: 'Desc' },
     })
   })
 

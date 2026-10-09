@@ -1,6 +1,6 @@
 import { TIPOS_SERVICIO, TIPO_TODOS } from '../../data/tiposServicio'
 import { CATEGORIA_TODAS } from '../../utils/servicios'
-import { ESTADO_TODOS } from '../../hooks/useFiltroServiciosAdmin'
+import { AREA_TODAS, ESTADO_TODOS } from '../../hooks/useFiltroServiciosAdmin'
 
 const CHIP =
   'inline-flex min-h-11 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-oro motion-safe:transition-colors motion-safe:duration-200'
@@ -25,7 +25,7 @@ const ESTADOS = [
 
 // Categoría (chips con "Todas"), tipo, estado y buscador de /admin/servicios.
 const FiltrosServiciosAdmin = ({ filtro }) => {
-  const { chips, categoriaActiva, setCategoria, tipo, setTipo, estado, setEstado, busqueda, setBusqueda, buscando, hayFiltros, limpiar } = filtro
+  const { chips, categoriaActiva, setCategoria, tipo, setTipo, estado, setEstado, area, setArea, busqueda, setBusqueda, buscando, hayFiltros, limpiar } = filtro
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -42,7 +42,7 @@ const FiltrosServiciosAdmin = ({ filtro }) => {
       </div>
       {buscando && <p className="text-sm text-zinc-400">Buscando en todas las categorías</p>}
 
-      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div className="flex min-w-0 flex-col gap-1 sm:col-span-2 xl:col-span-1">
           <label htmlFor="servicios-buscar" className="text-sm font-medium text-zinc-300">Buscar</label>
           <input
@@ -54,6 +54,14 @@ const FiltrosServiciosAdmin = ({ filtro }) => {
             placeholder="Nombre del servicio"
             className={CAMPO}
           />
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <label htmlFor="servicios-area" className="text-sm font-medium text-zinc-300">Área</label>
+          <select id="servicios-area" value={area} onChange={(e) => setArea(e.target.value)} className={CAMPO}>
+            <option value={AREA_TODAS}>Todas las áreas</option>
+            <option value="barberia">Barbería</option>
+            <option value="asesoria">Asesoría</option>
+          </select>
         </div>
         <div className="flex min-w-0 flex-col gap-1">
           <label htmlFor="servicios-tipo" className="text-sm font-medium text-zinc-300">Tipo</label>

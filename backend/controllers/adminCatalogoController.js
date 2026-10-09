@@ -5,6 +5,7 @@
 import { pool } from '../db/connection.js';
 import { validarParametros, escaparLike } from '../utils/parametrosQuery.js';
 import { generarSlug } from '../utils/slug.js';
+import { AREAS, AREA_BARBERIA, esAreaValida, esAsesoriaGratis } from '../utils/areas.js';
 
 const ID_MAXIMO_INT = 2147483647;
 const TIPOS_VALIDOS = ['original', 'elite', 'vip'];
@@ -42,6 +43,7 @@ const REGLAS_SERVICIO = {
       ? { valor: v.trim() }
       : { mensaje: `La descripción es obligatoria y no puede superar ${MAX_DESCRIPCION} caracteres` },
   activo: (v) => (typeof v === 'boolean' ? { valor: v } : { mensaje: 'El campo activo debe ser verdadero o falso' }),
+  area: (v) => (esAreaValida(v) ? { valor: v } : { mensaje: `El área debe ser una de: ${AREAS.join(', ')}` }),
 };
 const CAMPOS_SERVICIO = Object.keys(REGLAS_SERVICIO);
 const OBLIGATORIOS_ALTA = ['nombre', 'precio', 'duracion_min', 'tipo', 'categoria_id', 'descripcion'];
@@ -98,8 +100,8 @@ const nombreOcupado = async (tabla, nombre, idExcluido = null) => {
 // ---------------------------------------------------------------------------------------------------- servicios
 
 const SELECT_SERVICIOS = `
-  SELECT s.id, s.nombre, s.descripcion, s.precio, s.duracion_min, s.tipo, s.activo, s.categoria_id,
-         c.nombre AS categoria_nombre, c.slug AS categoria_slug, c.activo AS categoria_activo, c.orden AS categoria_orden
+  SELECT s.id, s.nombre, s.descripcion, s.precio, s.duracion_min, s.tipo, s.activo, s.categoria_id, s.area, s.clave_seed,
+         c.area AS categoria_area, c.nombre AS categoria_nombre, c.slug AS categoria_slug, c.activo AS categoria_activo, c.orden AS categoria_orden
   FROM servicios s
   LEFT JOIN categorias c ON c.id = s.categoria_id`;
 
@@ -111,10 +113,13 @@ const aServicioAdmin = (f) => ({
   duracion_min: f.duracion_min,
   tipo: f.tipo,
   activo: f.activo,
+  area: f.area,
+  // La asesoría gratis sembrada debe costar siempre 0: el front deshabilita su precio (el back-end lo exige igual).
+  precio_fijo: esAsesoriaGratis(f),
   categoria:
     f.categoria_id === null
       ? null
-      : { id: f.categoria_id, nombre: f.categoria_nombre, slug: f.categoria_slug, activo: f.categoria_activo },
+      : { id: f.categoria_id, nombre: f.categoria_nombre, slug: f.categoria_slug, activo: f.categoria_activo, area: f.categoria_area },
 });
 
 const buscarServicio = async (id) => {
@@ -123,17 +128,20 @@ const buscarServicio = async (id) => {
 };
 
 const buscarCategoriaPorId = async (id) => {
-  const { rows } = await pool.query('SELECT id, activo FROM categorias WHERE id = $1', [id]);
+  const { rows } = await pool.query('SELECT id, activo, area FROM categorias WHERE id = $1', [id]);
   return rows[0] ?? null;
 };
 
 // GET /api/admin/servicios?activo=&categoria=&q=  (incluye inactivos)
 export const listarServiciosAdmin = async (req, res, next) => {
   try {
-    const errorParametros = validarParametros(req.query, ['activo', 'categoria', 'q']);
+    const errorParametros = validarParametros(req.query, ['activo', 'categoria', 'q', 'area']);
     if (errorParametros) return fallo(res, 400, 'PARAMETRO_INVALIDO', errorParametros);
 
-    const { activo, categoria, q } = req.query;
+    const { activo, categoria, q, area } = req.query;
+    if (area !== undefined && !esAreaValida(area)) {
+      return fallo(res, 400, 'PARAMETRO_INVALIDO', `El parámetro 'area' debe ser uno de: ${AREAS.join(', ')}`);
+    }
     if (activo !== undefined && !['true', 'false'].includes(activo)) {
       return fallo(res, 400, 'PARAMETRO_INVALIDO', "El parámetro 'activo' debe ser true o false");
     }
@@ -151,6 +159,10 @@ export const listarServiciosAdmin = async (req, res, next) => {
       if (rows.length === 0) return fallo(res, 400, 'CATEGORIA_NO_ENCONTRADA', `La categoría '${categoria}' no existe`);
       valores.push(categoria);
       condiciones.push(`c.slug = $${valores.length}`);
+    }
+    if (area !== undefined) {
+      valores.push(area);
+      condiciones.push(`s.area = $${valores.length}`);
     }
     if (activo !== undefined) {
       valores.push(activo === 'true');
@@ -172,11 +184,17 @@ export const listarServiciosAdmin = async (req, res, next) => {
   }
 };
 
-// Comprueba que la categoría exista y esté activa; responde y devuelve false si no.
-const categoriaUtilizable = async (res, categoriaId) => {
+// Comprueba que la categoría exista, esté activa y sea del MISMO área que el servicio; responde y devuelve false si no.
+const categoriaUtilizable = async (res, categoriaId, area) => {
   const categoria = await buscarCategoriaPorId(categoriaId);
   if (!categoria || !categoria.activo) {
     fallo(res, 400, 'CATEGORIA_NO_DISPONIBLE', 'La categoría no existe o está inactiva', { campo: 'categoria_id' });
+    return false;
+  }
+  if (categoria.area !== area) {
+    fallo(res, 400, 'CATEGORIA_AREA_INCOMPATIBLE', 'La categoría es de otra área: elige una categoría del mismo área que el servicio', {
+      campo: 'categoria_id',
+    });
     return false;
   }
   return true;
@@ -193,16 +211,17 @@ export const crearServicio = async (req, res, next) => {
     const falta = OBLIGATORIOS_ALTA.find((c) => !(c in datos));
     if (falta) return datoInvalido(res, falta, `El campo '${falta}' es obligatorio`);
 
-    if (!(await categoriaUtilizable(res, datos.categoria_id))) return undefined;
+    const area = datos.area ?? AREA_BARBERIA;
+    if (!(await categoriaUtilizable(res, datos.categoria_id, area))) return undefined;
     if (await nombreOcupado('servicios', datos.nombre)) {
       return fallo(res, 409, 'NOMBRE_DUPLICADO', 'Ya existe un servicio con ese nombre', { campo: 'nombre' });
     }
 
     try {
       const { rows } = await pool.query(
-        `INSERT INTO servicios (nombre, descripcion, precio, duracion_min, tipo, categoria_id, activo)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-        [datos.nombre, datos.descripcion, datos.precio, datos.duracion_min, datos.tipo, datos.categoria_id, datos.activo ?? true]
+        `INSERT INTO servicios (nombre, descripcion, precio, duracion_min, tipo, categoria_id, activo, area)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+        [datos.nombre, datos.descripcion, datos.precio, datos.duracion_min, datos.tipo, datos.categoria_id, datos.activo ?? true, area]
       );
       return res.status(201).json(aServicioAdmin(await buscarServicio(rows[0].id)));
     } catch (err) {
@@ -234,7 +253,33 @@ export const actualizarServicio = async (req, res, next) => {
     const actual = await buscarServicio(id);
     if (!actual) return fallo(res, 404, 'SERVICIO_NO_ENCONTRADO', 'Servicio no encontrado');
 
-    if (datos.categoria_id !== undefined && !(await categoriaUtilizable(res, datos.categoria_id))) return undefined;
+    // La asesoría gratis sembrada es gratis por definición (la promoción de «una por persona»): su precio no se toca
+    // (desactivarla sí se puede). Mandar el mismo precio (0) es inocuo.
+    if (esAsesoriaGratis(actual) && datos.precio !== undefined && datos.precio !== actual.precio) {
+      return fallo(res, 409, 'PRECIO_FIJO', 'La asesoría gratuita debe costar siempre 0. Puedes desactivarla, pero no cambiarle el precio.', {
+        campo: 'precio',
+      });
+    }
+
+    // El área de un servicio con historial (líneas en cita_servicios) no cambia: las citas y las estadísticas ya la usan.
+    const areaResultante = datos.area ?? actual.area;
+    if (datos.area !== undefined && datos.area !== actual.area) {
+      const { rows: historial } = await pool.query('SELECT 1 FROM cita_servicios WHERE servicio_id = $1 LIMIT 1', [id]);
+      if (historial.length > 0) {
+        return fallo(res, 409, 'SERVICIO_CON_HISTORIAL', 'Este servicio ya tiene citas: no se puede cambiar su área. Desactívalo y crea uno nuevo.', {
+          campo: 'area',
+        });
+      }
+    }
+
+    // La categoría (la nueva o la actual, si cambia el área) debe ser del área resultante.
+    if (datos.categoria_id !== undefined) {
+      if (!(await categoriaUtilizable(res, datos.categoria_id, areaResultante))) return undefined;
+    } else if (datos.area !== undefined && datos.area !== actual.area && actual.categoria_id !== null && actual.categoria_area !== areaResultante) {
+      return fallo(res, 400, 'CATEGORIA_AREA_INCOMPATIBLE', 'La categoría actual es de otra área: elige también una categoría del nuevo área', {
+        campo: 'categoria_id',
+      });
+    }
     if (datos.nombre !== undefined && datos.nombre !== actual.nombre && (await nombreOcupado('servicios', datos.nombre, id))) {
       return fallo(res, 409, 'NOMBRE_DUPLICADO', 'Ya existe un servicio con ese nombre', { campo: 'nombre' });
     }
@@ -276,7 +321,7 @@ export const actualizarServicio = async (req, res, next) => {
 // ---------------------------------------------------------------------------------------------------- categorías
 
 const SELECT_CATEGORIAS = `
-  SELECT c.id, c.nombre, c.slug, c.orden, c.activo,
+  SELECT c.id, c.nombre, c.slug, c.orden, c.activo, c.area,
          COUNT(s.id) FILTER (WHERE s.activo)::int AS total_servicios,
          COUNT(s.id) FILTER (WHERE NOT s.activo)::int AS total_inactivos
   FROM categorias c

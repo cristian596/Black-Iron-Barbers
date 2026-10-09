@@ -36,9 +36,9 @@ const FiltrosCitasAdmin = ({
 
     {barberos && (
       <div className="flex min-w-0 flex-col gap-1">
-        <label htmlFor="citas-barbero" className="text-sm font-medium text-zinc-300">Barbero</label>
+        <label htmlFor="citas-barbero" className="text-sm font-medium text-zinc-300">Profesional</label>
         <select id="citas-barbero" value={barbero} onChange={(e) => alCambiarBarbero(e.target.value)} className={CAMPO}>
-          <option value="">Todos los barberos</option>
+          <option value="">Todos los profesionales</option>
           {barberos.map((b) => (
             <option key={b.id} value={b.id}>{b.nombre}</option>
           ))}

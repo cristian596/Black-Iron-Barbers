@@ -32,5 +32,5 @@ export const MENSAJE_WHATSAPP_GENERAL = '¡Hola! Quiero agendar una cita en Blac
 export const enlaceWhatsApp = (mensaje) => `https://wa.me/${numeroWhatsApp()}?text=${encodeURIComponent(mensaje)}`
 
 // Destino del botón de asesoría gratuita (Home → "Reserva a tu manera"): la misma ancla que usa el modal
-// de "Soy cliente nuevo". La página /asesorias se crea en la fase siguiente (hasta entonces cae en la 404).
+// de "Soy cliente nuevo" (página /asesorias).
 export const RUTA_ASESORIA = rutaAsesoria('gratis')

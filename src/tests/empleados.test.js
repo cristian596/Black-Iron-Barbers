@@ -83,9 +83,10 @@ describe('validarFormularioEmpleado', () => {
   it('recorta textos y devuelve usuario y contraseña solo en el alta', () => {
     expect(validarFormularioEmpleado(validos, { conAcceso: true })).toEqual({
       errores: {},
-      datos: { nombre: 'Ángel', cargo: 'Senior', especialidad: '', usuario: 'angel', contrasena: '12345678' },
+      // MODIFICADO (fase 7): los datos llevan el área (barbería por defecto)
+      datos: { nombre: 'Ángel', cargo: 'Senior', especialidad: '', area: 'barberia', usuario: 'angel', contrasena: '12345678' },
     })
-    expect(validarFormularioEmpleado(validos, { conAcceso: false }).datos).toEqual({ nombre: 'Ángel', cargo: 'Senior', especialidad: '' })
+    expect(validarFormularioEmpleado(validos, { conAcceso: false }).datos).toEqual({ nombre: 'Ángel', cargo: 'Senior', especialidad: '', area: 'barberia' }) // MODIFICADO (fase 7): + area
   })
 
   it('acepta los límites: nombre 100, cargo 100, especialidad 150, usuario 50, contraseña 8 y 72', () => {

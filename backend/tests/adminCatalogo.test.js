@@ -123,7 +123,10 @@ describe('GET /api/admin/servicios', () => {
       duracion_min: 30,
       tipo: 'elite',
       activo: true,
-      categoria: { id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, activo: true },
+      // fase 7 (campos nuevos): área del servicio, si su precio es fijo y el área de su categoría
+      area: 'barberia',
+      precio_fijo: false,
+      categoria: { id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, activo: true, area: 'barberia' },
     });
   });
 
@@ -255,7 +258,10 @@ describe('POST /api/admin/servicios: alta', () => {
       duracion_min: 30,
       tipo: 'original',
       activo: true,
-      categoria: { id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, activo: true },
+      // fase 7 (campos nuevos): área del servicio, si su precio es fijo y el área de su categoría
+      area: 'barberia',
+      precio_fijo: false,
+      categoria: { id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, activo: true, area: 'barberia' },
     });
     const { rows } = await pool.query('SELECT clave_seed FROM servicios WHERE id = $1', [res.body.id]);
     expect(rows[0].clave_seed).toBeNull(); // el seed nunca lo tocará
@@ -478,7 +484,7 @@ describe('GET /api/admin/categorias', () => {
 
     const base = res.body.find((c) => c.id === categoria.id);
     expect(base).toEqual({
-      id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, orden: categoria.orden, activo: true,
+      id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, orden: categoria.orden, activo: true, area: 'barberia', // fase 7: área de la categoría
       total_servicios: 1, total_inactivos: 1,
     });
     expect(res.body.find((c) => c.id === inactiva.id)).toMatchObject({ activo: false, total_servicios: 0 });

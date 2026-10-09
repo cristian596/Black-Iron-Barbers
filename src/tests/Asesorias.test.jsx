@@ -231,3 +231,16 @@ describe('Página /asesorias: scroll y foco por hash', () => {
     expect(llamadas).toHaveLength(0)
   })
 })
+
+describe('Asesoría creada por el admin (sin clave)', () => {
+  it('no aparece en /asesorias (solo se muestran las que tienen texto por clave) y no rompe las demás', async () => {
+    vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue([
+      ...ASESORIAS_API,
+      { id: 500, nombre: 'Asesoría del admin', descripcion: 'x', precio: 30000, duracion_min: 30, tipo: 'original', categoria: { id: 9, nombre: 'Asesorías', slug: 'asesorias' } },
+    ])
+    const { container } = montar()
+    await within(container.querySelector('section#premium')).findByRole('link', { name: /Reservar esta asesoría/ })
+    expect(screen.queryByText('Asesoría del admin')).toBeNull()
+    expect(container.querySelectorAll('section[id]')).toHaveLength(3)
+  })
+})

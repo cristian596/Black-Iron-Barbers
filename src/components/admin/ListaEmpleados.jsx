@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 import { FiEdit2, FiKey } from 'react-icons/fi'
 import AvatarBarbero from '../ui/AvatarBarbero'
-import { enlaceCitasPendientes } from '../../utils/empleados'
+import { enlaceCitasPendientes, unidadesDelMes } from '../../utils/empleados'
+import { AREA_ASESORIA } from '../../utils/areas'
+import { EtiquetaArea } from '../ui/ReservaCombinada'
 import InterruptorActivo from './InterruptorActivo'
 import IndicadorVigencia from './IndicadorVigencia'
 
@@ -24,7 +26,7 @@ const CitasPendientes = ({ empleado }) =>
     <Link
       to={enlaceCitasPendientes(empleado)}
       aria-label={`${empleado.citas_pendientes} citas pendientes de ${empleado.nombre}: ver en Citas`}
-      className="inline-flex min-h-11 min-w-6 items-center font-semibold text-oro underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-oro"
+      className="inline-flex min-h-11 min-w-11 items-center justify-center font-semibold text-oro underline-offset-2 hover:underline focus-visible:outline-2 focus-visible:outline-oro"
     >
       {empleado.citas_pendientes}
     </Link>
@@ -68,6 +70,7 @@ const Tarjeta = ({ empleado, alEditar, alAcceso, alCambiarActivo, guardando }) =
           {!empleado.activo && <EtiquetaInactivo />}
         </h3>
         <p className="wrap-anywhere text-sm text-zinc-400">{empleado.cargo || 'Sin cargo'}</p>
+        <EtiquetaArea area={empleado.area} className="mt-1" />
       </div>
     </div>
     <p className="mt-2 wrap-anywhere text-xs text-zinc-500">{textoUsuario(empleado)}</p>
@@ -78,7 +81,7 @@ const Tarjeta = ({ empleado, alEditar, alAcceso, alCambiarActivo, guardando }) =
     )}
     <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
       <div className="rounded-lg bg-white/5 p-2">
-        <dt className="text-xs text-zinc-400">Cortes este mes</dt>
+        <dt className="text-xs text-zinc-400">{empleado.area === AREA_ASESORIA ? 'Asesorías este mes' : 'Cortes este mes'}</dt>
         <dd className="text-lg font-semibold">{empleado.cortes_mes}</dd>
       </div>
       <div className="rounded-lg bg-white/5 p-2">
@@ -95,7 +98,9 @@ const Tarjeta = ({ empleado, alEditar, alAcceso, alCambiarActivo, guardando }) =
   </article>
 )
 
-const Tabla = ({ empleados, alEditar, alAcceso, alCambiarActivo, idGuardando }) => (
+const Tabla = ({ empleados, alEditar, alAcceso, alCambiarActivo, idGuardando }) => {
+  const hayAsesores = empleados.some((e) => e.area === AREA_ASESORIA)
+  return (
   <div className="min-w-0 overflow-x-auto">
     <table className="w-full min-w-200 text-left text-sm">
       <caption className="sr-only">Empleados</caption>
@@ -103,8 +108,9 @@ const Tabla = ({ empleados, alEditar, alAcceso, alCambiarActivo, idGuardando }) 
         <tr className="border-b border-white/10 text-zinc-400">
           <th scope="col" className="py-2 pr-3 font-medium">Empleado</th>
           <th scope="col" className="py-2 pr-3 font-medium">Cargo</th>
+          <th scope="col" className="py-2 pr-3 font-medium">Área</th>
           <th scope="col" className="py-2 pr-3 font-medium">Estado</th>
-          <th scope="col" className="py-2 pr-3 text-right font-medium">Cortes este mes</th>
+          <th scope="col" className="py-2 pr-3 text-right font-medium">{hayAsesores ? 'Cortes / asesorías este mes' : 'Cortes este mes'}</th>
           <th scope="col" className="py-2 pr-3 text-right font-medium">Citas pendientes</th>
           <th scope="col" className="py-2 font-medium"><span className="sr-only">Acciones</span></th>
         </tr>
@@ -130,10 +136,14 @@ const Tabla = ({ empleados, alEditar, alAcceso, alCambiarActivo, idGuardando }) 
               </span>
             </th>
             <td className="min-w-32 py-2 pr-3 text-zinc-300">{empleado.cargo || '—'}</td>
+            <td className="py-2 pr-3"><EtiquetaArea area={empleado.area} /></td>
             <td className="py-2 pr-3">
               <Interruptor empleado={empleado} alCambiarActivo={alCambiarActivo} guardando={idGuardando === empleado.id} />
             </td>
-            <td className="py-2 pr-3 text-right font-semibold">{empleado.cortes_mes}</td>
+            <td className="py-2 pr-3 text-right font-semibold">
+              {empleado.cortes_mes}
+              {hayAsesores && <span className="ml-1 text-xs font-normal text-zinc-400">{unidadesDelMes(empleado.area)}</span>}
+            </td>
             <td className="py-2 pr-3 text-right"><CitasPendientes empleado={empleado} /></td>
             <td className="py-2">
               <div className="flex gap-2">
@@ -145,7 +155,8 @@ const Tabla = ({ empleados, alEditar, alAcceso, alCambiarActivo, idGuardando }) 
       </tbody>
     </table>
   </div>
-)
+  )
+}
 
 // Escritorio ancho: tabla. Móvil y tablet: tarjetas (una sola vista en el DOM según `tabla`).
 const ListaEmpleados = ({ empleados, tabla, alEditar, alAcceso, alCambiarActivo, idGuardando }) =>

@@ -6,6 +6,12 @@ export const interpretarError = (err, entidad = 'servicio') => {
       return { campo: 'nombre', mensaje: `Ya existe ${entidad === 'servicio' ? 'un servicio' : 'una categoría'} con ese nombre (sin distinguir mayúsculas). Usa otro.` }
     case 'CATEGORIA_NO_DISPONIBLE':
       return { campo: 'categoria_id', mensaje: 'La categoría no existe o está inactiva. Elige otra.' }
+    case 'CATEGORIA_AREA_INCOMPATIBLE':
+      return { campo: 'categoria_id', mensaje: 'Esa categoría es de otra área. Elige una categoría del mismo área que el servicio.' }
+    case 'SERVICIO_CON_HISTORIAL':
+      return { campo: 'area', mensaje: 'Este servicio ya tiene citas, así que no se puede cambiar su área. Desactívalo y crea uno nuevo en el área correcta.' }
+    case 'PRECIO_FIJO':
+      return { campo: 'precio', mensaje: 'La asesoría gratuita debe costar siempre 0. Puedes desactivarla, pero no cambiarle el precio.' }
     case 'SERVICIO_INCOMPLETO':
       return { campo: err.campo ?? null, mensaje: 'Para activar este servicio primero completa su categoría, tipo y descripción.' }
     case 'CATEGORIA_CON_SERVICIOS':
@@ -26,6 +32,7 @@ export const interpretarError = (err, entidad = 'servicio') => {
 // Validación del formulario de servicio en el cliente (las mismas reglas que el back-end, que sigue siendo la
 // autoridad). Devuelve { errores, datos }: `datos` con los tipos ya convertidos si no hay errores.
 export const validarFormularioServicio = (valores) => {
+  const area = valores.area === 'asesoria' ? 'asesoria' : 'barberia'
   const errores = {}
   const nombre = valores.nombre.trim()
   const descripcion = valores.descripcion.trim()
@@ -55,6 +62,7 @@ export const validarFormularioServicio = (valores) => {
     errores,
     datos: {
       nombre,
+      area,
       categoria_id: Number(valores.categoria_id),
       tipo: valores.tipo,
       precio,

@@ -7,6 +7,7 @@ const MAX_DESCRIPCION = 500
 
 const valoresIniciales = (servicio) => ({
   nombre: servicio?.nombre ?? '',
+  area: servicio?.area ?? 'barberia',
   categoria_id: servicio?.categoria?.id ? String(servicio.categoria.id) : '',
   tipo: servicio?.tipo ?? '',
   precio: servicio ? String(servicio.precio) : '',
@@ -24,6 +25,14 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
   const formularioRef = useRef(null)
 
   const cambiar = (campo) => (e) => setValores((v) => ({ ...v, [campo]: e.target.value }))
+  // Al cambiar el área, la categoría elegida se limpia si es de la otra área (la lista solo ofrece las del área elegida).
+  const cambiarArea = (e) => {
+    const area = e.target.value
+    setValores((v) => {
+      const actual = categorias.find((c) => String(c.id) === v.categoria_id)
+      return { ...v, area, categoria_id: actual && (actual.area ?? 'barberia') === area ? v.categoria_id : '' }
+    })
+  }
   const estilo = (campo) => `${CAMPO} ${errores[campo] ? 'border-red-500' : 'border-white/15'}`
   const accesibilidad = (campo, ayuda = false) => ({
     'aria-invalid': errores[campo] ? 'true' : undefined,
@@ -31,7 +40,7 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
   })
 
   const enfocarPrimerError = (lista) => {
-    const primero = ['nombre', 'categoria_id', 'tipo', 'precio', 'duracion_min', 'descripcion'].find((c) => lista[c])
+    const primero = ['nombre', 'area', 'categoria_id', 'tipo', 'precio', 'duracion_min', 'descripcion'].find((c) => lista[c])
     if (primero) formularioRef.current?.querySelector(`#servicio-${primero}`)?.focus()
   }
 
@@ -61,7 +70,10 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
     }
   }
 
-  const categoriasUtilizables = categorias.filter((c) => c.activo || String(c.id) === valores.categoria_id)
+  const categoriasUtilizables = categorias.filter(
+    (c) => (c.area ?? 'barberia') === valores.area && (c.activo || String(c.id) === valores.categoria_id)
+  )
+  const precioFijo = Boolean(servicio?.precio_fijo)
 
   return (
     <form ref={formularioRef} onSubmit={enviar} noValidate className="flex min-w-0 flex-col gap-4">
@@ -73,9 +85,21 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
         <input id="servicio-nombre" type="text" maxLength={150} value={valores.nombre} onChange={cambiar('nombre')} className={estilo('nombre')} {...accesibilidad('nombre')} />
       </Campo>
 
+      <Campo
+        id="servicio-area"
+        etiqueta="Área"
+        error={errores.area}
+        ayuda="Los cortes y otros servicios de barbería los atienden barberos; las asesorías, asesores. La categoría debe ser del mismo área."
+      >
+        <select id="servicio-area" value={valores.area} onChange={cambiarArea} className={estilo('area')} {...accesibilidad('area', true)}>
+          <option value="barberia">Barbería</option>
+          <option value="asesoria">Asesoría</option>
+        </select>
+      </Campo>
+
       <Campo id="servicio-categoria_id" etiqueta="Categoría" error={errores.categoria_id}>
         <select id="servicio-categoria_id" value={valores.categoria_id} onChange={cambiar('categoria_id')} className={estilo('categoria_id')} {...accesibilidad('categoria_id')}>
-          <option value="">Selecciona una categoría</option>
+          <option value="">{categoriasUtilizables.length === 0 ? 'No hay categorías de esta área' : 'Selecciona una categoría'}</option>
           {categoriasUtilizables.map((c) => (
             <option key={c.id} value={c.id} disabled={!c.activo}>
               {c.nombre}{c.activo ? '' : ' (inactiva)'}
@@ -94,8 +118,8 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
       </Campo>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Campo id="servicio-precio" etiqueta="Precio (COP)" error={errores.precio} ayuda="0 se muestra como «Gratis».">
-          <input id="servicio-precio" type="text" inputMode="numeric" autoComplete="off" value={valores.precio} onChange={cambiar('precio')} className={estilo('precio')} {...accesibilidad('precio', true)} />
+        <Campo id="servicio-precio" etiqueta="Precio (COP)" error={errores.precio} ayuda={precioFijo ? 'La asesoría gratuita siempre cuesta 0: su precio no se puede cambiar.' : '0 se muestra como «Gratis».'}>
+          <input id="servicio-precio" type="text" inputMode="numeric" autoComplete="off" disabled={precioFijo} value={valores.precio} onChange={cambiar('precio')} className={estilo('precio')} {...accesibilidad('precio', true)} />
         </Campo>
         <Campo id="servicio-duracion_min" etiqueta="Duración (minutos)" error={errores.duracion_min} ayuda="Entre 1 y 600.">
           <input id="servicio-duracion_min" type="text" inputMode="numeric" autoComplete="off" value={valores.duracion_min} onChange={cambiar('duracion_min')} className={estilo('duracion_min')} {...accesibilidad('duracion_min', true)} />

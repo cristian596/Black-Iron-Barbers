@@ -59,7 +59,7 @@ const Empleados = () => {
     } else {
       const { empleado } = panel
       const cambios = Object.fromEntries(
-        Object.entries(datos).filter(([campo, valor]) => (empleado[campo] ?? '') !== valor)
+        Object.entries(datos).filter(([campo, valor]) => (empleado[campo] ?? (campo === 'area' ? 'barberia' : '')) !== valor)
       )
       if (Object.keys(cambios).length === 0) {
         setPanel(null)

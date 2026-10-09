@@ -69,7 +69,8 @@ const SELECT_EMPLEADOS = `
          u.id AS usuario_id, u.usuario AS usuario_nombre, u.activo AS usuario_activo, u.contrasena_cambiada_en,
          (SELECT COUNT(*)::int FROM usuarios WHERE barbero_id = b.id AND rol = 'barbero') AS usuarios_total,
          (SELECT COUNT(*)::int FROM citas c
-           WHERE c.barbero_id = b.id AND c.estado = 'completada' AND c.fecha >= $1::date AND c.fecha < $2::date) AS cortes_mes,
+           WHERE c.barbero_id = b.id AND c.estado = 'completada' AND c.fecha >= $1::date AND c.fecha < $2::date
+             AND EXISTS (SELECT 1 FROM servicios sv WHERE sv.id = c.servicio_id AND sv.area = b.area)) AS cortes_mes, -- cortes o asesorías según SU área (no cuenta citas anteriores de otra área)
          (SELECT COUNT(*)::int FROM citas c
            WHERE c.barbero_id = b.id AND c.estado = 'pendiente' AND (c.fecha + c.hora) >= $3::timestamp) AS citas_pendientes
   FROM barberos b

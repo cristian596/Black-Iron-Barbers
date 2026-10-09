@@ -710,3 +710,16 @@ describe('Asesoría gratuita: una por persona', () => {
     expect(api.crearCita).not.toHaveBeenCalled()
   })
 })
+
+describe('Asesoría creada por el admin (sin clave)', () => {
+  it('sí se ofrece en "Añadir una asesoría" de la reserva', async () => {
+    vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue([
+      ...ASESORIAS_API,
+      { id: 500, nombre: 'Asesoría del admin', descripcion: 'x', precio: 30000, duracion_min: 30, tipo: 'original', categoria: { id: 9, nombre: 'Asesorías', slug: 'asesorias' } },
+    ])
+    montar()
+    await esperarCarga()
+    expect(tarjeta('Asesoría del admin')).toHaveAttribute('aria-pressed', 'false')
+    expect(tarjeta('Asesoría Premium')).toBeInTheDocument()
+  })
+})

@@ -109,8 +109,8 @@ describe('/admin/citas: página inicial', () => {
     montar()
     await screen.findByText('Mostrando 1–15 de 435')
 
-    const select = screen.getByLabelText('Barbero')
-    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Todos los barberos', 'Leo', 'Dani'])
+    const select = screen.getByLabelText('Profesional')
+    expect(within(select).getAllByRole('option').map((o) => o.textContent)).toEqual(['Todos los profesionales', 'Leo', 'Dani'])
   })
 })
 
@@ -201,7 +201,7 @@ describe('/admin/citas: la URL es la fuente de verdad', () => {
     expect(screen.getByLabelText('Buscar')).toHaveValue('ana')
     expect(screen.getByLabelText('Desde')).toHaveValue('2026-10-01')
     expect(screen.getByLabelText('Hasta')).toHaveValue('2026-10-05')
-    await waitFor(() => expect(screen.getByLabelText('Barbero')).toHaveValue('2'))
+    await waitFor(() => expect(screen.getByLabelText('Profesional')).toHaveValue('2'))
   })
 
   it('ignora valores inválidos de la URL en vez de romper', async () => {
@@ -275,7 +275,7 @@ describe('/admin/citas: los filtros reinician la página', () => {
     montar('/admin/citas?pagina=5')
     await screen.findByText('Mostrando 61–75 de 435')
 
-    await userEvent.selectOptions(screen.getByLabelText('Barbero'), '2')
+    await userEvent.selectOptions(screen.getByLabelText('Profesional'), '2')
     await waitFor(() => expect(ultimaConsulta()).toMatchObject({ barbero: '2', pagina: 1 }))
     expect(parametros().has('pagina')).toBe(false)
 
@@ -395,7 +395,7 @@ describe('/admin/citas: acciones sobre una cita', () => {
     await screen.findByText('Mostrando 1–15 de 435')
 
     const opciones = (select) => within(select).getAllByRole('option').map((o) => o.textContent)
-    expect(opciones(screen.getByLabelText('Barbero'))).toEqual(['Todos los barberos', 'Leo', 'Dani', 'Camila'])
+    expect(opciones(screen.getByLabelText('Profesional'))).toEqual(['Todos los profesionales', 'Leo', 'Dani', 'Camila'])
     const reasignar = screen.getAllByLabelText(/Reasignar barbero de la cita de Cliente 1$/)[0]
     expect(opciones(reasignar)).toContain('Leo')
     expect(opciones(reasignar)).toContain('Dani')

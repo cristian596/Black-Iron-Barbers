@@ -1,19 +1,22 @@
 import { useRef, useState } from 'react'
-import { LIMITES_EMPLEADO, interpretarErrorEmpleado, validarFormularioEmpleado } from '../../utils/empleados'
+import { Link } from 'react-router-dom'
+import { LIMITES_EMPLEADO, enlaceCitasPendientes, interpretarErrorEmpleado, validarFormularioEmpleado } from '../../utils/empleados'
+import { AREA_ASESORIA, AREA_BARBERIA } from '../../utils/areas'
 import Campo, { ESTILO_CAMPO } from './CampoFormulario'
 import CampoContrasena from './CampoContrasena'
 
-const ORDEN_CAMPOS = ['nombre', 'cargo', 'especialidad', 'usuario', 'contrasena']
+const ORDEN_CAMPOS = ['nombre', 'cargo', 'especialidad', 'area', 'usuario', 'contrasena']
 
 const valoresIniciales = (empleado) => ({
   nombre: empleado?.nombre ?? '',
   cargo: empleado?.cargo ?? '',
   especialidad: empleado?.especialidad ?? '',
+  area: empleado?.area ?? AREA_BARBERIA,
   usuario: '',
   contrasena: '',
 })
 
-// Alta (`empleado` null: pide también usuario y contraseña) y edición (nombre, cargo y especialidad).
+// Alta (`empleado` null: pide también usuario y contraseña) y edición (nombre, cargo, especialidad y área).
 // `alGuardar(datos)` devuelve una promesa; si falla, el error se muestra en el campo que indica su código.
 const FormularioEmpleado = ({ empleado, alGuardar, alCancelar }) => {
   const creando = !empleado
@@ -73,6 +76,23 @@ const FormularioEmpleado = ({ empleado, alGuardar, alCancelar }) => {
       </Campo>
       <Campo id="empleado-especialidad" etiqueta="Especialidad (opcional)" error={errores.especialidad}>
         <input id="empleado-especialidad" type="text" maxLength={LIMITES_EMPLEADO.especialidad} value={valores.especialidad} onChange={cambiar('especialidad')} placeholder="Fade y barba" className={estilo('especialidad')} {...accesibilidad('especialidad')} />
+      </Campo>
+
+      <Campo
+        id="empleado-area"
+        etiqueta="Área"
+        error={errores.area}
+        ayuda="Los asesores atienden solo asesorías y los barberos solo servicios de barbería."
+      >
+        <select id="empleado-area" value={valores.area} onChange={cambiar('area')} className={estilo('area')} {...accesibilidad('area', true)}>
+          <option value={AREA_BARBERIA}>Barbería</option>
+          <option value={AREA_ASESORIA}>Asesoría</option>
+        </select>
+        {errores.area && !creando && (
+          <Link to={enlaceCitasPendientes(empleado)} className="inline-flex min-h-11 items-center text-sm font-semibold text-oro underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-oro">
+            Ver y reasignar sus citas
+          </Link>
+        )}
       </Campo>
 
       {creando && (

@@ -183,8 +183,8 @@ describe('Empleados: crear', () => {
     await userEvent.click(within(dialogo).getByRole('button', { name: 'Crear empleado' }))
 
     expect(api.crearEmpleado).toHaveBeenCalledWith('tok', {
-      nombre: 'Nuevo Barbero', cargo: 'Barbero Profesional', especialidad: '', usuario: 'nuevo01', contrasena: 'clave-segura-1',
-    })
+      nombre: 'Nuevo Barbero', cargo: 'Barbero Profesional', especialidad: '', area: 'barberia', usuario: 'nuevo01', contrasena: 'clave-segura-1',
+    }) // MODIFICADO (fase 7): + area (barbería por defecto)
     expect(await screen.findByRole('status')).toHaveTextContent('«Nuevo Barbero» creado')
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(api.obtenerEmpleados).toHaveBeenCalledTimes(2)
@@ -355,7 +355,7 @@ describe('Empleados: escritorio', () => {
 
     const tabla = screen.getByRole('table', { name: 'Empleados' })
     const columnas = within(tabla).getAllByRole('columnheader').map((c) => c.textContent)
-    expect(columnas).toEqual(['Empleado', 'Cargo', 'Estado', 'Cortes este mes', 'Citas pendientes', 'Acciones'])
+    expect(columnas).toEqual(['Empleado', 'Cargo', 'Área', 'Estado', 'Cortes este mes', 'Citas pendientes', 'Acciones']) // MODIFICADO (fase 7): + columna Área
     const filas = within(tabla).getAllByRole('row').slice(1)
     expect(filas.map((f) => within(f).getAllByRole('rowheader')[0].textContent)).toEqual([
       expect.stringContaining('Ángel'), expect.stringContaining('Boby'), expect.stringContaining('Dos Usuarios'), expect.stringContaining('Sin Acceso'),

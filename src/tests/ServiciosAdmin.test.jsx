@@ -164,8 +164,8 @@ describe('Servicios: tarjetas (móvil) y tabla (escritorio)', () => {
 
     const tabla = screen.getByRole('table', { name: 'Servicios del catálogo' })
     expect(within(tabla).getAllByRole('columnheader').map((c) => c.textContent)).toEqual([
-      'Servicio', 'Categoría', 'Tipo', 'Duración', 'Precio', 'Estado', 'Acciones',
-    ])
+      'Servicio', 'Categoría', 'Área', 'Tipo', 'Duración', 'Precio', 'Estado', 'Acciones',
+    ]) // MODIFICADO (fase 7): + columna Área
     const fila = within(tabla).getByRole('row', { name: /Corte militar/ })
     expect(fila).toHaveClass('opacity-60')
     expect(within(fila).getAllByText('Inactivo').length).toBeGreaterThan(0)
@@ -420,8 +420,8 @@ describe('Servicios: crear', () => {
     await userEvent.click(within(dialogo).getByRole('button', { name: 'Crear servicio' }))
 
     expect(api.crearServicioAdmin).toHaveBeenCalledWith('tok', {
-      nombre: 'Corte nuevo', categoria_id: 1, tipo: 'vip', precio: 35000, duracion_min: 45, descripcion: 'Descripción nueva',
-    })
+      nombre: 'Corte nuevo', area: 'barberia', categoria_id: 1, tipo: 'vip', precio: 35000, duracion_min: 45, descripcion: 'Descripción nueva',
+    }) // MODIFICADO (fase 7): + area (barbería por defecto)
     expect(await screen.findByRole('status')).toHaveTextContent('«Corte nuevo» creado')
     await waitFor(() => expect(vi.mocked(api.obtenerServiciosAdmin).mock.calls.length).toBe(cargasAntes + 1))
   })

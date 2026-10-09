@@ -15,7 +15,7 @@ const CONSTRAINTS_GRATIS_USADA = ['asesoria_gratis_usos_correo_norm_key', 'aseso
 export const CODIGO_LIMITE_ASESORIAS = 'LIMITE_ASESORIAS';
 // Una reserva lleva como máximo UNA asesoría (más hasta 2 servicios de barbería: 3 servicios en total).
 export const MAX_ASESORIAS_POR_RESERVA = 1;
-// clave_seed estable de la asesoría gratis (backend/db/data/servicios.js): la fase de "una por persona" la reutiliza.
+// clave_seed estable de la asesoría gratis (backend/db/data/servicios.js): decide el límite de una por persona y su precio fijo.
 export const CLAVE_ASESORIA_GRATIS = 'asesoria-gratis';
 
 // ¿Es la asesoría gratis? (la que está limitada a una por persona) Se decide por clave_seed (estable), no por nombre ni precio: renombrarla o cambiarle el

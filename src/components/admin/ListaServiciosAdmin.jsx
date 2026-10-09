@@ -3,6 +3,7 @@ import InsigniaTipo from '../ui/InsigniaTipo'
 import InterruptorActivo from './InterruptorActivo'
 import { formatearPrecio } from '../../utils/formato'
 import { nombreCategoria } from '../../utils/servicios'
+import { EtiquetaArea } from '../ui/ReservaCombinada'
 
 const BOTON_EDITAR =
   'inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-lg border border-white/15 px-3 text-sm font-medium text-zinc-200 hover:border-white/40 hover:text-white focus-visible:outline-2 focus-visible:outline-oro'
@@ -18,7 +19,10 @@ const Tarjeta = ({ servicio, alEditar, alCambiarActivo, guardando }) => (
       <h3 className="min-w-0 wrap-anywhere text-base font-semibold">{servicio.nombre}</h3>
       <InsigniaTipo tipo={servicio.tipo} />
     </div>
-    <p className="mt-1 text-xs uppercase tracking-wide text-zinc-500">{nombreCategoria(servicio)}</p>
+    <p className="mt-1 flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide text-zinc-500">
+      {nombreCategoria(servicio)}
+      <EtiquetaArea area={servicio.area} />
+    </p>
     <p className="mt-2 flex items-center justify-between text-sm text-zinc-300">
       <span>{servicio.duracion_min} min</span>
       <span className="font-semibold text-white">{formatearPrecio(servicio.precio)}</span>
@@ -39,12 +43,13 @@ const Tarjeta = ({ servicio, alEditar, alCambiarActivo, guardando }) => (
 
 const Tabla = ({ servicios, alEditar, alCambiarActivo, idGuardando }) => (
   <div className="min-w-0 overflow-x-auto">
-    <table className="w-full min-w-170 text-left text-sm">
+    <table className="w-full min-w-190 text-left text-sm">
       <caption className="sr-only">Servicios del catálogo</caption>
       <thead>
         <tr className="border-b border-white/10 text-zinc-400">
           <th scope="col" className="py-2 pr-3 font-medium">Servicio</th>
           <th scope="col" className="py-2 pr-3 font-medium">Categoría</th>
+          <th scope="col" className="py-2 pr-3 font-medium">Área</th>
           <th scope="col" className="py-2 pr-3 font-medium">Tipo</th>
           <th scope="col" className="py-2 pr-3 font-medium">Duración</th>
           <th scope="col" className="py-2 pr-3 font-medium">Precio</th>
@@ -62,6 +67,7 @@ const Tabla = ({ servicios, alEditar, alCambiarActivo, idGuardando }) => (
               </span>
             </th>
             <td className="py-1 pr-3 text-zinc-300">{nombreCategoria(servicio)}</td>
+            <td className="py-1 pr-3"><EtiquetaArea area={servicio.area} /></td>
             <td className="py-1 pr-3"><InsigniaTipo tipo={servicio.tipo} /></td>
             <td className="py-1 pr-3 text-zinc-300">{servicio.duracion_min} min</td>
             <td className="py-1 pr-3 font-semibold">{formatearPrecio(servicio.precio)}</td>

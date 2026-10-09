@@ -22,6 +22,10 @@ import ErrorCarga from '../../components/ui/ErrorCarga'
 import SinResultados from '../../components/ui/SinResultados'
 
 const EDICION_NUEVO = 'nuevo'
+
+// Dónde se ve un servicio: los de barbería en /cortes y en la reserva; las asesorías en el bloque «Añadir una asesoría» de la reserva
+// (y en /asesorias solo las que tienen texto por clave: las creadas aquí no).
+const dondeSeVe = (servicio) => (servicio.area === 'asesoria' ? 'en «Añadir una asesoría» de la reserva' : 'en /cortes y en la reserva')
 const LISTA_VACIA = []
 
 const Servicios = () => {
@@ -60,7 +64,7 @@ const Servicios = () => {
     const cambios = editando
       ? Object.fromEntries(
           Object.entries(datos).filter(([campo, valor]) => {
-            const actual = campo === 'categoria_id' ? editando.categoria?.id : editando[campo]
+            const actual = campo === 'categoria_id' ? editando.categoria?.id : campo === 'area' ? (editando.area ?? 'barberia') : editando[campo]
             return actual !== valor
           })
         )
@@ -77,7 +81,7 @@ const Servicios = () => {
       : await crearServicioAdmin(token, datos)
     if (guardado?.categoria?.slug) filtro.setCategoria(guardado.categoria.slug) // que se vea el servicio guardado
     setEdicion(null)
-    setAviso(editando ? `«${datos.nombre}» actualizado. Ya se ve en /cortes y en la reserva.` : `«${datos.nombre}» creado. Ya se ve en /cortes y en la reserva.`)
+    setAviso(`«${datos.nombre}» ${editando ? 'actualizado' : 'creado'}. Ya se ve ${dondeSeVe(datos)}.`)
     recargarTodo()
   }
 
@@ -87,7 +91,7 @@ const Servicios = () => {
     setIdGuardando(servicio.id)
     try {
       await actualizarServicioAdmin(token, servicio.id, { activo: true })
-      setAviso(`«${servicio.nombre}» activado. Ya se ve en /cortes y en la reserva.`)
+      setAviso(`«${servicio.nombre}» activado. Ya se ve ${dondeSeVe(servicio)}.`)
       recargarTodo()
     } catch (err) {
       const { mensaje } = interpretarError(err, 'servicio')
@@ -117,7 +121,7 @@ const Servicios = () => {
     setIdGuardando(porDesactivar.id)
     try {
       await actualizarServicioAdmin(token, porDesactivar.id, { activo: false })
-      setAviso(`«${porDesactivar.nombre}» desactivado: ya no se ve en /cortes ni en la reserva. Sus citas anteriores se conservan.`)
+      setAviso(`«${porDesactivar.nombre}» desactivado: ya no se ve ${dondeSeVe(porDesactivar)}. Sus citas anteriores se conservan.`)
       setPorDesactivar(null)
       recargarTodo()
     } catch (err) {
@@ -208,7 +212,7 @@ const Servicios = () => {
       {porDesactivar && (
         <ModalConfirmar
           titulo={`¿Desactivar «${porDesactivar.nombre}»?`}
-          texto="Dejará de mostrarse en /cortes y en la reserva. Las citas que ya existen conservan su precio y duración; nada se borra y puedes volver a activarlo cuando quieras."
+          texto={`Dejará de mostrarse ${porDesactivar.area === 'asesoria' ? 'en la reserva (y en /asesorias, si es una de las tres de siempre)' : 'en /cortes y en la reserva'}. Las citas que ya existen conservan su precio y duración; nada se borra y puedes volver a activarlo cuando quieras.`}
           textoConfirmar="Desactivar"
           cargando={idGuardando === porDesactivar.id}
           error={errorConfirmar}

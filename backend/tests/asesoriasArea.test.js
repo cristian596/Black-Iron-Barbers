@@ -22,7 +22,7 @@ const SERV_CORTE = 9102; // area barberia, 30 min
 const SERV_CORTE_2 = 9103; // area barberia
 const SERV_MIXTO_ASESORIA = 9104; // area asesoria, dentro de la categoría mixta
 const SERV_MIXTO_CORTE = 9105; // area barberia, dentro de la categoría mixta
-const SERV_GRATIS = 9106; // area asesoria, clave_seed 'asesoria-gratis': la única asesoría que sigue bloqueada en la fase 3
+const SERV_GRATIS = 9106; // area asesoria, clave_seed 'asesoria-gratis': asesoría gratis sembrada (una por persona)
 const IDS_SERVICIOS = [SERV_ASESORIA, SERV_CORTE, SERV_CORTE_2, SERV_MIXTO_ASESORIA, SERV_MIXTO_CORTE, SERV_GRATIS];
 
 let admin;
