@@ -29,7 +29,7 @@ const TarjetaCita = ({
 
       <div className="mt-2 space-y-0.5 text-sm text-gray-300">
         <p>{fechaLegible(cita.fecha)} · {soloHora(cita.hora)}</p>
-        <p>{cita.correo}</p>
+        <p className="wrap-anywhere">{cita.correo}</p>
         {mostrarBarbero && <p>{cita.area === AREA_ASESORIA ? 'Asesor/a' : 'Barbero'}: {cita.barbero_nombre}</p>}
       </div>
 
