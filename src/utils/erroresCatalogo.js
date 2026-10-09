@@ -8,6 +8,8 @@ export const interpretarError = (err, entidad = 'servicio') => {
       return { campo: 'categoria_id', mensaje: 'La categoría no existe o está inactiva. Elige otra.' }
     case 'CATEGORIA_AREA_INCOMPATIBLE':
       return { campo: 'categoria_id', mensaje: 'Esa categoría es de otra área. Elige una categoría del mismo área que el servicio.' }
+    case 'AREA_FIJA':
+      return { campo: 'area', mensaje: 'El área de un servicio del catálogo base no se puede cambiar. Puedes desactivarlo y crear uno nuevo.' }
     case 'SERVICIO_CON_HISTORIAL':
       return { campo: 'area', mensaje: 'Este servicio ya tiene citas, así que no se puede cambiar su área. Desactívalo y crea uno nuevo en el área correcta.' }
     case 'PRECIO_FIJO':

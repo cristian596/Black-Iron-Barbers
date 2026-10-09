@@ -1,0 +1,30 @@
+# Dependencias: se instalan dentro de la imagen (Linux), nunca se copian las de Windows
+node_modules
+npm-debug.log*
+
+# Variables de entorno: en runtime llegan por `environment:` de docker-compose.yml
+.env
+.env.*
+
+# Pruebas y su configuración (no se ejecutan dentro del contenedor)
+tests
+vitest.config.js
+coverage
+
+# Datos locales: las fotos de perfil viven en el volumen fotos_perfil_data
+uploads
+logs
+*.log
+
+# Control de versiones, editor y sistema
+.git
+.gitignore
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docker
+Dockerfile
+.dockerignore

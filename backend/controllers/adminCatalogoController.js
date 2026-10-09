@@ -116,6 +116,7 @@ const aServicioAdmin = (f) => ({
   area: f.area,
   // La asesoría gratis sembrada debe costar siempre 0: el front deshabilita su precio (el back-end lo exige igual).
   precio_fijo: esAsesoriaGratis(f),
+  area_fija: Boolean(f.clave_seed), // los del catálogo sembrado no cambian de área
   categoria:
     f.categoria_id === null
       ? null
@@ -258,6 +259,14 @@ export const actualizarServicio = async (req, res, next) => {
     if (esAsesoriaGratis(actual) && datos.precio !== undefined && datos.precio !== actual.precio) {
       return fallo(res, 409, 'PRECIO_FIJO', 'La asesoría gratuita debe costar siempre 0. Puedes desactivarla, pero no cambiarle el precio.', {
         campo: 'precio',
+      });
+    }
+
+    // Los servicios del catálogo sembrado (con clave_seed, de cualquier área) conservan su área: cambiarla rompería la unión
+    // texto↔API de /asesorias y el límite de la asesoría gratis. Mandar el mismo valor no es un cambio.
+    if (actual.clave_seed && datos.area !== undefined && datos.area !== actual.area) {
+      return fallo(res, 409, 'AREA_FIJA', 'El área de un servicio del catálogo base no se puede cambiar. Puedes desactivarlo y crear uno nuevo.', {
+        campo: 'area',
       });
     }
 

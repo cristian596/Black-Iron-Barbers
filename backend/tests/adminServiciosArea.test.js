@@ -218,3 +218,41 @@ describe('GET /api/admin/empleados: cortes_mes cuenta según el área del emplea
     expect(lista.find((e) => e.id === ASESOR)).toMatchObject({ area: 'asesoria', cortes_mes: 1 });
   });
 });
+
+describe('servicios del catálogo sembrado (con clave_seed): el área no cambia', () => {
+  let id;
+  beforeEach(async () => {
+    await pool.query("DELETE FROM servicios WHERE clave_seed = 'f7-area-fija'");
+    const { rows } = await pool.query(
+      `INSERT INTO servicios (nombre, descripcion, precio, duracion_min, tipo, categoria_id, activo, area, clave_seed)
+       VALUES ('F7 Prueba Sembrado', 'x', 10000, 30, 'original', $1, true, 'asesoria', 'f7-area-fija') RETURNING id`,
+      [catAsesoria]
+    );
+    id = rows[0].id;
+  });
+  afterAll(async () => {
+    await pool.query("DELETE FROM servicios WHERE clave_seed = 'f7-area-fija'");
+  });
+
+  it('cambiar el área (aunque no tenga historial) → 409 AREA_FIJA y no cambia nada', async () => {
+    const res = await api('patch', `/servicios/${id}`).send({ area: 'barberia', categoria_id: catBarberia });
+    expect(res.status).toBe(409);
+    expect(res.body).toMatchObject({ codigo: 'AREA_FIJA', campo: 'area' });
+    const { rows } = await pool.query('SELECT area, categoria_id FROM servicios WHERE id = $1', [id]);
+    expect(rows[0]).toEqual({ area: 'asesoria', categoria_id: catAsesoria });
+  });
+
+  it('mandar el mismo área no es un cambio: se permite y se editan los demás campos; la respuesta marca area_fija', async () => {
+    const res = await api('patch', `/servicios/${id}`).send({ area: 'asesoria', precio: 12000 });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ precio: 12000, area: 'asesoria', area_fija: true });
+  });
+
+  it('un servicio creado por el admin (sin clave_seed) sigue pudiendo cambiar de área sin historial', async () => {
+    const creado = (await api('post', '/servicios').send(valido(catBarberia, { nombre: 'F7 Prueba Libre' }))).body;
+    expect(creado.area_fija).toBe(false);
+    const res = await api('patch', `/servicios/${creado.id}`).send({ area: 'asesoria', categoria_id: catAsesoria });
+    expect(res.status).toBe(200);
+    expect(res.body.area).toBe('asesoria');
+  });
+});

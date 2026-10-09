@@ -266,3 +266,44 @@ describe('Servicios: área', () => {
     expect(interpretarError(fallo('CATEGORIA_AREA_INCOMPATIBLE'))).toMatchObject({ campo: 'categoria_id' })
   })
 })
+
+describe('Servicios del catálogo base: el área no se cambia', () => {
+  it('al editar uno con clave el selector de Área está deshabilitado y explicado; uno creado por el admin sí se puede cambiar', async () => {
+    const sembrado = { ...SERVICIOS[1], area_fija: true }
+    const propio = servicio(30, 'Asesoría del admin', CATEGORIAS[1], { area_fija: false })
+    vi.mocked(api.obtenerServiciosAdmin).mockResolvedValue([SERVICIOS[0], sembrado, propio])
+    vi.mocked(api.obtenerCategoriasAdmin).mockResolvedValue(CATEGORIAS)
+    render(<MemoryRouter><Servicios /></MemoryRouter>)
+    await screen.findByRole('group', { name: 'Categoría' })
+    await userEvent.click(screen.getByRole('button', { name: 'Asesorías' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Editar Asesoría Premium' }))
+    let dialogo = screen.getByRole('dialog', { name: 'Editar servicio' })
+    const area = within(dialogo).getByLabelText('Área')
+    expect(area).toBeDisabled()
+    expect(area).toHaveValue('asesoria')
+    expect(area).toHaveAccessibleDescription(/del catálogo base no se puede cambiar/)
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Cancelar' }))
+
+    await userEvent.click(screen.getByRole('button', { name: 'Editar Asesoría del admin' }))
+    dialogo = screen.getByRole('dialog', { name: 'Editar servicio' })
+    expect(within(dialogo).getByLabelText('Área')).toBeEnabled()
+  })
+
+  it('un 409 AREA_FIJA llega al campo Área (aria-invalid y foco)', async () => {
+    vi.mocked(api.obtenerServiciosAdmin).mockResolvedValue(SERVICIOS)
+    vi.mocked(api.obtenerCategoriasAdmin).mockResolvedValue(CATEGORIAS)
+    vi.mocked(api.actualizarServicioAdmin).mockRejectedValueOnce(fallo('AREA_FIJA', 'x', { campo: 'area' }))
+    render(<MemoryRouter><Servicios /></MemoryRouter>)
+    await screen.findByRole('group', { name: 'Categoría' })
+    await userEvent.click(screen.getByRole('button', { name: 'Editar Corte clásico' }))
+    const dialogo = screen.getByRole('dialog', { name: 'Editar servicio' })
+    await userEvent.selectOptions(within(dialogo).getByLabelText('Área'), 'asesoria')
+    await userEvent.selectOptions(within(dialogo).getByLabelText('Categoría'), '2')
+    await userEvent.click(within(dialogo).getByRole('button', { name: 'Guardar cambios' }))
+    expect(await within(dialogo).findByRole('alert')).toHaveTextContent('catálogo base no se puede cambiar')
+    expect(within(dialogo).getByLabelText('Área')).toHaveAttribute('aria-invalid', 'true')
+    expect(within(dialogo).getByLabelText('Área')).toHaveFocus()
+    expect(interpretarError(fallo('AREA_FIJA'))).toMatchObject({ campo: 'area' })
+  })
+})

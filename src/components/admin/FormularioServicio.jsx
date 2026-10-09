@@ -74,6 +74,7 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
     (c) => (c.area ?? 'barberia') === valores.area && (c.activo || String(c.id) === valores.categoria_id)
   )
   const precioFijo = Boolean(servicio?.precio_fijo)
+  const areaFija = Boolean(servicio?.area_fija)
 
   return (
     <form ref={formularioRef} onSubmit={enviar} noValidate className="flex min-w-0 flex-col gap-4">
@@ -89,9 +90,9 @@ const FormularioServicio = ({ servicio, categorias, alGuardar, alCancelar, error
         id="servicio-area"
         etiqueta="Área"
         error={errores.area}
-        ayuda="Los cortes y otros servicios de barbería los atienden barberos; las asesorías, asesores. La categoría debe ser del mismo área."
+        ayuda={areaFija ? 'El área de un servicio del catálogo base no se puede cambiar.' : 'Los cortes y otros servicios de barbería los atienden barberos; las asesorías, asesores. La categoría debe ser del mismo área.'}
       >
-        <select id="servicio-area" value={valores.area} onChange={cambiarArea} className={estilo('area')} {...accesibilidad('area', true)}>
+        <select id="servicio-area" disabled={areaFija} value={valores.area} onChange={cambiarArea} className={estilo('area')} {...accesibilidad('area', true)}>
           <option value="barberia">Barbería</option>
           <option value="asesoria">Asesoría</option>
         </select>

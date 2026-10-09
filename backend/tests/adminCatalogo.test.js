@@ -126,6 +126,7 @@ describe('GET /api/admin/servicios', () => {
       // fase 7 (campos nuevos): área del servicio, si su precio es fijo y el área de su categoría
       area: 'barberia',
       precio_fijo: false,
+      area_fija: false, // MODIFICADO (fase 7b): campo nuevo
       categoria: { id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, activo: true, area: 'barberia' },
     });
   });
@@ -261,6 +262,7 @@ describe('POST /api/admin/servicios: alta', () => {
       // fase 7 (campos nuevos): área del servicio, si su precio es fijo y el área de su categoría
       area: 'barberia',
       precio_fijo: false,
+      area_fija: false, // MODIFICADO (fase 7b): campo nuevo
       categoria: { id: categoria.id, nombre: 'Cat Prueba Base', slug: categoria.slug, activo: true, area: 'barberia' },
     });
     const { rows } = await pool.query('SELECT clave_seed FROM servicios WHERE id = $1', [res.body.id]);
