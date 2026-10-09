@@ -47,10 +47,13 @@ const montar = (ruta = '/reservar-corte') =>
 
 const esperarCarga = () => screen.findByRole('heading', { name: /Añadir una asesoría/ })
 
+// Los botones de hora son BLOQUES de 1 hora ("10:00 – 11:00"): elegir uno asigna su primera hora libre.
+const bloqueDe = (hora) => new RegExp('^' + hora.slice(0, 2) + ':00 – ' + (Number(hora.slice(0, 2)) + 1) + ':00')
+
 const elegirFechaYHora = async (user, hora = '10:00') => {
   const fechas = await screen.findByRole('group', { name: /fechas disponibles/i })
   await user.click(within(fechas).getAllByRole('button')[0])
-  await user.click(await screen.findByRole('button', { name: hora }))
+  await user.click(await screen.findByRole('button', { name: bloqueDe(hora) }))
 }
 
 // Llega al modal de confirmación con lo ya elegido en la URL, sin tocar profesionales (cualquiera).
@@ -479,7 +482,7 @@ describe('Confirmación y éxito', () => {
     expect(llamada.barbero_id).toBeUndefined()
     expect(screen.getByText('Asesor/a')).toBeInTheDocument()
     expect(screen.getByText('Camila')).toBeInTheDocument()
-    expect(screen.getByText('10:00')).toBeInTheDocument()
+    expect(screen.getByText('Bloque 10–11 · tu cita es a las 10:00')).toBeInTheDocument()
   })
 
   it('solo barbería: el payload no lleva asesor_id y todo es como siempre', async () => {
@@ -541,7 +544,8 @@ describe('Errores con mensajes claros', () => {
   it('conflicto de horario (409): vuelve a Fecha y hora y refresca la disponibilidad', async () => {
     const user = userEvent.setup()
     await llegarYConfirmar(user, `/reservar-corte?servicios=${PREMIUM_API.id},${CORTE.id}`, errorApi('Ese horario ya está reservado', 409))
-    expect(await screen.findByRole('alert')).toHaveTextContent(/esa hora ya fue tomada/i)
+    // MODIFICADO: el 409 reasigna la siguiente hora libre del mismo bloque y avisa (status) en vez de una alerta.
+    expect(await screen.findByText(/te asignamos las 10:30/i)).toBeInTheDocument()
     await waitFor(() => expect(api.obtenerDisponibilidad.mock.calls.length).toBeGreaterThanOrEqual(2))
   })
 })

@@ -4,6 +4,7 @@ import { hoyISO, sumarDiasISO, formatearFechaChip } from '../../../utils/fechas'
 import { CODIGO_PROFESIONAL_INCOMPATIBLE, mensajeErrorSeleccion } from './reservaReducer'
 import { TITULO_CITA, planCitas } from '../../../utils/reservaAsesoria'
 import { formatearDuracion } from '../../../utils/formato'
+import { agruparHorasEnBloques, bloqueDeHora, primeraHoraLibre, textoHoraAsignada } from '../../../utils/bloquesHorarios'
 
 const DIAS_VISIBLES = 30
 
@@ -11,6 +12,9 @@ const DIAS_VISIBLES = 30
 // `asesorId`: asesor concreto (null = cualquiera) cuando la reserva incluye una asesoría. `servicios` (opcional): los
 // objetos elegidos; con asesoría + barbería explican que las horas son las de inicio de la asesoría y que el corte
 // empieza al terminar. `onErrorProfesional`: el profesional elegido no atiende esos servicios (400).
+// La hora se elige por BLOQUES de 1 hora: al elegir uno se asigna su primera hora libre y `hora` guarda esa hora EXACTA.
+// `horaOcupada`: hora que dio 409 al confirmar; al recargar, `onReasignarHora(nueva | null)` pide la siguiente libre del
+// mismo bloque (o avisa que ya no hay). `avisoHora`: texto de esa reasignación (role="status").
 const PasoFechaHora = ({
   servicioIds,
   barberoId,
@@ -24,6 +28,9 @@ const PasoFechaHora = ({
   onErrorSeleccion,
   onErrorProfesional,
   recargaHoras = 0,
+  horaOcupada = '',
+  avisoHora = '',
+  onReasignarHora,
 }) => {
   const fechasDisponibles = useMemo(() => {
     const hoy = hoyISO()
@@ -38,11 +45,20 @@ const PasoFechaHora = ({
   const alServicioNoDisponible = useRef(onServicioNoDisponible)
   const alErrorSeleccion = useRef(onErrorSeleccion)
   const alErrorProfesional = useRef(onErrorProfesional)
+  const alReasignarHora = useRef(onReasignarHora)
+  const alSeleccionarHora = useRef(onSeleccionarHora)
+  // Lo vigente cuando llega la respuesta: la hora elegida y la que dio 409.
+  const horaActual = useRef(hora)
+  const horaOcupadaActual = useRef(horaOcupada)
   useEffect(() => {
     alServicioNoDisponible.current = onServicioNoDisponible
     alErrorSeleccion.current = onErrorSeleccion
     alErrorProfesional.current = onErrorProfesional
-  }, [onServicioNoDisponible, onErrorSeleccion, onErrorProfesional])
+    alReasignarHora.current = onReasignarHora
+    alSeleccionarHora.current = onSeleccionarHora
+    horaActual.current = hora
+    horaOcupadaActual.current = horaOcupada
+  }, [onServicioNoDisponible, onErrorSeleccion, onErrorProfesional, onReasignarHora, onSeleccionarHora, hora, horaOcupada])
 
   // Clave estable de la selección: evita volver a pedir horas por una lista nueva con los mismos ids.
   const claveServicios = servicioIds.join(',')
@@ -64,7 +80,17 @@ const PasoFechaHora = ({
           asesorId === null
             ? await obtenerDisponibilidad(ids, fecha, barberoId)
             : await obtenerDisponibilidad(ids, fecha, barberoId, asesorId)
-        if (!cancelado) setHoras(data.horas)
+        if (cancelado) return
+        setHoras(data.horas)
+        const ocupada = horaOcupadaActual.current
+        if (ocupada) {
+          // 409 al confirmar: se prueba la siguiente hora libre del mismo bloque (sin contar la que se ocupó).
+          const bloque = agruparHorasEnBloques(data.horas).find((b) => b.clave === bloqueDeHora(ocupada)?.clave)
+          alReasignarHora.current?.(bloque ? primeraHoraLibre(bloque, [ocupada]) : null)
+        } else if (horaActual.current && !data.horas.includes(horaActual.current)) {
+          // La hora elegida ya no es válida con estos datos: se limpia.
+          alSeleccionarHora.current?.('')
+        }
       } catch (err) {
         if (err.codigo === 'SERVICIO_NO_DISPONIBLE') {
           // Un servicio se desactivó mientras el usuario reservaba: el padre quita solo los afectados y vuelve al paso Servicio.
@@ -98,6 +124,10 @@ const PasoFechaHora = ({
   const plan = planCitas(servicios, hora)
   const combinada = plan.length === 2
 
+  // Los 10 bloques del día con sus horas libres; se recalculan con cada respuesta de disponibilidad.
+  const bloques = useMemo(() => agruparHorasEnBloques(horas), [horas])
+  const bloqueElegido = bloqueDeHora(hora)?.clave
+
   return (
     <div>
       <h2 className="mb-3 text-center font-poppins font-semibold text-black">Elige una fecha</h2>
@@ -118,7 +148,7 @@ const PasoFechaHora = ({
               onClick={() => onSeleccionarFecha(fechaOpcion)}
               className={`flex shrink-0 snap-start flex-col items-center rounded-xl border px-4 py-2 font-poppins motion-safe:transition-colors motion-safe:duration-200 ${
                 seleccionada
-                  ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
+                  ? 'border-oro bg-oro text-black'
                   : 'border-zinc-300 bg-white text-zinc-700 hover:border-black'
               }`}
             >
@@ -150,33 +180,68 @@ const PasoFechaHora = ({
       ) : horas.length === 0 ? (
         <p className="text-center font-poppins text-zinc-500">No hay horas disponibles para esa fecha.</p>
       ) : (
-        <div role="group" aria-label="Horas disponibles" className="flex flex-wrap justify-center gap-2">
-          {horas.map((horaOpcion) => {
-            const seleccionada = horaOpcion === hora
+        <>
+          <p className="mb-3 text-center font-poppins text-sm text-zinc-600">
+            Elige un bloque de una hora y te asignamos la primera hora libre dentro de él.
+          </p>
+          <div
+            role="group"
+            aria-label="Horas disponibles"
+            className="grid grid-cols-2 gap-2 min-[480px]:grid-cols-3 md:grid-cols-5"
+          >
+            {bloques.map((bloque) => {
+              const seleccionado = bloque.clave === bloqueElegido
+              const base =
+                'flex min-h-14 min-w-0 flex-col items-center justify-center rounded-lg border px-2 py-1.5 font-poppins'
 
-            return (
-              <button
-                key={horaOpcion}
-                type="button"
-                aria-pressed={seleccionada}
-                onClick={() => onSeleccionarHora(horaOpcion)}
-                className={`min-h-11 rounded-lg border px-3 py-1.5 font-poppins font-medium motion-safe:transition-colors motion-safe:duration-200 ${
-                  seleccionada
-                    ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
-                    : 'border-zinc-300 bg-white text-zinc-700 hover:border-black'
-                }`}
-              >
-                {horaOpcion}
-              </button>
-            )
-          })}
-        </div>
+              if (!bloque.disponible) {
+                // Sin horas: visible pero no se puede elegir (aria-disabled, sigue enfocable; el texto "Completa" lo dice).
+                return (
+                  <button
+                    key={bloque.clave}
+                    type="button"
+                    aria-disabled="true"
+                    onClick={(evento) => evento.preventDefault()}
+                    className={`${base} cursor-not-allowed border-dashed border-zinc-300 bg-zinc-100 text-zinc-600`}
+                  >
+                    <span className="text-base font-semibold">{bloque.etiqueta}</span>
+                    <span className="text-xs font-medium">Completa</span>
+                  </button>
+                )
+              }
+
+              return (
+                <button
+                  key={bloque.clave}
+                  type="button"
+                  aria-pressed={seleccionado}
+                  onClick={() => onSeleccionarHora(primeraHoraLibre(bloque))}
+                  className={`${base} motion-safe:transition-colors motion-safe:duration-200 ${
+                    seleccionado
+                      ? 'border-oro bg-oro text-black'
+                      : 'border-zinc-300 bg-white text-zinc-700 hover:border-black'
+                  }`}
+                >
+                  <span className="text-base font-semibold">{bloque.etiqueta}</span>
+                  <span className="text-xs font-medium">Disponible</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
 
-      {/* Con la hora elegida se ve a qué hora empieza y termina cada parte; se anuncia al cambiar la hora. */}
+      {/* Aviso de reasignación y hora EXACTA asignada (y, en una combinada, a qué hora empieza y termina cada parte);
+          se anuncia al cambiar. */}
       <div role="status" aria-live="polite">
+        {avisoHora && <p className="mt-4 text-center font-poppins text-sm font-semibold text-black">{avisoHora}</p>}
+        {hora && (
+          <p className="mt-4 text-center font-poppins text-sm font-semibold text-black">
+            {textoHoraAsignada(hora, combinada ? 'tu asesoría' : 'tu cita')}
+          </p>
+        )}
         {combinada && hora && (
-          <ul className="mt-4 space-y-1 text-center font-poppins text-sm font-semibold text-black">
+          <ul className="mt-1 space-y-1 text-center font-poppins text-sm font-semibold text-black">
             {plan.map((cita) => (
               <li key={cita.clave}>
                 {TITULO_CITA[cita.clave]}: {cita.inicio} – {cita.fin}

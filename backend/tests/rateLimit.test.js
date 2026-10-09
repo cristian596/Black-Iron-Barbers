@@ -19,7 +19,7 @@ const citaDePrueba = (overrides = {}) => ({
   servicio_id: 1,
   barbero_id: 1,
   fecha: '2030-07-01',
-  hora: '09:00',
+  hora: '10:00',
   ...overrides,
 });
 
@@ -36,7 +36,7 @@ describe('Rate limiting en POST /api/citas', () => {
     const respuestas = [];
     for (let i = 0; i < 5; i += 1) {
       // Horas distintas para que lo que limite sea el rate limit y no un 409 de negocio.
-      const hora = String(9 + i).padStart(2, '0') + ':00';
+      const hora = String(10 + i).padStart(2, '0') + ':00';
       const res = await request(app).post('/api/citas').send(citaDePrueba({ hora }));
       respuestas.push(res.status);
     }

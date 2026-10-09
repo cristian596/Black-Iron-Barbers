@@ -44,6 +44,7 @@ const errorFueraDeHorario = (cantidadServicios) => ({
       cantidadServicios === 1
         ? 'El servicio no cabe dentro del horario de atención a esa hora'
         : 'Los servicios no caben dentro del horario de atención a esa hora',
+    codigo: 'FUERA_DE_HORARIO',
   },
 });
 

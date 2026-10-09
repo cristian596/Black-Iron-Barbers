@@ -95,8 +95,8 @@ describe('HeroDatos', () => {
     renderHero()
 
     await screen.findByText('3 barberos')
-    expect(datos()).toHaveTextContent('Todos los días y festivos · 9 a. m. – 6 p. m.')
-    expect(datos()).toHaveTextContent('Cll 22 #1 A 69 sur, Prado Cartagenita')
+    expect(datos()).toHaveTextContent('Todos los días y festivos · 10:00 a. m. – 8:00 p. m.')
+    expect(datos()).toHaveTextContent('Calle 22 #1 A 69 sur, Prado Cartagenita')
   })
 
   it('usa el singular con un solo barbero', async () => {
@@ -113,7 +113,7 @@ describe('HeroDatos', () => {
     await esperarRespuestaBarberos()
     expect(api.obtenerBarberos).toHaveBeenCalledTimes(1)
     expect(datos()).not.toHaveTextContent(/barbero/i)
-    expect(datos()).toHaveTextContent('9 a. m. – 6 p. m.')
+    expect(datos()).toHaveTextContent('10:00 a. m. – 8:00 p. m.')
     expect(datos().querySelectorAll('li')).toHaveLength(2)
   })
 

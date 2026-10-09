@@ -105,7 +105,7 @@ const reservar = (extra = {}) =>
       telefono: '3001234567',
       consentimiento: true,
       fecha: FECHA,
-      hora: '10:00',
+      hora: '11:00',
       ...extra,
     });
 const contarCitas = async () => (await pool.query('SELECT COUNT(*)::int AS n FROM citas')).rows[0].n;
@@ -148,24 +148,24 @@ describe('GET /api/disponibilidad: solo barbería', () => {
     expect(res.status).toBe(200);
     expect(Object.keys(res.body).sort()).toEqual(['barbero_id', 'fecha', 'horas']);
     expect(res.body.barbero_id).toBeNull();
-    expect(res.body.horas[0]).toBe('09:00');
+    expect(res.body.horas[0]).toBe('10:00');
   });
 
   it('"cualquier barbero" nunca usa a un asesor: con los dos barberos ocupados, esa hora no se ofrece aunque los asesores estén libres', async () => {
-    await ocuparBarberos('10:00');
+    await ocuparBarberos('11:00');
     const res = await disp({ servicios: String(CORTE_1) });
-    expect(res.body.horas).not.toContain('10:00');
-    expect(res.body.horas).toContain('09:30');
+    expect(res.body.horas).not.toContain('11:00');
     expect(res.body.horas).toContain('10:30');
+    expect(res.body.horas).toContain('11:30');
   });
 
   it('barbero=<id> sigue funcionando y responde barbero_id', async () => {
-    await ocupar(1, '10:00');
+    await ocupar(1, '11:00');
     const uno = await disp({ servicio: CORTE_1, barbero: 1 });
     const dos = await disp({ servicio: CORTE_1, barbero: 2 });
     expect(uno.body).toMatchObject({ barbero_id: 1 });
-    expect(uno.body.horas).not.toContain('10:00');
-    expect(dos.body.horas).toContain('10:00');
+    expect(uno.body.horas).not.toContain('11:00');
+    expect(dos.body.horas).toContain('11:00');
   });
 });
 
@@ -174,39 +174,39 @@ describe('GET /api/disponibilidad: solo asesoría', () => {
     const res = await disp({ servicios: String(ASES_A) });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ barbero_id: null, asesor_id: null });
-    expect(res.body.horas[0]).toBe('09:00');
-    expect(res.body.horas).toContain('18:30'); // 30 min: el último inicio es 18:30
-    expect(res.body.horas).not.toContain('19:00');
+    expect(res.body.horas[0]).toBe('10:00');
+    expect(res.body.horas).toContain('19:30'); // 30 min: el último inicio es 19:30
+    expect(res.body.horas).not.toContain('20:00');
   });
 
   it('"cualquier asesor" nunca usa a un barbero: con los dos asesores ocupados, esa hora no se ofrece aunque los barberos estén libres', async () => {
-    await ocuparAsesores('10:00');
+    await ocuparAsesores('11:00');
     const res = await disp({ servicios: String(ASES_A) });
-    expect(res.body.horas).not.toContain('10:00');
-    expect(res.body.horas).toContain('09:30');
+    expect(res.body.horas).not.toContain('11:00');
     expect(res.body.horas).toContain('10:30');
+    expect(res.body.horas).toContain('11:30');
   });
 
   it('basta con un asesor libre; un asesor concreto ocupado no ofrece esa hora pero el otro sí', async () => {
-    await ocupar(A1, '10:00', { servicio: ASES_A });
+    await ocupar(A1, '11:00', { servicio: ASES_A });
     const cualquiera = await disp({ servicios: String(ASES_A) });
     const uno = await disp({ servicios: String(ASES_A), asesor: A1 });
     const dos = await disp({ servicios: String(ASES_A), asesor: A2 });
-    expect(cualquiera.body.horas).toContain('10:00');
+    expect(cualquiera.body.horas).toContain('11:00');
     expect(uno.body).toMatchObject({ asesor_id: A1, barbero_id: null });
-    expect(uno.body.horas).not.toContain('10:00');
+    expect(uno.body.horas).not.toContain('11:00');
     expect(dos.body).toMatchObject({ asesor_id: A2 });
-    expect(dos.body.horas).toContain('10:00');
+    expect(dos.body.horas).toContain('11:00');
   });
 
-  it('usa la duración de la asesoría: 45 min se solapa con una cita que empieza 30 min después y no cabe a las 18:30', async () => {
-    await ocupar(A1, '10:30', { servicio: ASES_A });
-    await ocupar(A2, '10:30', { servicio: ASES_A });
+  it('usa la duración de la asesoría: 45 min se solapa con una cita que empieza 30 min después y no cabe a las 19:30', async () => {
+    await ocupar(A1, '11:30', { servicio: ASES_A });
+    await ocupar(A2, '11:30', { servicio: ASES_A });
     const res = await disp({ servicios: String(ASES_B) });
-    expect(res.body.horas).not.toContain('10:00'); // [10:00, 10:45) choca con la de 10:30
-    expect(res.body.horas).toContain('09:30'); // [9:30, 10:15) cabe
-    expect(res.body.horas).toContain('18:00'); // termina 18:45
-    expect(res.body.horas).not.toContain('18:30'); // terminaría 19:15, pasa del cierre
+    expect(res.body.horas).not.toContain('11:00'); // [11:00, 11:45) choca con la de 11:30
+    expect(res.body.horas).toContain('10:30'); // [9:30, 11:15) cabe
+    expect(res.body.horas).toContain('19:00'); // termina 19:45
+    expect(res.body.horas).not.toContain('19:30'); // terminaría 20:15, pasa del cierre
   });
 
   it('un asesor inactivo no cuenta; sin asesores activos no hay horas', async () => {
@@ -224,90 +224,90 @@ describe('GET /api/disponibilidad: asesoría + barbería', () => {
     const res = await disp({ servicios: combo });
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ asesor_id: null, barbero_id: null });
-    expect(res.body.horas[0]).toBe('09:00');
+    expect(res.body.horas[0]).toBe('10:00');
   });
 
   it('el corte empieza cuando termina la asesoría: el barbero puede estar ocupado MIENTRAS dura la asesoría', async () => {
-    await ocuparBarberos('10:00'); // ocupados 10:00-10:30
+    await ocuparBarberos('11:00'); // ocupados 11:00-11:30
     const res = await disp({ servicios: combo });
-    // t=10:00 → asesoría 10:00-10:30 (asesor libre) y corte 10:30-11:00 (barbero libre): se ofrece.
-    expect(res.body.horas).toContain('10:00');
-    // t=09:30 → corte 10:00-10:30 con los dos barberos ocupados: no.
-    expect(res.body.horas).not.toContain('09:30');
+    // t=11:00 → asesoría 11:00-11:30 (asesor libre) y corte 11:30-12:00 (barbero libre): se ofrece.
+    expect(res.body.horas).toContain('11:00');
+    // t=10:30 → corte 11:00-11:30 con los dos barberos ocupados: no.
+    expect(res.body.horas).not.toContain('10:30');
   });
 
   it('cadena rota 1: asesor libre pero barberos ocupados justo cuando termina la asesoría', async () => {
-    await ocuparBarberos('10:30');
+    await ocuparBarberos('11:30');
     const res = await disp({ servicios: combo });
-    expect(res.body.horas).not.toContain('10:00'); // asesor libre 10:00-10:30, pero el corte de 10:30 no tiene barbero
-    expect(res.body.horas).toContain('10:30'); // asesoría 10:30-11:00, corte 11:00-11:30
-    expect(res.body.horas).toContain('09:30'); // asesoría 9:30-10:00, corte 10:00-10:30
+    expect(res.body.horas).not.toContain('11:00'); // asesor libre 11:00-11:30, pero el corte de 11:30 no tiene barbero
+    expect(res.body.horas).toContain('11:30'); // asesoría 11:30-12:00, corte 12:00-12:30
+    expect(res.body.horas).toContain('10:30'); // asesoría 9:30-11:00, corte 11:00-11:30
   });
 
   it('cadena rota 2: barbero libre pero asesores ocupados al inicio', async () => {
-    await ocuparAsesores('10:00');
+    await ocuparAsesores('11:00');
     const res = await disp({ servicios: combo });
-    expect(res.body.horas).not.toContain('10:00');
-    expect(res.body.horas).toContain('09:30');
+    expect(res.body.horas).not.toContain('11:00');
     expect(res.body.horas).toContain('10:30');
+    expect(res.body.horas).toContain('11:30');
   });
 
   it('basta con UN asesor libre y UN barbero libre, aunque sean distintos en cada hora', async () => {
-    await ocupar(A1, '10:00', { servicio: ASES_A });
-    await ocupar(1, '10:30', { servicio: CORTE_1 });
+    await ocupar(A1, '11:00', { servicio: ASES_A });
+    await ocupar(1, '11:30', { servicio: CORTE_1 });
     const res = await disp({ servicios: combo });
-    expect(res.body.horas).toContain('10:00'); // A2 y el barbero 2
+    expect(res.body.horas).toContain('11:00'); // A2 y el barbero 2
   });
 
-  it('respeta el cierre con la duración total encadenada (30 + 30 = 60: el último inicio es 18:00)', async () => {
+  it('respeta el cierre con la duración total encadenada (30 + 30 = 60: el último inicio es 19:00)', async () => {
     const res = await disp({ servicios: combo });
-    expect(res.body.horas).toContain('18:00');
-    expect(res.body.horas).not.toContain('18:30');
+    expect(res.body.horas).toContain('19:00');
+    expect(res.body.horas).not.toContain('19:30');
   });
 
-  it('con un corte largo (30 + 120): el último inicio es 16:30', async () => {
+  it('con un corte largo (30 + 120): el último inicio es 17:30', async () => {
     const res = await disp({ servicios: `${ASES_A},${CORTE_LARGO_A}` });
-    expect(res.body.horas).toContain('16:30');
-    expect(res.body.horas).not.toContain('17:00');
+    expect(res.body.horas).toContain('17:30');
+    expect(res.body.horas).not.toContain('18:00');
   });
 
   it('hoy no ofrece horas pasadas (se mide sobre el inicio de la asesoría)', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2030-07-17T17:00:00Z')); // 12:00 en Bogotá
+    vi.setSystemTime(new Date('2030-07-17T18:00:00Z')); // 13:00 en Bogotá
     const res = await disp({ servicios: combo });
     expect(res.status).toBe(200);
-    expect(res.body.horas).not.toContain('12:00');
-    expect(res.body.horas).not.toContain('09:00');
-    expect(res.body.horas[0]).toBe('12:30');
+    expect(res.body.horas).not.toContain('13:00');
+    expect(res.body.horas).not.toContain('10:00');
+    expect(res.body.horas[0]).toBe('13:30');
   });
 
   it('asesor= concreto: solo ese asesor cuenta y se devuelve en la respuesta', async () => {
-    await ocupar(A1, '10:00', { servicio: ASES_A });
+    await ocupar(A1, '11:00', { servicio: ASES_A });
     const uno = await disp({ servicios: combo, asesor: A1 });
     const dos = await disp({ servicios: combo, asesor: A2 });
     expect(uno.body).toMatchObject({ asesor_id: A1, barbero_id: null });
-    expect(uno.body.horas).not.toContain('10:00');
-    expect(dos.body.horas).toContain('10:00');
+    expect(uno.body.horas).not.toContain('11:00');
+    expect(dos.body.horas).toContain('11:00');
   });
 
   it('barbero= concreto: solo ese barbero cuenta (y el corte se mide desde el fin de la asesoría)', async () => {
-    await ocupar(1, '10:30', { servicio: CORTE_1 });
+    await ocupar(1, '11:30', { servicio: CORTE_1 });
     const uno = await disp({ servicios: combo, barbero: 1 });
     const dos = await disp({ servicios: combo, barbero: 2 });
     expect(uno.body).toMatchObject({ barbero_id: 1, asesor_id: null });
-    expect(uno.body.horas).not.toContain('10:00');
-    expect(dos.body.horas).toContain('10:00');
+    expect(uno.body.horas).not.toContain('11:00');
+    expect(dos.body.horas).toContain('11:00');
   });
 
   it('asesor= y barbero= a la vez', async () => {
-    await ocupar(A1, '09:00', { servicio: ASES_A });
-    await ocupar(2, '10:30', { servicio: CORTE_1 });
+    await ocupar(A1, '10:00', { servicio: ASES_A });
+    await ocupar(2, '11:30', { servicio: CORTE_1 });
     const res = await disp({ servicios: combo, asesor: A1, barbero: 2 });
     expect(res.body).toMatchObject({ asesor_id: A1, barbero_id: 2 });
-    expect(res.body.horas).not.toContain('09:00'); // el asesor está ocupado
-    expect(res.body.horas).not.toContain('10:00'); // el barbero está ocupado de 10:30 a 11:00
-    expect(res.body.horas).toContain('09:30');
+    expect(res.body.horas).not.toContain('10:00'); // el asesor está ocupado
+    expect(res.body.horas).not.toContain('11:00'); // el barbero está ocupado de 11:30 a 12:00
     expect(res.body.horas).toContain('10:30');
+    expect(res.body.horas).toContain('11:30');
   });
 
   it('el orden de los ids no importa: el área de cada servicio sale de la base', async () => {
@@ -317,11 +317,11 @@ describe('GET /api/disponibilidad: asesoría + barbería', () => {
   });
 
   it('asesoría + dos cortes (3 servicios): el corte dura la suma de los dos', async () => {
-    await ocuparBarberos('11:00');
+    await ocuparBarberos('12:00');
     const res = await disp({ servicios: `${ASES_A},${CORTE_1},${CORTE_2}` }); // 30 + 60
-    expect(res.body.horas).not.toContain('10:30'); // corte 11:00-12:00 choca con los ocupados de 11:00
-    expect(res.body.horas).not.toContain('10:00'); // corte 10:30-11:30 también
-    expect(res.body.horas).toContain('09:30'); // corte 10:00-11:00 cabe
+    expect(res.body.horas).not.toContain('11:30'); // corte 12:00-13:00 choca con los ocupados de 12:00
+    expect(res.body.horas).not.toContain('11:00'); // corte 11:30-12:30 también
+    expect(res.body.horas).toContain('10:30'); // corte 11:00-12:00 cabe
   });
 });
 
@@ -383,16 +383,16 @@ describe('GET /api/disponibilidad: validaciones', () => {
   it('el tope NO suma asesoría + corte: 300 + 30 min se ofrece (solo lo limita el horario de atención)', async () => {
     const res = await disp({ servicios: `${ASES_LARGA},${CORTE_1}` });
     expect(res.status).toBe(200);
-    expect(res.body.horas).toContain('09:00');
-    expect(res.body.horas).toContain('13:30'); // 330 min → 19:00
-    expect(res.body.horas).not.toContain('14:00');
+    expect(res.body.horas).toContain('10:00');
+    expect(res.body.horas).toContain('14:30'); // 330 min → 20:00
+    expect(res.body.horas).not.toContain('15:00');
   });
 
   it('la asesoría gratis se ofrece como cualquier otra (sola o en combo): la disponibilidad no necesita identidad', async () => {
     for (const query of [{ servicios: String(GRATIS) }, { servicios: `${GRATIS},${CORTE_1}` }, { servicio: GRATIS }]) {
       const res = await disp(query);
       expect(res.status).toBe(200);
-      expect(res.body.horas).toContain('10:00');
+      expect(res.body.horas).toContain('11:00');
     }
   });
 });
@@ -446,7 +446,7 @@ describe('POST /api/citas: una sola cita', () => {
 
   it('un corte solo (formato anterior servicio_id y servicios_ids) sigue igual y con reserva_id NULL', async () => {
     const a = await reservar({ servicio_id: CORTE_1 });
-    const b = await reservar({ servicios_ids: [CORTE_1, CORTE_2], hora: '11:00', correo: 'otro@example.com' });
+    const b = await reservar({ servicios_ids: [CORTE_1, CORTE_2], hora: '12:00', correo: 'otro@example.com' });
     expect(a.status).toBe(201);
     expect(b.status).toBe(201);
     expect([1, 2]).toContain(a.body.barbero_id);
@@ -457,25 +457,25 @@ describe('POST /api/citas: una sola cita', () => {
   });
 
   it('asignación automática de asesor: no usa a un barbero aunque estén libres; con los asesores ocupados → 409 y nada nuevo', async () => {
-    await ocuparAsesores('10:00');
+    await ocuparAsesores('11:00');
     const antes = await contarCitas();
-    const res = await reservar({ servicio_id: ASES_A, hora: '10:00' });
+    const res = await reservar({ servicio_id: ASES_A, hora: '11:00' });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/asesores/);
     expect(await contarCitas()).toBe(antes);
   });
 
   it('asignación automática de barbero: no usa a un asesor aunque estén libres; con los barberos ocupados → 409 y nada nuevo', async () => {
-    await ocuparBarberos('10:00');
+    await ocuparBarberos('11:00');
     const antes = await contarCitas();
-    const res = await reservar({ servicio_id: CORTE_1, hora: '10:00' });
+    const res = await reservar({ servicio_id: CORTE_1, hora: '11:00' });
     expect(res.status).toBe(409);
     expect(await contarCitas()).toBe(antes);
     expect((await pool.query('SELECT COUNT(*)::int AS n FROM citas WHERE barbero_id = ANY($1::int[])', [[A1, A2]])).rows[0].n).toBe(0);
   });
 
   it('asesor concreto ocupado → 409 con mensaje de asesor', async () => {
-    await ocupar(A1, '10:00', { servicio: ASES_A });
+    await ocupar(A1, '11:00', { servicio: ASES_A });
     const res = await reservar({ servicio_id: ASES_A, asesor_id: A1 });
     expect(res.status).toBe(409);
     expect(res.body.error).toMatch(/asesor/);
@@ -499,8 +499,8 @@ describe('POST /api/citas: reserva combinada (asesoría + barbería)', () => {
 
     expect([A1, A2]).toContain(asesoria.barbero_id);
     expect([1, 2]).toContain(corte.barbero_id);
-    expect(asesoria).toMatchObject({ servicio_id: ASES_A, hora: '10:00:00', duracion_min: 30, precio: 60000, reserva_id: res.body.reserva_id });
-    expect(corte).toMatchObject({ servicio_id: CORTE_1, hora: '10:30:00', duracion_min: 30, precio: 20000, reserva_id: res.body.reserva_id });
+    expect(asesoria).toMatchObject({ servicio_id: ASES_A, hora: '11:00:00', duracion_min: 30, precio: 60000, reserva_id: res.body.reserva_id });
+    expect(corte).toMatchObject({ servicio_id: CORTE_1, hora: '11:30:00', duracion_min: 30, precio: 20000, reserva_id: res.body.reserva_id });
     expect(asesoria.servicios).toEqual([{ id: ASES_A, nombre: 'Reserva asesoría A', duracion_min: 30, precio: 60000 }]);
     expect(corte.servicios).toEqual([{ id: CORTE_1, nombre: 'Reserva corte 1', duracion_min: 30, precio: 20000 }]);
     expect(asesoria.barbero_nombre).toMatch(/^Reserva Asesor/);
@@ -514,12 +514,12 @@ describe('POST /api/citas: reserva combinada (asesoría + barbería)', () => {
     expect(await lineasDeCita(corte.id)).toEqual([{ servicio_id: CORTE_1, orden: 1, nombre: 'Reserva corte 1', duracion_min: 30, precio: 20000 }]);
   });
 
-  it('la asesoría va primero aunque el cliente liste el corte antes; la duración de la asesoría desplaza el corte (45 min → 10:45)', async () => {
+  it('la asesoría va primero aunque el cliente liste el corte antes; la duración de la asesoría desplaza el corte (45 min → 11:45)', async () => {
     const res = await reservar({ servicios_ids: [CORTE_1, ASES_B] });
     expect(res.status).toBe(201);
     const [asesoria, corte] = res.body.citas;
-    expect(asesoria).toMatchObject({ servicio_id: ASES_B, hora: '10:00:00', duracion_min: 45 });
-    expect(corte).toMatchObject({ servicio_id: CORTE_1, hora: '10:45:00' });
+    expect(asesoria).toMatchObject({ servicio_id: ASES_B, hora: '11:00:00', duracion_min: 45 });
+    expect(corte).toMatchObject({ servicio_id: CORTE_1, hora: '11:45:00' });
   });
 
   it('con DOS servicios de barbería: el corte suma sus líneas, renumera el orden y su principal es el primero pedido', async () => {
@@ -527,7 +527,7 @@ describe('POST /api/citas: reserva combinada (asesoría + barbería)', () => {
     expect(res.status).toBe(201);
     const [asesoria, corte] = res.body.citas;
     expect(asesoria).toMatchObject({ servicio_id: ASES_A, duracion_min: 30, precio: 60000 });
-    expect(corte).toMatchObject({ servicio_id: CORTE_2, hora: '10:30:00', duracion_min: 60, precio: 35000 });
+    expect(corte).toMatchObject({ servicio_id: CORTE_2, hora: '11:30:00', duracion_min: 60, precio: 35000 });
     expect(corte.servicio_nombre).toBe('Reserva corte 2 + Reserva corte 1');
     expect(corte.servicios.map((s) => s.id)).toEqual([CORTE_2, CORTE_1]);
     const lineas = await lineasDeCita(corte.id);
@@ -544,22 +544,22 @@ describe('POST /api/citas: reserva combinada (asesoría + barbería)', () => {
   });
 
   it('asigna por pool: el barbero ocupado mientras dura la asesoría no estorba, y el ocupado al terminar sí se evita', async () => {
-    await ocupar(1, '10:30', { servicio: CORTE_1 }); // el barbero 1 está ocupado cuando empezaría el corte
+    await ocupar(1, '11:30', { servicio: CORTE_1 }); // el barbero 1 está ocupado cuando empezaría el corte
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
     expect(res.status).toBe(201);
     expect(res.body.citas[1].barbero_id).toBe(2);
   });
 
   it('el barbero se busca en la ventana del CORTE (al terminar la asesoría), no en la de la asesoría', async () => {
-    await ocupar(1, '10:00', { servicio: CORTE_1 }); // ocupado mientras dura la asesoría: no importa
-    await ocupar(2, '10:30', { servicio: CORTE_1 }); // ocupado cuando empieza el corte: no sirve
+    await ocupar(1, '11:00', { servicio: CORTE_1 }); // ocupado mientras dura la asesoría: no importa
+    await ocupar(2, '11:30', { servicio: CORTE_1 }); // ocupado cuando empieza el corte: no sirve
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
     expect(res.status).toBe(201);
     expect(res.body.citas[1].barbero_id).toBe(1);
   });
 
   it('con los barberos ocupados al terminar la asesoría → 409 y no queda ni la asesoría', async () => {
-    await ocuparBarberos('10:30');
+    await ocuparBarberos('11:30');
     const antes = await contarCitas();
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
     expect(res.status).toBe(409);
@@ -568,21 +568,21 @@ describe('POST /api/citas: reserva combinada (asesoría + barbería)', () => {
   });
 
   it('con los asesores ocupados al inicio → 409 y no se toca a ningún barbero', async () => {
-    await ocuparAsesores('10:00');
+    await ocuparAsesores('11:00');
     const antes = await contarCitas();
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
     expect(res.status).toBe(409);
     expect(await contarCitas()).toBe(antes);
   });
 
-  it('fuera de horario: 30 + 30 a las 18:30 → 400, a las 18:00 cabe', async () => {
-    const tarde = await reservar({ servicios_ids: [ASES_A, CORTE_1], hora: '18:30' });
+  it('fuera de horario: 30 + 30 a las 19:30 → 400, a las 19:00 cabe', async () => {
+    const tarde = await reservar({ servicios_ids: [ASES_A, CORTE_1], hora: '19:30' });
     expect(tarde.status).toBe(400);
     expect(tarde.body.error).toMatch(/no caben/);
     expect(await contarCitas()).toBe(0);
-    const justo = await reservar({ servicios_ids: [ASES_A, CORTE_1], hora: '18:00' });
+    const justo = await reservar({ servicios_ids: [ASES_A, CORTE_1], hora: '19:00' });
     expect(justo.status).toBe(201);
-    expect(justo.body.citas[1].hora).toBe('18:30:00');
+    expect(justo.body.citas[1].hora).toBe('19:30:00');
   });
 
   it('los totales del cliente se ignoran: la duración y el precio salen de la base', async () => {
@@ -636,17 +636,17 @@ describe('POST /api/citas: errores', () => {
   });
 
   it('el tope de 240 min es por cita: asesoría de 300 min + corte se reserva (cada profesional atiende solo la suya)', async () => {
-    const res = await reservar({ servicios_ids: [ASES_LARGA, CORTE_1], hora: '09:00' });
+    const res = await reservar({ servicios_ids: [ASES_LARGA, CORTE_1], hora: '10:00' });
     expect(res.status).toBe(201);
-    expect(res.body.citas[0]).toMatchObject({ duracion_min: 300, hora: '09:00:00' });
-    expect(res.body.citas[1]).toMatchObject({ hora: '14:00:00' });
+    expect(res.body.citas[0]).toMatchObject({ duracion_min: 300, hora: '10:00:00' });
+    expect(res.body.citas[1]).toMatchObject({ hora: '15:00:00' });
   });
 
   it('la asesoría gratis ya se reserva, sola o combinada (su límite por persona se prueba en asesoriaGratis.test.js)', async () => {
     const sola = await reservar({ servicios_ids: [GRATIS], correo: 'uno@example.com', telefono: '3001111111' });
     expect(sola.status).toBe(201);
     expect(sola.body).toMatchObject({ servicio_id: GRATIS, precio: 0, duracion_min: 15 });
-    const combinada = await reservar({ servicios_ids: [GRATIS, CORTE_1], correo: 'dos@example.com', telefono: '3002222222', hora: '12:00' });
+    const combinada = await reservar({ servicios_ids: [GRATIS, CORTE_1], correo: 'dos@example.com', telefono: '3002222222', hora: '13:00' });
     expect(combinada.status).toBe(201);
     expect(combinada.body.citas).toHaveLength(2);
   });
@@ -707,7 +707,7 @@ describe('POST /api/citas: atomicidad y reintentos por etapa', () => {
     const intentos = [];
     alInsertar = async (params) => {
       intentos.push(params[4]);
-      if (intentos.length === 2) await chocar(1, '10:30', CORTE_2); // el barbero 1 se ocupa justo antes del INSERT del corte
+      if (intentos.length === 2) await chocar(1, '11:30', CORTE_2); // el barbero 1 se ocupa justo antes del INSERT del corte
     };
 
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1], asesor_id: A1, barbero_id: 1 });
@@ -725,7 +725,7 @@ describe('POST /api/citas: atomicidad y reintentos por etapa', () => {
     const intentos = [];
     alInsertar = async (params) => {
       intentos.push(params[4]);
-      if (intentos.length === 2) await chocar(1, '10:30', CORTE_2);
+      if (intentos.length === 2) await chocar(1, '11:30', CORTE_2);
     };
 
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
@@ -741,7 +741,7 @@ describe('POST /api/citas: atomicidad y reintentos por etapa', () => {
     const intentos = [];
     alInsertar = async (params) => {
       intentos.push(params[4]);
-      if (intentos.length === 1) await chocar(A1, '10:00', ASES_A); // el asesor 1 se ocupa antes del primer INSERT
+      if (intentos.length === 1) await chocar(A1, '11:00', ASES_A); // el asesor 1 se ocupa antes del primer INSERT
     };
 
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
@@ -753,7 +753,7 @@ describe('POST /api/citas: atomicidad y reintentos por etapa', () => {
   it('si todos los candidatos de un lado fallan → 409 y no queda nada de la reserva', async () => {
     alInsertar = async (params) => {
       // cada vez que se intenta insertar un corte, se ocupa ese barbero justo antes
-      if (params[4] === 1 || params[4] === 2) await chocar(params[4], '10:30', CORTE_2).catch(() => {});
+      if (params[4] === 1 || params[4] === 2) await chocar(params[4], '11:30', CORTE_2).catch(() => {});
     };
     const res = await reservar({ servicios_ids: [ASES_A, CORTE_1] });
     expect(res.status).toBe(409);
@@ -829,12 +829,12 @@ describe('EXCLUDE de reserva_id', () => {
   const RESERVA = '11111111-1111-4111-8111-111111111111';
 
   it('dos citas de la misma reserva no pueden solaparse en el tiempo (aunque sean de profesionales distintos)', async () => {
-    await insertarSuelta(1, '10:00', RESERVA);
-    await expect(insertarSuelta(2, '10:15', RESERVA)).rejects.toMatchObject({
+    await insertarSuelta(1, '11:00', RESERVA);
+    await expect(insertarSuelta(2, '11:15', RESERVA)).rejects.toMatchObject({
       code: '23P01',
       constraint: 'citas_reserva_sin_autosolapamiento',
     });
-    await insertarSuelta(2, '10:30', RESERVA); // contigua: sí
+    await insertarSuelta(2, '11:30', RESERVA); // contigua: sí
     expect(await contarCitas()).toBe(2);
   });
 
@@ -880,7 +880,7 @@ describe('Reasignación del admin dentro de la misma área', () => {
     expect(libre.body.barbero_id).toBe(A2);
     expect((await pool.query('SELECT reserva_id::text AS r FROM citas WHERE id = $1', [asesoria.id])).rows[0].r).toBe(reserva.body.reserva_id);
 
-    await ocupar(A1, '10:00', { servicio: ASES_A });
+    await ocupar(A1, '11:00', { servicio: ASES_A });
     const ocupado = await reasignar(asesoria.id, A1);
     expect(ocupado.status).toBe(409);
   });
@@ -888,7 +888,7 @@ describe('Reasignación del admin dentro de la misma área', () => {
   it('un corte pasa a otro barbero libre; a uno ocupado → 409; a un asesor → 400 PROFESIONAL_INCOMPATIBLE', async () => {
     const reserva = await reservar({ servicios_ids: [ASES_A, CORTE_1], asesor_id: A1, barbero_id: 1 });
     const corte = reserva.body.citas[1];
-    await ocupar(2, '10:30', { servicio: CORTE_1 });
+    await ocupar(2, '11:30', { servicio: CORTE_1 });
 
     expect((await reasignar(corte.id, 2)).status).toBe(409);
     const incompatible = await reasignar(corte.id, A2);
@@ -900,9 +900,9 @@ describe('Reasignación del admin dentro de la misma área', () => {
 
 describe('Distinción de 23505 por restricción', () => {
   it('las UNIQUE de asesoria_gratis_usos no se confunden con "horario ocupado" (aún no se usan, la distinción queda lista)', async () => {
-    const cita = await ocupar(1, '10:00');
+    const cita = await ocupar(1, '11:00');
     await pool.query(`INSERT INTO asesoria_gratis_usos (cita_id, correo_norm, telefono_norm) VALUES ($1, 'a@example.com', '3001234567')`, [cita]);
-    const otra = await ocupar(2, '10:00');
+    const otra = await ocupar(2, '11:00');
     const error = await pool
       .query(`INSERT INTO asesoria_gratis_usos (cita_id, correo_norm, telefono_norm) VALUES ($1, 'a@example.com', '3009999999')`, [otra])
       .catch((err) => err);

@@ -5,6 +5,7 @@ import { formatearDuracion, formatearPrecio } from '../../../utils/formato'
 import { duracionTotal, precioTotal } from '../../../utils/carrito'
 import { TITULO_CITA, esAsesoriaGratis, planCitas, separarPorArea } from '../../../utils/reservaAsesoria'
 import { useComprobarGratis } from '../../../hooks/useComprobarGratis'
+import { rangoBloqueDeHora, textoHoraAsignada } from '../../../utils/bloquesHorarios'
 import ListaServiciosReserva from './ListaServiciosReserva'
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -202,6 +203,7 @@ const ModalConfirmacion = ({
             })}
             <dl className="space-y-1">
               <Fila etiqueta="Fecha">{formatearFechaLegible(fecha)}</Fila>
+              <Fila etiqueta="Bloque">{rangoBloqueDeHora(hora)}</Fila>
               <Fila etiqueta="Duración total">{formatearDuracion(duracionTotal(servicios))}</Fila>
               <div className="mt-1 border-t border-zinc-200 pt-2">
                 <Fila etiqueta="Total" fuerte>
@@ -228,7 +230,7 @@ const ModalConfirmacion = ({
               <Fila etiqueta="Barbero">{barbero ? barbero.nombre : 'Cualquier barbero disponible'}</Fila>
             )}
             <Fila etiqueta="Fecha">{formatearFechaLegible(fecha)}</Fila>
-            <Fila etiqueta="Hora">{hora}</Fila>
+            <Fila etiqueta="Hora">{textoHoraAsignada(hora)}</Fila>
             <Fila etiqueta="Duración">
               {servicios.length > 1 ? formatearDuracion(duracionTotal(servicios)) : `${servicios[0]?.duracion_min} min`}
             </Fila>

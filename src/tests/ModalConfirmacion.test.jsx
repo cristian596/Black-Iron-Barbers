@@ -33,7 +33,7 @@ describe('ModalConfirmacion', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Corte de Cabello')).toBeInTheDocument()
     expect(screen.getByText('Boby')).toBeInTheDocument()
-    expect(screen.getByText('10:00')).toBeInTheDocument()
+    expect(screen.getByText('Bloque 10–11 · tu cita es a las 10:00')).toBeInTheDocument()
     expect(screen.getByText('35 min')).toBeInTheDocument()
     expect(screen.getByText('$55.000')).toBeInTheDocument()
   })

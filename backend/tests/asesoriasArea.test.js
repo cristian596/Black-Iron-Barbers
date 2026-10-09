@@ -116,7 +116,7 @@ const reservar = (extra = {}) =>
     consentimiento: true,
     servicio_id: SERV_CORTE,
     fecha: FECHA,
-    hora: '10:00',
+    hora: '11:00',
     ...extra,
   });
 const disponibilidad = (query) => request(app).get('/api/disponibilidad').query({ fecha: FECHA, ...query });
@@ -149,7 +149,7 @@ describe('Utilidades de área', () => {
       await cliente.query('BEGIN');
       const { rows } = await cliente.query(
         `INSERT INTO citas (cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio)
-         VALUES ('T', 't@t.com', '3001234567', $1, $2, $3, '15:00', 30, 0) RETURNING id`,
+         VALUES ('T', 't@t.com', '3001234567', $1, $2, $3, '16:00', 30, 0) RETURNING id`,
         [SERV_CORTE, ASESOR, FECHA]
       );
       await cliente.query(
@@ -297,24 +297,24 @@ describe('GET /api/barberos', () => {
 
 describe('GET /api/disponibilidad y las áreas', () => {
   it('"cualquier barbero" nunca cuenta al asesor: con los barberos ocupados no hay hora aunque el asesor esté libre', async () => {
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 2, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 2, estado: 'pendiente', servicio_id: SERV_CORTE });
 
     const res = await disponibilidad({ servicio: SERV_CORTE });
     expect(res.status).toBe(200);
     expect(res.body.barbero_id).toBeNull();
-    expect(res.body.horas).not.toContain('10:00');
-    expect(res.body.horas).toContain('09:00');
-    expect(res.body.horas).toContain('10:30');
+    expect(res.body.horas).not.toContain('11:00');
+    expect(res.body.horas).toContain('10:00');
+    expect(res.body.horas).toContain('11:30');
   });
 
   it('lo mismo con varios servicios (servicios=a,b)', async () => {
-    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
-    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 2, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '12:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '12:00', barbero_id: 2, estado: 'pendiente', servicio_id: SERV_CORTE });
 
     const res = await disponibilidad({ servicios: `${SERV_CORTE},${SERV_CORTE_2}` });
     expect(res.status).toBe(200);
-    expect(res.body.horas).not.toContain('11:00');
+    expect(res.body.horas).not.toContain('12:00');
   });
 
   it('barbero=<asesor> → 400 PROFESIONAL_INCOMPATIBLE con campo', async () => {
@@ -337,7 +337,7 @@ describe('GET /api/disponibilidad y las áreas', () => {
     await crearGratis();
     const res = await disponibilidad(query);
     expect(res.status).toBe(200);
-    expect(res.body.horas).toContain('10:00');
+    expect(res.body.horas).toContain('11:00');
   });
 
   it('asesoría gratis + id del asesor en barbero=: PROFESIONAL_INCOMPATIBLE (barbero= solo vale para barberos)', async () => {
@@ -350,17 +350,17 @@ describe('GET /api/disponibilidad y las áreas', () => {
 
 describe('POST /api/citas y las áreas', () => {
   it('la asignación automática no elige al asesor: con 1 y 2 ocupados responde 409 y no crea cita', async () => {
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 2, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 2, estado: 'pendiente', servicio_id: SERV_CORTE });
 
-    const res = await reservar({ hora: '10:00' });
+    const res = await reservar({ hora: '11:00' });
     expect(res.status).toBe(409);
     expect(await contarCitas(ASESOR)).toBe(0);
   });
 
   it('en una hora libre se asigna a un barbero de barbería, nunca al asesor', async () => {
     const asignados = new Set();
-    for (const hora of ['09:00', '09:30', '10:00', '10:30', '11:00', '11:30']) {
+    for (const hora of ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30']) {
       const res = await reservar({ hora, correo: `c${hora}@example.com` });
       expect(res.status).toBe(201);
       asignados.add(res.body.barbero_id);
@@ -410,7 +410,7 @@ describe('POST /api/citas y las áreas', () => {
     });
 
     try {
-      const res = await reservar({ barbero_id: 1, hora: '14:00' });
+      const res = await reservar({ barbero_id: 1, hora: '15:00' });
       expect(res.status).toBe(400);
       expect(res.body).toMatchObject({ codigo: 'PROFESIONAL_INCOMPATIBLE', campo: 'barbero_id' });
       expect(res.body.error).not.toMatch(/horario ya está reservado/);
@@ -430,7 +430,7 @@ describe('PATCH /api/citas/:id (reasignación del admin) y las áreas', () => {
     request(app).patch(`/api/citas/${citaId}`).set(auth(admin)).send({ barbero_id: barberoId });
 
   it('un corte no se puede reasignar al asesor: 400 PROFESIONAL_INCOMPATIBLE y la cita no cambia', async () => {
-    const citaId = await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
+    const citaId = await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
 
     const res = await reasignar(citaId, ASESOR);
     expect(res.status).toBe(400);
@@ -439,14 +439,14 @@ describe('PATCH /api/citas/:id (reasignación del admin) y las áreas', () => {
   });
 
   it('un corte sí se reasigna a otro barbero de barbería', async () => {
-    const citaId = await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
+    const citaId = await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
     const res = await reasignar(citaId, 2);
     expect(res.status).toBe(200);
     expect(res.body.barbero_id).toBe(2);
   });
 
   it('una asesoría no se puede reasignar a un barbero de barbería', async () => {
-    const citaId = await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: ASESOR, estado: 'pendiente', servicio_id: SERV_ASESORIA });
+    const citaId = await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: ASESOR, estado: 'pendiente', servicio_id: SERV_ASESORIA });
 
     const res = await reasignar(citaId, 1);
     expect(res.status).toBe(400);
@@ -455,7 +455,7 @@ describe('PATCH /api/citas/:id (reasignación del admin) y las áreas', () => {
   });
 
   it('el barbero sigue sin poder reasignar (403) y el 404/400 de siempre no cambian', async () => {
-    const citaId = await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
+    const citaId = await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', servicio_id: SERV_CORTE });
     const prohibido = await request(app).patch(`/api/citas/${citaId}`).set(auth(barbero1)).send({ barbero_id: 2 });
     expect(prohibido.status).toBe(403);
     expect((await reasignar(citaId, 987654)).status).toBe(400);
@@ -511,7 +511,7 @@ describe('Empleados con área (/api/admin/empleados)', () => {
 
   it('PATCH con citas pendientes → 409 AREA_CON_CITAS_PENDIENTES y el área no cambia', async () => {
     const barbero = await crear();
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: barbero.id, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: barbero.id, estado: 'pendiente', servicio_id: SERV_CORTE });
 
     const res = await api('patch', `/empleados/${barbero.id}`).send({ area: 'asesoria' });
     expect(res.status).toBe(409);
@@ -525,18 +525,18 @@ describe('Empleados con área (/api/admin/empleados)', () => {
 
   it('una cita futura (aunque esté completada) también bloquea; el historial pasado y las canceladas no', async () => {
     const barbero = await crear();
-    await insertarCita({ fecha: '2020-01-10', hora: '10:00', barbero_id: barbero.id, estado: 'completada', servicio_id: SERV_CORTE });
-    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: barbero.id, estado: 'cancelada', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: '2020-01-10', hora: '11:00', barbero_id: barbero.id, estado: 'completada', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '12:00', barbero_id: barbero.id, estado: 'cancelada', servicio_id: SERV_CORTE });
     expect((await api('patch', `/empleados/${barbero.id}`).send({ area: 'asesoria' })).status).toBe(200);
 
     const otro = await crear({ nombre: 'Prueba Area Otro', usuario: 'prueba_area_otro' });
-    await insertarCita({ fecha: '2099-01-10', hora: '10:00', barbero_id: otro.id, estado: 'completada', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: '2099-01-10', hora: '11:00', barbero_id: otro.id, estado: 'completada', servicio_id: SERV_CORTE });
     expect((await api('patch', `/empleados/${otro.id}`).send({ area: 'asesoria' })).status).toBe(409);
   });
 
   it('mandar el mismo área (o editar otros campos) con citas pendientes no estorba', async () => {
     const barbero = await crear();
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: barbero.id, estado: 'pendiente', servicio_id: SERV_CORTE });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: barbero.id, estado: 'pendiente', servicio_id: SERV_CORTE });
     expect((await api('patch', `/empleados/${barbero.id}`).send({ area: 'barberia' })).status).toBe(200);
     expect((await api('patch', `/empleados/${barbero.id}`).send({ cargo: 'Senior' })).status).toBe(200);
   });

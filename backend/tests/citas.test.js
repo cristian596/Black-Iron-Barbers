@@ -19,7 +19,7 @@ const citaDePrueba = (overrides = {}) => ({
   servicio_id: 1,
   barbero_id: 1,
   fecha: '2030-06-15',
-  hora: '10:00',
+  hora: '11:00',
   ...overrides,
 });
 
@@ -55,8 +55,8 @@ describe('POST /api/citas', () => {
 
 describe('GET /api/citas (aislamiento por barbero)', () => {
   it('un barbero solo ve sus propias citas, no las de otro', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '11:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '12:00' }));
 
     const res = await request(app)
       .get('/api/citas')
@@ -75,8 +75,8 @@ describe('GET /api/citas (aislamiento por barbero)', () => {
   });
 
   it('el admin ve las citas de todos los barberos', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '11:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '12:00' }));
 
     const res = await request(app).get('/api/citas').set('Authorization', `Bearer ${tokenAdmin}`);
 
@@ -132,40 +132,40 @@ describe('POST /api/citas — validaciones nuevas', () => {
   });
 
   it('responde 409 si un servicio de 90 min se solapa con una cita existente del mismo barbero', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '10:00' }));
-    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '10:30' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '11:00' }));
+    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '11:30' }));
 
     expect(res.status).toBe(409);
   });
 
   it('rechaza un servicio que terminaría después del horario de cierre', async () => {
-    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '18:30' }));
+    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '19:30' }));
     expect(res.status).toBe(400);
   });
 
   it('una cita cancelada libera el hueco para una nueva reserva que se solaparía', async () => {
-    const creada = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '10:00' }));
+    const creada = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '11:00' }));
     await request(app)
       .patch(`/api/citas/${creada.body.id}`)
       .set('Authorization', `Bearer ${tokenBarbero1}`)
       .send({ estado: 'cancelada' });
 
-    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '10:30' }));
+    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '11:30' }));
     expect(res.status).toBe(201);
   });
 
   it('sin barbero_id, asigna automáticamente al barbero activo con menos citas ese día', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '09:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
 
-    const res = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: undefined, hora: '09:00' }));
+    const res = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: undefined, hora: '10:00' }));
 
     expect(res.status).toBe(201);
     expect(res.body.barbero_id).toBe(2);
   });
 
   it('la reasignación de barbero en admin responde 409 si el nuevo barbero está ocupado', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '10:00' }));
-    const creada = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '11:00' }));
+    const creada = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
 
     const res = await request(app)
       .patch(`/api/citas/${creada.body.id}`)
@@ -176,7 +176,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
   });
 
   it('la reasignación de barbero en admin funciona si el nuevo barbero está libre', async () => {
-    const creada = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
+    const creada = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
 
     const res = await request(app)
       .patch(`/api/citas/${creada.body.id}`)
@@ -188,30 +188,30 @@ describe('POST /api/citas — validaciones nuevas', () => {
   });
 
   it('permite una cita contigua justo después de que termina otra (sin solapamiento real)', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '10:00' })); // 90 min: 10:00-11:30
-    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '11:30' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 2, hora: '11:00' })); // 90 min: 11:00-12:30
+    const res = await request(app).post('/api/citas').send(citaDePrueba({ servicio_id: 1, hora: '12:30' }));
 
     expect(res.status).toBe(201);
   });
 
   it('responde 409 con "cualquier barbero" cuando ya no queda ningún barbero libre en esa hora', async () => {
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '10:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 2, hora: '11:00' }));
 
-    const res = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: undefined, hora: '10:00' }));
+    const res = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: undefined, hora: '11:00' }));
 
     expect(res.status).toBe(409);
   });
 
   it('una cita cancelada no se puede reabrir: 409 TRANSICION_INVALIDA, aunque el hueco siga libre u ocupado', async () => {
-    const original = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
+    const original = await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
     await request(app)
       .patch(`/api/citas/${original.body.id}`)
       .set('Authorization', `Bearer ${tokenBarbero1}`)
       .send({ estado: 'cancelada' });
 
     // El hueco liberado lo toma otra cita distinta.
-    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '10:00' }));
+    await request(app).post('/api/citas').send(citaDePrueba({ barbero_id: 1, hora: '11:00' }));
 
     const res = await request(app)
       .patch(`/api/citas/${original.body.id}`)
@@ -233,7 +233,7 @@ describe('POST /api/citas — validaciones nuevas', () => {
       servicio_nombre: 'Corte de prueba',
       barbero_nombre: 'Barbero Uno',
       fecha: expect.any(String),
-      hora: '10:00:00',
+      hora: '11:00:00',
       duracion_min: 30,
       precio: 50000,
       telefono: '3001234567',

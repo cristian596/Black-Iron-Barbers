@@ -80,7 +80,7 @@ const auth = (token) => ({ Authorization: `Bearer ${token}` });
 const reservar = (extra = {}) =>
   request(app)
     .post('/api/citas')
-    .send({ cliente: 'Cliente de prueba', ...PERSONA, consentimiento: true, fecha: FECHA, hora: '10:00', servicios_ids: [GRATIS], ...extra });
+    .send({ cliente: 'Cliente de prueba', ...PERSONA, consentimiento: true, fecha: FECHA, hora: '11:00', servicios_ids: [GRATIS], ...extra });
 const comprobar = (cuerpo) => request(app).post('/api/asesorias/gratis/comprobar').send(cuerpo);
 const contar = async (tabla) => (await pool.query(`SELECT COUNT(*)::int AS n FROM ${tabla}`)).rows[0].n;
 const usos = async () => (await pool.query('SELECT cita_id, correo_norm, telefono_norm FROM asesoria_gratis_usos ORDER BY id')).rows;
@@ -126,7 +126,7 @@ describe('La primera asesoría gratis', () => {
 
   it('las asesorías de pago y los cortes NO consumen ni consultan el derecho: se pueden repetir', async () => {
     for (const [i, ids] of [[PAGA], [PAGA], [CORTE], [CORTE_2]].entries()) {
-      const res = await reservar({ servicios_ids: ids, hora: `${String(9 + i)}:00`.padStart(5, '0') });
+      const res = await reservar({ servicios_ids: ids, hora: `${String(10 + i)}:00`.padStart(5, '0') });
       expect(res.status).toBe(201);
     }
     expect(await contar('asesoria_gratis_usos')).toBe(0);
@@ -135,14 +135,14 @@ describe('La primera asesoría gratis', () => {
 
 describe('Una sola asesoría gratis por persona', () => {
   const primera = async () => {
-    const res = await reservar({ hora: '09:00' });
+    const res = await reservar({ hora: '10:00' });
     expect(res.status).toBe(201);
     return res;
   };
 
   it('la segunda con el mismo correo → 409 ASESORIA_GRATIS_YA_USADA, sin crear nada', async () => {
     await primera();
-    const res = await reservar({ hora: '11:00' });
+    const res = await reservar({ hora: '12:00' });
     expect(res.status).toBe(409);
     expect(res.body).toMatchObject({ codigo: 'ASESORIA_GRATIS_YA_USADA', servicio_id: GRATIS });
     expect(await contar('citas')).toBe(1);
@@ -152,23 +152,23 @@ describe('Una sola asesoría gratis por persona', () => {
 
   it('mismo teléfono con OTRO correo → bloquea', async () => {
     await primera();
-    const res = await reservar({ hora: '11:00', correo: 'otra.persona@example.com' });
+    const res = await reservar({ hora: '12:00', correo: 'otra.persona@example.com' });
     expect(res.status).toBe(409);
     expect(res.body.codigo).toBe('ASESORIA_GRATIS_YA_USADA');
   });
 
   it('mismo correo con OTRO teléfono → bloquea', async () => {
     await primera();
-    const res = await reservar({ hora: '11:00', telefono: '3119998888' });
+    const res = await reservar({ hora: '12:00', telefono: '3119998888' });
     expect(res.status).toBe(409);
     expect(res.body.codigo).toBe('ASESORIA_GRATIS_YA_USADA');
   });
 
   it('la respuesta es idéntica sea cual sea el campo que coincide y no revela datos', async () => {
     await primera();
-    const porCorreo = await reservar({ hora: '11:00', telefono: '3119998888' });
-    const porTelefono = await reservar({ hora: '11:00', correo: 'otra.persona@example.com' });
-    const porAmbos = await reservar({ hora: '11:00' });
+    const porCorreo = await reservar({ hora: '12:00', telefono: '3119998888' });
+    const porTelefono = await reservar({ hora: '12:00', correo: 'otra.persona@example.com' });
+    const porAmbos = await reservar({ hora: '12:00' });
     expect(porCorreo.body).toEqual(porTelefono.body);
     expect(porCorreo.body).toEqual(porAmbos.body);
     expect(Object.keys(porCorreo.body).sort()).toEqual(['codigo', 'error', 'servicio_id']);
@@ -188,39 +188,39 @@ describe('Una sola asesoría gratis por persona', () => {
     ['teléfono con 57 delante', { correo: 'nueva@example.com', telefono: '573001234567' }],
   ])('variante: %s → bloquea', async (_nombre, extra) => {
     await primera();
-    const res = await reservar({ hora: '11:00', ...extra });
+    const res = await reservar({ hora: '12:00', ...extra });
     expect(res.status).toBe(409);
     expect(res.body.codigo).toBe('ASESORIA_GRATIS_YA_USADA');
   });
 
   it('otro dominio con puntos NO se funde: a.na@example.com y ana@example.com son personas distintas', async () => {
-    const uno = await reservar({ hora: '09:00', correo: 'a.na@example.com', telefono: '3001110001' });
-    const dos = await reservar({ hora: '11:00', correo: 'ana@example.com', telefono: '3001110002' });
+    const uno = await reservar({ hora: '10:00', correo: 'a.na@example.com', telefono: '3001110001' });
+    const dos = await reservar({ hora: '12:00', correo: 'ana@example.com', telefono: '3001110002' });
     expect(uno.status).toBe(201);
     expect(dos.status).toBe(201);
   });
 
   it('una persona distinta (otro correo y otro teléfono) sí puede', async () => {
     await primera();
-    const res = await reservar({ hora: '11:00', correo: 'distinta@example.com', telefono: '3115550000' });
+    const res = await reservar({ hora: '12:00', correo: 'distinta@example.com', telefono: '3115550000' });
     expect(res.status).toBe(201);
     expect(await contar('asesoria_gratis_usos')).toBe(2);
   });
 
   it('el bloqueo no impide reservar el corte ni una asesoría de pago a esa misma persona', async () => {
     await primera();
-    expect((await reservar({ hora: '11:00', servicios_ids: [CORTE] })).status).toBe(201);
-    expect((await reservar({ hora: '12:00', servicios_ids: [PAGA] })).status).toBe(201);
+    expect((await reservar({ hora: '12:00', servicios_ids: [CORTE] })).status).toBe(201);
+    expect((await reservar({ hora: '13:00', servicios_ids: [PAGA] })).status).toBe(201);
   });
 });
 
 describe('Reserva combinada con la gratis bloqueada', () => {
   it('revierte TODO (ni asesoría ni corte), responde 409 sin revelar el campo y el corte solo se reserva después', async () => {
-    expect((await reservar({ hora: '09:00' })).status).toBe(201); // ya usó la gratis
+    expect((await reservar({ hora: '10:00' })).status).toBe(201); // ya usó la gratis
     const citasAntes = await contar('citas');
     const lineasAntes = await contar('cita_servicios');
 
-    const combinada = await reservar({ hora: '12:00', servicios_ids: [GRATIS, CORTE], correo: 'OTRO@example.com' }); // mismo teléfono
+    const combinada = await reservar({ hora: '13:00', servicios_ids: [GRATIS, CORTE], correo: 'OTRO@example.com' }); // mismo teléfono
     expect(combinada.status).toBe(409);
     expect(combinada.body).toEqual({ error: expect.any(String), codigo: 'ASESORIA_GRATIS_YA_USADA', servicio_id: GRATIS });
     expect(await contar('citas')).toBe(citasAntes);
@@ -228,7 +228,7 @@ describe('Reserva combinada con la gratis bloqueada', () => {
     expect(await contar('asesoria_gratis_usos')).toBe(1);
 
     // Cómo seguir: el front reserva de nuevo SOLO el corte (sin la asesoría), mismos datos y misma hora de corte.
-    const soloCorte = await reservar({ hora: '12:00', servicios_ids: [CORTE], correo: 'OTRO@example.com' });
+    const soloCorte = await reservar({ hora: '13:00', servicios_ids: [CORTE], correo: 'OTRO@example.com' });
     expect(soloCorte.status).toBe(201);
     expect(soloCorte.body).not.toHaveProperty('citas');
   });
@@ -245,8 +245,8 @@ describe('Reserva combinada con la gratis bloqueada', () => {
 
 describe('Concurrencia', () => {
   it.each([
-    ['a la misma hora', '10:00', '10:00'],
-    ['a horas distintas', '10:00', '15:00'],
+    ['a la misma hora', '11:00', '11:00'],
+    ['a horas distintas', '11:00', '16:00'],
   ])('dos reservas simultáneas de la misma persona %s: una gana y la otra recibe ASESORIA_GRATIS_YA_USADA', async (_n, h1, h2) => {
     for (let ronda = 0; ronda < 3; ronda += 1) {
       await limpiar();
@@ -262,8 +262,8 @@ describe('Concurrencia', () => {
 
   it('con datos que coinciden solo en el teléfono, lo mismo', async () => {
     const [a, b] = await Promise.all([
-      reservar({ hora: '10:00', correo: 'uno@example.com' }),
-      reservar({ hora: '15:00', correo: 'dos@example.com' }),
+      reservar({ hora: '11:00', correo: 'uno@example.com' }),
+      reservar({ hora: '16:00', correo: 'dos@example.com' }),
     ]);
     expect([a.status, b.status].sort()).toEqual([201, 409]);
     expect(await contar('citas')).toBe(1);
@@ -273,8 +273,8 @@ describe('Concurrencia', () => {
     for (let ronda = 0; ronda < 3; ronda += 1) {
       await limpiar();
       const [a, b] = await Promise.all([
-        reservar({ hora: '10:00', servicios_ids: [GRATIS, CORTE] }),
-        reservar({ hora: '15:00', servicios_ids: [GRATIS, CORTE_2] }),
+        reservar({ hora: '11:00', servicios_ids: [GRATIS, CORTE] }),
+        reservar({ hora: '16:00', servicios_ids: [GRATIS, CORTE_2] }),
       ]);
       expect([a.status, b.status].sort()).toEqual([201, 409]);
       expect([a, b].find((r) => r.status === 409).body.codigo).toBe('ASESORIA_GRATIS_YA_USADA');
@@ -302,12 +302,12 @@ describe('ASESORIA_GRATIS_YA_USADA no es "horario ocupado"', () => {
 
   it('no reintenta con otro asesor del pool: un solo INSERT de cita y respuesta de gratis usada', async () => {
     alInsertar = null;
-    await reservar({ hora: '09:00' });
+    await reservar({ hora: '10:00' });
     inserciones = 0;
     alInsertar = () => {
       inserciones += 1;
     };
-    const res = await reservar({ hora: '11:00' }); // hay 2 asesores libres: un reintento sería visible
+    const res = await reservar({ hora: '12:00' }); // hay 2 asesores libres: un reintento sería visible
     expect(res.status).toBe(409);
     expect(res.body.codigo).toBe('ASESORIA_GRATIS_YA_USADA');
     expect(res.body.error).not.toMatch(/horario|asesores|disponibles/i);
@@ -316,20 +316,20 @@ describe('ASESORIA_GRATIS_YA_USADA no es "horario ocupado"', () => {
 
   it('en una combinada se detiene tras la asesoría: el corte ni se intenta insertar', async () => {
     alInsertar = null;
-    await reservar({ hora: '09:00' });
+    await reservar({ hora: '10:00' });
     inserciones = 0;
     alInsertar = () => {
       inserciones += 1;
     };
-    const res = await reservar({ hora: '11:00', servicios_ids: [GRATIS, CORTE] });
+    const res = await reservar({ hora: '12:00', servicios_ids: [GRATIS, CORTE] });
     expect(res.status).toBe(409);
     expect(res.body.codigo).toBe('ASESORIA_GRATIS_YA_USADA');
     expect(inserciones).toBe(1);
   });
 
   it('esConflictoDeHorario y esAsesoriaGratisYaUsada se reparten los errores 23505 por restricción', async () => {
-    const citaId = (await reservar({ hora: '09:00' })).body.id;
-    const otra = (await reservar({ hora: '11:00', servicios_ids: [PAGA], correo: 'x@example.com' })).body.id;
+    const citaId = (await reservar({ hora: '10:00' })).body.id;
+    const otra = (await reservar({ hora: '12:00', servicios_ids: [PAGA], correo: 'x@example.com' })).body.id;
     const falla = (correo, telefono, cita) =>
       pool.query('INSERT INTO asesoria_gratis_usos (cita_id, correo_norm, telefono_norm) VALUES ($1, $2, $3)', [cita, correo, telefono]).catch((e) => e);
 
@@ -354,16 +354,16 @@ describe('ASESORIA_GRATIS_YA_USADA no es "horario ocupado"', () => {
 
 describe('Cancelar libera el derecho; completada y vencida lo conservan', () => {
   it('cancelar la gratis (el asesor) libera: se borra su fila y la persona puede reservar otra', async () => {
-    const primera = await reservar({ hora: '09:00', asesor_id: A1 });
+    const primera = await reservar({ hora: '10:00', asesor_id: A1 });
     const tokenAsesor = await tokenDe(A1);
-    expect((await reservar({ hora: '11:00' })).status).toBe(409);
+    expect((await reservar({ hora: '12:00' })).status).toBe(409);
 
     const res = await cancelar(tokenAsesor, primera.body.id);
     expect(res.status).toBe(200);
     expect(res.body.estado).toBe('cancelada');
     expect(await contar('asesoria_gratis_usos')).toBe(0);
 
-    const otra = await reservar({ hora: '11:00' });
+    const otra = await reservar({ hora: '12:00' });
     expect(otra.status).toBe(201);
     expect(await contar('asesoria_gratis_usos')).toBe(1);
   });
@@ -375,39 +375,39 @@ describe('Cancelar libera el derecho; completada y vencida lo conservan', () => 
     const cancelaCorte = await cancelar(firmarToken('barbero'), corte.id); // barbero 1
     expect(cancelaCorte.status).toBe(200);
     expect(await contar('asesoria_gratis_usos')).toBe(1);
-    expect((await reservar({ hora: '15:00' })).status).toBe(409);
+    expect((await reservar({ hora: '16:00' })).status).toBe(409);
 
     const cancelaAsesoria = await cancelar(await tokenDe(A1), asesoria.id);
     expect(cancelaAsesoria.status).toBe(200);
     expect(await contar('asesoria_gratis_usos')).toBe(0);
-    expect((await reservar({ hora: '15:00' })).status).toBe(201);
+    expect((await reservar({ hora: '16:00' })).status).toBe(201);
   });
 
   it('cancelar una asesoría de pago o un corte no toca los usos de otras personas', async () => {
-    const gratis = await reservar({ hora: '09:00' });
-    const corte = await reservar({ hora: '11:00', servicios_ids: [CORTE], barbero_id: 1, correo: 'x@example.com', telefono: '3111111111' });
+    const gratis = await reservar({ hora: '10:00' });
+    const corte = await reservar({ hora: '12:00', servicios_ids: [CORTE], barbero_id: 1, correo: 'x@example.com', telefono: '3111111111' });
     expect((await cancelar(firmarToken('barbero'), corte.body.id)).status).toBe(200);
     expect((await usos()).map((u) => u.cita_id)).toEqual([gratis.body.id]);
   });
 
   it('una completada sigue contando', async () => {
-    const primera = await reservar({ hora: '09:00', asesor_id: A1 });
+    const primera = await reservar({ hora: '10:00', asesor_id: A1 });
     await pool.query("UPDATE citas SET fecha = (SELECT (now() AT TIME ZONE 'America/Bogota')::date - 1) WHERE id = $1", [primera.body.id]);
     const completa = await request(app).patch(`/api/citas/${primera.body.id}`).set(auth(await tokenDe(A1))).send({ estado: 'completada' });
     expect(completa.status).toBe(200);
     expect(await contar('asesoria_gratis_usos')).toBe(1);
-    expect((await reservar({ hora: '11:00' })).status).toBe(409);
+    expect((await reservar({ hora: '12:00' })).status).toBe(409);
   });
 
   it('una pendiente VENCIDA sin confirmar sigue contando', async () => {
-    const primera = await reservar({ hora: '09:00' });
+    const primera = await reservar({ hora: '10:00' });
     await pool.query("UPDATE citas SET fecha = (SELECT (now() AT TIME ZONE 'America/Bogota')::date - 30) WHERE id = $1", [primera.body.id]);
     expect((await pool.query('SELECT estado FROM citas WHERE id = $1', [primera.body.id])).rows[0].estado).toBe('pendiente');
-    expect((await reservar({ hora: '11:00' })).status).toBe(409);
+    expect((await reservar({ hora: '12:00' })).status).toBe(409);
   });
 
   it('cancelar y liberar es atómico: si la cita ya no está pendiente no se libera nada', async () => {
-    const primera = await reservar({ hora: '09:00', asesor_id: A1 });
+    const primera = await reservar({ hora: '10:00', asesor_id: A1 });
     await pool.query("UPDATE citas SET estado = 'completada', fecha = (SELECT (now() AT TIME ZONE 'America/Bogota')::date - 1) WHERE id = $1", [primera.body.id]);
     const res = await cancelar(await tokenDe(A1), primera.body.id);
     expect(res.status).toBe(409);
@@ -418,7 +418,7 @@ describe('Cancelar libera el derecho; completada y vencida lo conservan', () => 
 
 describe('Estados finales', () => {
   const crearCitaEn = async (estado) => {
-    const res = await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '10:00', correo: `${estado}@example.com`, telefono: '3112223333' });
+    const res = await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '11:00', correo: `${estado}@example.com`, telefono: '3112223333' });
     await pool.query("UPDATE citas SET estado = $2, fecha = (SELECT (now() AT TIME ZONE 'America/Bogota')::date - 1) WHERE id = $1", [res.body.id, estado]);
     return res.body.id;
   };
@@ -449,8 +449,8 @@ describe('Estados finales', () => {
     expect((await cambiar(completada, 'completada')).status).toBe(200);
 
     await pool.query('TRUNCATE citas RESTART IDENTITY CASCADE');
-    const a = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '10:00' })).body.id;
-    const b = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '11:00', correo: 'b@example.com' })).body.id;
+    const a = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '11:00' })).body.id;
+    const b = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '12:00', correo: 'b@example.com' })).body.id;
     expect((await cambiar(a, 'cancelada')).body.estado).toBe('cancelada'); // pendiente → cancelada
     await pool.query("UPDATE citas SET fecha = (SELECT (now() AT TIME ZONE 'America/Bogota')::date - 1) WHERE id = $1", [b]);
     expect((await cambiar(b, 'completada')).body.estado).toBe('completada'); // pendiente → completada
@@ -467,7 +467,7 @@ describe('Estados finales', () => {
   });
 
   it('reasignar una cita pendiente (admin) sigue funcionando', async () => {
-    const id = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '10:00' })).body.id;
+    const id = (await reservar({ servicios_ids: [CORTE], barbero_id: 1, hora: '11:00' })).body.id;
     const res = await request(app).patch(`/api/citas/${id}`).set(auth(admin)).send({ barbero_id: 2 });
     expect(res.status).toBe(200);
     expect(res.body.barbero_id).toBe(2);
@@ -477,7 +477,7 @@ describe('Estados finales', () => {
 describe('POST /api/asesorias/gratis/comprobar', () => {
   it('disponible true si nadie la usó; false cuando el correo o el teléfono ya la usaron (y sus variantes)', async () => {
     expect((await comprobar(PERSONA)).body).toEqual({ disponible: true });
-    await reservar({ hora: '09:00' });
+    await reservar({ hora: '10:00' });
 
     const casos = [PERSONA, { ...PERSONA, telefono: '3119998888' }, { ...PERSONA, correo: 'otro@example.com' }, { correo: 'P.ersonauno+x@GoogleMail.com', telefono: '+57 311 999 8888' }];
     for (const caso of casos) {
@@ -489,7 +489,7 @@ describe('POST /api/asesorias/gratis/comprobar', () => {
   });
 
   it('la respuesta es idéntica sin importar qué campo coincide y no lleva nada más', async () => {
-    await reservar({ hora: '09:00' });
+    await reservar({ hora: '10:00' });
     const porCorreo = await comprobar({ ...PERSONA, telefono: '3119998888' });
     const porTelefono = await comprobar({ ...PERSONA, correo: 'otro@example.com' });
     expect(porCorreo.status).toBe(porTelefono.status);
@@ -519,7 +519,7 @@ describe('POST /api/asesorias/gratis/comprobar', () => {
   });
 
   it('tras cancelar la gratis vuelve a estar disponible', async () => {
-    const primera = await reservar({ hora: '09:00', asesor_id: A1 });
+    const primera = await reservar({ hora: '10:00', asesor_id: A1 });
     expect((await comprobar(PERSONA)).body.disponible).toBe(false);
     await cancelar(await tokenDe(A1), primera.body.id);
     expect((await comprobar(PERSONA)).body.disponible).toBe(true);

@@ -1,28 +1,30 @@
 import { rutaAsesoria } from './asesorias'
 
-// Datos del negocio: única fuente para el inicio.
-export const negocio = {
-  ciudad: 'Facatativá',
-  direccion: 'Cll 22 #1 A 69 sur, Prado Cartagenita',
-  horario: 'Todos los días y festivos · 9 a. m. – 6 p. m.',
-}
-
-// Datos del pie de página (única fuente para el footer público). OJO: `negocio.direccion` y `negocio.horario` de
-// arriba son los del hero y todavía NO coinciden con estos; unificarlos es una decisión pendiente.
-export const NOMBRE_NEGOCIO = 'Black Iron Barbers'
-
-export const contacto = {
-  direccion: 'Calle 22 #1-69 Facatativa',
-  correo: 'blackIronBarbers@corre.com',
-}
-
-// Horario de atención del footer. `apertura` y `cierre` (HH:MM, 24 h) quedan como datos reutilizables para alinear
-// la disponibilidad de la reserva; el backend (config/horario.js) sigue por ahora en 09:00–19:00.
+// Horario de atención: ÚNICA fuente del front (Hero y Footer derivan su texto de aquí). El backend tiene la suya en
+// backend/config/horario.js; el test horarioCoherencia.test.js falla si `apertura`/`cierre` difieren.
 export const HORARIO_ATENCION = {
   dias: 'Lunes a domingo',
   apertura: '10:00',
   cierre: '20:00',
   texto: '10:00 a. m. – 8:00 p. m.',
+}
+
+// Dirección del local: única fuente (Hero y Footer).
+export const DIRECCION_NEGOCIO = 'Calle 22 #1 A 69 sur, Prado Cartagenita'
+
+// Datos del negocio: única fuente para el inicio.
+export const negocio = {
+  ciudad: 'Facatativá',
+  direccion: DIRECCION_NEGOCIO,
+  horario: `Todos los días y festivos · ${HORARIO_ATENCION.texto}`,
+}
+
+// Datos del pie de página (única fuente para el footer público).
+export const NOMBRE_NEGOCIO = 'Black Iron Barbers'
+
+export const contacto = {
+  direccion: DIRECCION_NEGOCIO,
+  correo: 'blackIronBarbers@corre.com',
 }
 
 export const enlaceMapa = (direccion) =>

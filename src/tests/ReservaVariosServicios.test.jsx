@@ -61,10 +61,13 @@ const montar = (ruta, { carrito } = {}) => {
   )
 }
 
+// Los botones de hora son BLOQUES de 1 hora ("10:00 – 11:00"): elegir uno asigna su primera hora libre.
+const bloqueDe = (hora) => new RegExp('^' + hora.slice(0, 2) + ':00 – ' + (Number(hora.slice(0, 2)) + 1) + ':00')
+
 const elegirFechaYHora = async (user, hora = '10:00') => {
   const grupo = await screen.findByRole('group', { name: /fechas disponibles/i })
   await user.click(within(grupo).getAllByRole('button')[0])
-  await user.click(await screen.findByRole('button', { name: hora }))
+  await user.click(await screen.findByRole('button', { name: bloqueDe(hora) }))
 }
 
 const hastaFechaHora = async (user) => {
@@ -234,7 +237,7 @@ describe('Reserva con varios servicios: disponibilidad e invalidación', () => {
     await cargado()
     await hastaFechaHora(user)
 
-    expect(await screen.findByRole('button', { name: '10:00' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('button', { name: bloqueDe('10:00') })).toHaveAttribute('aria-pressed', 'true')
   })
 })
 
@@ -346,9 +349,10 @@ describe('Reserva con varios servicios: errores del servidor', () => {
 
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/esa hora ya fue tomada/i)
+    // MODIFICADO: con el 409 ya no hay alerta; se reasigna la siguiente hora libre del MISMO bloque de 1 hora y se avisa.
+    expect(await screen.findByText(/la hora de las 10:00 se ocupó. te asignamos las 10:30/i)).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: '10:30' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: bloqueDe('10:00') })).toHaveAttribute('aria-pressed', 'true')
     expect(obtenerDisponibilidad).toHaveBeenLastCalledWith([1, 2], expect.any(String), null)
   })
 
@@ -420,7 +424,7 @@ describe('Reserva y carrito: el flujo tiene su propio estado', () => {
     await hastaElModal(user)
     await llenarContacto(user)
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
-    await screen.findByRole('alert')
+    await screen.findByText(/te asignamos las 10:30/i) // MODIFICADO: el 409 reasigna otra hora del bloque en vez de una alerta
 
     expect(guardado()).toEqual([1, 2])
   })

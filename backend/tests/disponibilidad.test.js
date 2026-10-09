@@ -28,39 +28,39 @@ describe('GET /api/disponibilidad', () => {
   });
 
   it('con un barbero específico, ofrece horas donde cabe toda la duración del servicio', async () => {
-    await crearCitaDirecta({ barberoId: 1, fecha: '2030-06-15', hora: '10:00', duracionMin: 90 });
+    await crearCitaDirecta({ barberoId: 1, fecha: '2030-06-15', hora: '11:00', duracionMin: 90 });
 
     const res = await request(app)
       .get('/api/disponibilidad')
       .query({ servicio: 1, barbero: 1, fecha: '2030-06-15' });
 
     expect(res.status).toBe(200);
-    expect(res.body.horas).not.toContain('10:00');
-    expect(res.body.horas).not.toContain('10:30');
-    expect(res.body.horas).not.toContain('11:00'); // un servicio aquí terminaría a las 12:30, se solapa con 10:00-11:30
-    expect(res.body.horas).toContain('09:00');
-    expect(res.body.horas).toContain('11:30'); // justo cuando termina la cita de 90 min
+    expect(res.body.horas).not.toContain('11:00');
+    expect(res.body.horas).not.toContain('11:30');
+    expect(res.body.horas).not.toContain('12:00'); // un servicio aquí terminaría a las 13:30, se solapa con 11:00-12:30
+    expect(res.body.horas).toContain('10:00');
+    expect(res.body.horas).toContain('12:30'); // justo cuando termina la cita de 90 min
   });
 
   it('"cualquier barbero" (sin barbero) ofrece una hora si al menos un barbero activo está libre', async () => {
-    await crearCitaDirecta({ barberoId: 1, fecha: '2030-06-15', hora: '10:00', duracionMin: 30 });
-    await crearCitaDirecta({ barberoId: 2, fecha: '2030-06-15', hora: '11:00', duracionMin: 30 });
+    await crearCitaDirecta({ barberoId: 1, fecha: '2030-06-15', hora: '11:00', duracionMin: 30 });
+    await crearCitaDirecta({ barberoId: 2, fecha: '2030-06-15', hora: '12:00', duracionMin: 30 });
 
     const res = await request(app).get('/api/disponibilidad').query({ servicio: 1, fecha: '2030-06-15' });
 
     expect(res.status).toBe(200);
     expect(res.body.barbero_id).toBeNull();
-    expect(res.body.horas).toContain('10:00'); // barbero 2 libre
-    expect(res.body.horas).toContain('11:00'); // barbero 1 libre
+    expect(res.body.horas).toContain('11:00'); // barbero 2 libre
+    expect(res.body.horas).toContain('12:00'); // barbero 1 libre
   });
 
   it('"cualquier barbero" NO ofrece una hora si todos los barberos activos están ocupados en ese intervalo', async () => {
-    await crearCitaDirecta({ barberoId: 1, fecha: '2030-06-15', hora: '10:00', duracionMin: 30 });
-    await crearCitaDirecta({ barberoId: 2, fecha: '2030-06-15', hora: '10:00', duracionMin: 30 });
+    await crearCitaDirecta({ barberoId: 1, fecha: '2030-06-15', hora: '11:00', duracionMin: 30 });
+    await crearCitaDirecta({ barberoId: 2, fecha: '2030-06-15', hora: '11:00', duracionMin: 30 });
 
     const res = await request(app).get('/api/disponibilidad').query({ servicio: 1, fecha: '2030-06-15' });
 
-    expect(res.body.horas).not.toContain('10:00');
+    expect(res.body.horas).not.toContain('11:00');
   });
 
   it('no ofrece horas que harían que el servicio termine después del cierre', async () => {
@@ -68,8 +68,8 @@ describe('GET /api/disponibilidad', () => {
       .get('/api/disponibilidad')
       .query({ servicio: 2, barbero: 1, fecha: '2030-06-15' }); // servicio 2 = 90 min en la BD de prueba
 
-    expect(res.body.horas).not.toContain('18:30');
-    expect(res.body.horas[res.body.horas.length - 1]).toBe('17:30'); // 17:30 + 90min = 19:00 (cierre exacto)
+    expect(res.body.horas).not.toContain('19:30');
+    expect(res.body.horas[res.body.horas.length - 1]).toBe('18:30'); // 18:30 + 90min = 20:00 (cierre exacto)
   });
 
   it('a las 23:30 hora Colombia (ya es el día siguiente en UTC), "hoy" sigue siendo el día de Bogotá y filtra horas pasadas', async () => {
@@ -86,10 +86,10 @@ describe('GET /api/disponibilidad', () => {
     expect(res.body.horas).toEqual([]); // ya pasaron todas las horas de atención de "hoy" en Bogotá
   });
 
-  it('a las 20:00 hora Colombia, ya cerró (cierre 19:00) y no ofrece ninguna hora de "hoy"', async () => {
+  it('a las 21:00 hora Colombia, ya cerró (cierre 20:00) y no ofrece ninguna hora de "hoy"', async () => {
     vi.useFakeTimers();
-    // 2030-06-15 20:00 Bogotá = 2030-06-16 01:00 UTC
-    vi.setSystemTime(new Date('2030-06-16T01:00:00Z'));
+    // 2030-06-15 21:00 Bogotá = 2030-06-16 02:00 UTC
+    vi.setSystemTime(new Date('2030-06-16T02:00:00Z'));
 
     const res = await request(app)
       .get('/api/disponibilidad')
@@ -99,16 +99,16 @@ describe('GET /api/disponibilidad', () => {
     expect(res.body.horas).toEqual([]);
   });
 
-  it('a las 14:00 hora Colombia, filtra horas anteriores a las 14:00 pero deja las posteriores', async () => {
+  it('a las 15:00 hora Colombia, filtra horas anteriores a las 15:00 pero deja las posteriores', async () => {
     vi.useFakeTimers();
-    // 2030-06-15 14:00 Bogotá = 2030-06-15 19:00 UTC
-    vi.setSystemTime(new Date('2030-06-15T19:00:00Z'));
+    // 2030-06-15 15:00 Bogotá = 2030-06-15 20:00 UTC
+    vi.setSystemTime(new Date('2030-06-15T20:00:00Z'));
 
     const res = await request(app)
       .get('/api/disponibilidad')
       .query({ servicio: 1, barbero: 1, fecha: '2030-06-15' });
 
-    expect(res.body.horas).not.toContain('13:30');
-    expect(res.body.horas).toContain('14:30');
+    expect(res.body.horas).not.toContain('14:30');
+    expect(res.body.horas).toContain('15:30');
   });
 });

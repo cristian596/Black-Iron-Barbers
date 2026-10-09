@@ -82,7 +82,7 @@ describe('PasoFechaHora', () => {
   })
 
   it('muestra las horas devueltas por la API y permite seleccionarlas', async () => {
-    obtenerDisponibilidad.mockResolvedValue({ horas: ['09:00', '09:30'] })
+    obtenerDisponibilidad.mockResolvedValue({ horas: ['10:00', '10:30'] })
     const user = userEvent.setup()
     const onSeleccionarHora = vi.fn()
     const fecha = sumarDiasISO(hoyISO(), 1)
@@ -98,10 +98,10 @@ describe('PasoFechaHora', () => {
       />
     )
 
-    const botonHora = await screen.findByRole('button', { name: '09:00' })
+    const botonHora = await screen.findByRole('button', { name: /^10:00 – 11:00/ })
     await user.click(botonHora)
 
-    expect(onSeleccionarHora).toHaveBeenCalledWith('09:00')
+    expect(onSeleccionarHora).toHaveBeenCalledWith('10:00')
   })
 
   it('muestra un mensaje cuando no hay horas disponibles ese día', async () => {

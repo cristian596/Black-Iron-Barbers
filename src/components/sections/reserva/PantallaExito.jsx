@@ -1,6 +1,7 @@
 import { formatearFechaLegible } from '../../../utils/fechas'
 import { formatearDuracion, formatearPrecio } from '../../../utils/formato'
 import { TITULO_CITA, horaDeMinutos, minutosDeHora, normalizarReserva } from '../../../utils/reservaAsesoria'
+import { rangoBloqueDeHora, textoHoraAsignada } from '../../../utils/bloquesHorarios'
 import ListaServiciosReserva from './ListaServiciosReserva'
 
 const Fila = ({ etiqueta, children, fuerte = false }) => (
@@ -65,6 +66,7 @@ const PantallaExito = ({ resumen, onNuevaReserva, areaUnica = 'barberia' }) => {
           })}
           <dl className="space-y-1">
             <Fila etiqueta="Fecha">{formatearFechaLegible(citas[0].fecha)}</Fila>
+            <Fila etiqueta="Bloque">{rangoBloqueDeHora(citas[0].hora)}</Fila>
             <Fila etiqueta="Duración total">{formatearDuracion(duracion)}</Fila>
             <div className="mt-1 border-t border-zinc-200 pt-2">
               <Fila etiqueta="Total" fuerte>
@@ -87,7 +89,7 @@ const PantallaExito = ({ resumen, onNuevaReserva, areaUnica = 'barberia' }) => {
           )}
           <Fila etiqueta={areaUnica === 'asesoria' ? 'Asesor/a' : 'Barbero'}>{citas[0].barbero_nombre}</Fila>
           <Fila etiqueta="Fecha">{formatearFechaLegible(citas[0].fecha)}</Fila>
-          <Fila etiqueta="Hora">{hhmm(citas[0].hora)}</Fila>
+          <Fila etiqueta="Hora">{textoHoraAsignada(citas[0].hora)}</Fila>
           <Fila etiqueta="Duración">
             {Array.isArray(citas[0].servicios) && citas[0].servicios.length > 1
               ? formatearDuracion(citas[0].duracion_min)

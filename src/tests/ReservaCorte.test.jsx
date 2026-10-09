@@ -68,7 +68,7 @@ const llegarAlModal = async (user) => {
   await screen.findByRole('heading', { name: /cualquier barbero/i })
   await clickContinuar(user) // → fecha-hora
   await seleccionarPrimeraFecha(user)
-  await user.click(await screen.findByRole('button', { name: '10:00' }))
+  await user.click(await screen.findByRole('button', { name: /^10:00 – 11:00/ }))
   await clickContinuar(user) // → confirmar (abre el modal)
   await screen.findByRole('dialog')
 }
@@ -203,7 +203,7 @@ describe('ReservaCorte — contenedor y navegación por pasos', () => {
     await clickContinuar(user) // → fecha-hora
     await seleccionarPrimeraFecha(user)
 
-    const horaBoton = await screen.findByRole('button', { name: '10:00' })
+    const horaBoton = await screen.findByRole('button', { name: /^10:00 – 11:00/ })
     expect(continuarDeshabilitado()).toBe(true)
 
     await user.click(horaBoton)
@@ -214,7 +214,7 @@ describe('ReservaCorte — contenedor y navegación por pasos', () => {
     await clickContinuar(user) // → fecha-hora de nuevo
 
     // La hora elegida antes se conserva porque no se tocó ni servicio ni barbero.
-    expect(await screen.findByRole('button', { name: '10:00' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('button', { name: /^10:00 – 11:00/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('cambiar de barbero invalida la fecha/hora ya elegidas', async () => {
@@ -227,7 +227,7 @@ describe('ReservaCorte — contenedor y navegación por pasos', () => {
     await clickContinuar(user) // → fecha-hora
     await seleccionarPrimeraFecha(user)
 
-    await user.click(await screen.findByRole('button', { name: '10:00' }))
+    await user.click(await screen.findByRole('button', { name: /^10:00 – 11:00/ }))
     expect(continuarHabilitado()).toBe(true)
 
     await user.click(screen.getByRole('button', { name: /atrás/i })) // → barbero
@@ -332,10 +332,12 @@ describe('ReservaCorte — confirmación y éxito', () => {
     obtenerDisponibilidad.mockResolvedValueOnce({ horas: ['10:30'] }) // la hora ya no está libre
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(/esa hora ya fue tomada/i)
-    // El modal se cerró y volvimos al paso de fecha/hora.
+    // MODIFICADO: con el 409 se reasigna la siguiente hora libre del MISMO bloque (10:30) y se avisa (status).
+    expect(await screen.findByText(/la hora de las 10:00 se ocupó. te asignamos las 10:30/i)).toBeInTheDocument()
+    // El modal se cerró y volvimos al paso de fecha/hora, con el bloque elegido y la hora exacta nueva.
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: '10:30' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^10:00 – 11:00/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getAllByText('Bloque 10–11 · tu cita es a las 10:30').length).toBeGreaterThan(0)
     // La disponibilidad se volvió a consultar (al menos la llamada inicial + la de recarga).
     expect(obtenerDisponibilidad.mock.calls.length).toBeGreaterThanOrEqual(2)
   })

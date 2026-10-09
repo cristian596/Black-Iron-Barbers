@@ -19,7 +19,7 @@ describe('PantallaExito', () => {
 
     expect(screen.getByText('Combo (Pelo + Barba)')).toBeInTheDocument()
     expect(screen.getByText('Danny')).toBeInTheDocument()
-    expect(screen.getByText('10:00')).toBeInTheDocument()
+    expect(screen.getByText('Bloque 10–11 · tu cita es a las 10:00')).toBeInTheDocument()
     expect(screen.getByText('90 min')).toBeInTheDocument()
     expect(screen.getByText('$103.000')).toBeInTheDocument()
   })

@@ -21,41 +21,41 @@ afterAll(async () => {
 
 describe('GET /api/disponibilidad con varios servicios', () => {
   it('usa la duración total: 80 min dejan fuera las horas que cruzan una cita existente', async () => {
-    // Barbero 1 ocupado 10:00-10:30.
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', duracion_min: 30 });
+    // Barbero 1 ocupado 11:00-11:30.
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', duracion_min: 30 });
 
     const uno = await horas({ servicios: '201', barbero: 1 }); // 30 min
     expect(uno.status).toBe(200);
-    expect(uno.body.horas).toContain('09:30');
-    expect(uno.body.horas).not.toContain('10:00');
+    expect(uno.body.horas).toContain('10:30');
+    expect(uno.body.horas).not.toContain('11:00');
 
     const tres = await horas({ servicios: '201,202,203', barbero: 1 }); // 80 min
     expect(tres.status).toBe(200);
-    for (const ocupada of ['09:00', '09:30', '10:00']) expect(tres.body.horas).not.toContain(ocupada);
-    expect(tres.body.horas).toContain('10:30');
+    for (const ocupada of ['10:00', '10:30', '11:00']) expect(tres.body.horas).not.toContain(ocupada);
+    expect(tres.body.horas).toContain('11:30');
   });
 
-  it('el cierre usa la duración total: 180 min ya no caben a las 16:30 ni a las 17:00', async () => {
+  it('el cierre usa la duración total: 180 min ya no caben a las 17:30 ni a las 18:00', async () => {
     const solo = await horas({ servicios: '201', barbero: 1 });
-    expect(solo.body.horas).toContain('17:00');
+    expect(solo.body.horas).toContain('18:00');
 
     const combo = await horas({ servicios: '204,201,202', barbero: 1 });
     expect(combo.status).toBe(200);
-    expect(combo.body.horas).toContain('16:00');
-    expect(combo.body.horas).not.toContain('16:30');
-    expect(combo.body.horas).not.toContain('17:00');
-    expect(combo.body.horas[combo.body.horas.length - 1]).toBe('16:00');
+    expect(combo.body.horas).toContain('17:00');
+    expect(combo.body.horas).not.toContain('17:30');
+    expect(combo.body.horas).not.toContain('18:00');
+    expect(combo.body.horas[combo.body.horas.length - 1]).toBe('17:00');
   });
 
   it('con "cualquier barbero" ofrece la hora si algún barbero tiene libre TODO el bloque', async () => {
-    await insertarCita({ fecha: FECHA, hora: '10:00', barbero_id: 1, estado: 'pendiente', duracion_min: 30 });
+    await insertarCita({ fecha: FECHA, hora: '11:00', barbero_id: 1, estado: 'pendiente', duracion_min: 30 });
     const libre = await horas({ servicios: '201,202,203' });
     expect(libre.body.barbero_id).toBeNull();
-    expect(libre.body.horas).toContain('10:00'); // barbero 2 libre
+    expect(libre.body.horas).toContain('11:00'); // barbero 2 libre
 
-    await insertarCita({ fecha: FECHA, hora: '10:30', barbero_id: 2, estado: 'pendiente', duracion_min: 30 });
+    await insertarCita({ fecha: FECHA, hora: '11:30', barbero_id: 2, estado: 'pendiente', duracion_min: 30 });
     const ocupados = await horas({ servicios: '201,202,203' });
-    expect(ocupados.body.horas).not.toContain('10:00'); // barbero 1 choca a las 10:00 y barbero 2 a las 10:30 (bloque de 80 min)
+    expect(ocupados.body.horas).not.toContain('11:00'); // barbero 1 choca a las 11:00 y barbero 2 a las 11:30 (bloque de 80 min)
   });
 
   it('el orden de los ids no cambia el resultado (la duración es la suma)', async () => {
@@ -67,9 +67,9 @@ describe('GET /api/disponibilidad con varios servicios', () => {
   it('240 min exactos son válidos; más → 400 DURACION_EXCEDIDA', async () => {
     const justo = await horas({ servicios: '204,205', barbero: 1 });
     expect(justo.status).toBe(200);
-    expect(justo.body.horas).toContain('09:00');
-    expect(justo.body.horas).toContain('15:00');
-    expect(justo.body.horas).not.toContain('15:30');
+    expect(justo.body.horas).toContain('10:00');
+    expect(justo.body.horas).toContain('16:00');
+    expect(justo.body.horas).not.toContain('16:30');
 
     const exceso = await horas({ servicios: '204,205,203' });
     expect(exceso.status).toBe(400);
@@ -79,9 +79,9 @@ describe('GET /api/disponibilidad con varios servicios', () => {
   it('un servicio individual de 300 min tiene horas (servicio= y servicios=); como combo se rechaza', async () => {
     const nuevo = await horas({ servicios: '207', barbero: 1 });
     expect(nuevo.status).toBe(200);
-    expect(nuevo.body.horas).toContain('09:00');
-    expect(nuevo.body.horas).toContain('14:00'); // 14:00 + 300 min = 19:00, justo el cierre
-    expect(nuevo.body.horas).not.toContain('14:30');
+    expect(nuevo.body.horas).toContain('10:00');
+    expect(nuevo.body.horas).toContain('15:00'); // 15:00 + 300 min = 20:00, justo el cierre
+    expect(nuevo.body.horas).not.toContain('15:30');
     const legado = await horas({ servicio: 207, barbero: 1 });
     expect(legado.status).toBe(200);
     expect(legado.body).toEqual(nuevo.body);

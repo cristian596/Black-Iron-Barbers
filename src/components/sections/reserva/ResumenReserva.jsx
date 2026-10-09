@@ -2,6 +2,7 @@ import { formatearFechaLegible } from '../../../utils/fechas'
 import { formatearDuracion, formatearPrecio } from '../../../utils/formato'
 import { duracionTotal, precioTotal, textoServicios } from '../../../utils/carrito'
 import { TITULO_CITA, planCitas, separarPorArea } from '../../../utils/reservaAsesoria'
+import { rangoBloqueDeHora, textoHoraAsignada } from '../../../utils/bloquesHorarios'
 import ListaServiciosReserva from './ListaServiciosReserva'
 
 const CampoResumen = ({ etiqueta, valor }) => (
@@ -35,7 +36,8 @@ const Contenido = ({ servicios, barbero, asesor, mostrarBarbero, fecha, hora }) 
       <CampoResumen etiqueta="Barbero" valor={barbero ? barbero.nombre : 'Cualquier barbero'} />
     )}
     {fecha && <CampoResumen etiqueta="Fecha" valor={formatearFechaLegible(fecha)} />}
-    {hora && !combinada && <CampoResumen etiqueta="Hora" valor={hora} />}
+    {hora && !combinada && <CampoResumen etiqueta="Hora" valor={textoHoraAsignada(hora)} />}
+    {hora && combinada && <CampoResumen etiqueta="Bloque" valor={rangoBloqueDeHora(hora)} />}
     {hora &&
       combinada &&
       plan.map((cita) => (

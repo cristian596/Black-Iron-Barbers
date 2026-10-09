@@ -72,7 +72,7 @@ describe('Footer: estructura y destinos', () => {
     const mapa = within(pie()).getByRole('link', { name: contacto.direccion })
     expect(mapa).toHaveAttribute('href', enlaceMapa(contacto.direccion))
     expect(mapa.getAttribute('href')).toContain('google.com/maps')
-    expect(mapa.getAttribute('href')).toContain(encodeURIComponent('Calle 22 #1-69 Facatativa'))
+    expect(mapa.getAttribute('href')).toContain(encodeURIComponent('Calle 22 #1 A 69 sur, Prado Cartagenita'))
     expect(mapa).toHaveAttribute('target', '_blank')
     expect(mapa).toHaveAttribute('rel', 'noopener noreferrer')
     expect(within(pie()).getByRole('link', { name: contacto.correo })).toHaveAttribute(

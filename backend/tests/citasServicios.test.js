@@ -13,7 +13,7 @@ const base = (extra = {}) => ({
   consentimiento: true,
   barbero_id: 1,
   fecha: '2030-06-15',
-  hora: '10:00',
+  hora: '11:00',
   ...extra,
 });
 
@@ -69,9 +69,9 @@ describe('Compatibilidad: servicio_id (formato anterior)', () => {
   });
 
   it('servicio_id como texto numérico sigue funcionando; como arreglo u objeto no', async () => {
-    expect((await reservar(base({ servicio_id: '1', hora: '09:00' }))).status).toBe(201);
+    expect((await reservar(base({ servicio_id: '1', hora: '10:00' }))).status).toBe(201);
     for (const raro of [[1], { id: 1 }, true]) {
-      const res = await reservar(base({ servicio_id: raro, hora: '11:00' }));
+      const res = await reservar(base({ servicio_id: raro, hora: '12:00' }));
       expect(res.status).toBe(400);
     }
   });
@@ -114,9 +114,9 @@ describe('Varios servicios en una sola cita', () => {
   });
 
   it('el bloque completo ocupa al barbero: otra reserva que lo cruza recibe 409', async () => {
-    expect((await reservar(base({ servicios_ids: [201, 202], hora: '10:00' }))).status).toBe(201); // 10:00-11:00
-    expect((await reservar(base({ servicio_id: 1, hora: '10:30' }))).status).toBe(409);
-    expect((await reservar(base({ servicio_id: 1, hora: '11:00' }))).status).toBe(201);
+    expect((await reservar(base({ servicios_ids: [201, 202], hora: '11:00' }))).status).toBe(201); // 11:00-12:00
+    expect((await reservar(base({ servicio_id: 1, hora: '11:30' }))).status).toBe(409);
+    expect((await reservar(base({ servicio_id: 1, hora: '12:00' }))).status).toBe(201);
   });
 
   it('sin barbero elegido asigna UNO solo para todo el bloque', async () => {
@@ -154,16 +154,16 @@ describe('Varios servicios en una sola cita', () => {
   });
 
   it('un servicio INDIVIDUAL de 300 min es reservable (el tope de 240 es solo para combos)', async () => {
-    const nuevo = await reservar(base({ servicios_ids: [207], hora: '09:00' }));
+    const nuevo = await reservar(base({ servicios_ids: [207], hora: '10:00' }));
     expect(nuevo.status).toBe(201);
     expect(nuevo.body.duracion_min).toBe(300);
-    const legado = await reservar(base({ servicio_id: 207, hora: '14:00' }));
+    const legado = await reservar(base({ servicio_id: 207, hora: '15:00' }));
     expect(legado.status).toBe(201);
     expect(legado.body.duracion_min).toBe(300);
   });
 
   it('un combo que incluye ese servicio de 300 min se rechaza con DURACION_EXCEDIDA', async () => {
-    const res = await reservar(base({ servicios_ids: [207, 203], hora: '09:00' }));
+    const res = await reservar(base({ servicios_ids: [207, 203], hora: '10:00' }));
     expect(res.status).toBe(400);
     expect(res.body.codigo).toBe('DURACION_EXCEDIDA');
     expect(res.body.duracion_total_min).toBe(320);
@@ -171,7 +171,7 @@ describe('Varios servicios en una sola cita', () => {
   });
 
   it('exactamente 240 min es válido', async () => {
-    const res = await reservar(base({ servicios_ids: [204, 205], hora: '09:00' }));
+    const res = await reservar(base({ servicios_ids: [204, 205], hora: '10:00' }));
     expect(res.status).toBe(201);
     expect(res.body.duracion_min).toBe(240);
   });
@@ -247,7 +247,7 @@ describe('Límites y errores (no crean nada)', () => {
   });
 
   it('más de 240 min en total → 400 DURACION_EXCEDIDA', async () => {
-    const res = await reservar(base({ servicios_ids: [204, 205, 203], hora: '09:00' }));
+    const res = await reservar(base({ servicios_ids: [204, 205, 203], hora: '10:00' }));
     expect(res.status).toBe(400);
     expect(res.body.codigo).toBe('DURACION_EXCEDIDA');
     expect(res.body.duracion_total_min).toBe(260);
@@ -255,12 +255,12 @@ describe('Límites y errores (no crean nada)', () => {
     await sinCita();
   });
 
-  it('el bloque debe caber en el horario: 180 min a las 17:00 no, a las 16:00 sí', async () => {
-    const tarde = await reservar(base({ servicios_ids: [204, 201, 202], hora: '17:00' }));
+  it('el bloque debe caber en el horario: 180 min a las 18:00 no, a las 17:00 sí', async () => {
+    const tarde = await reservar(base({ servicios_ids: [204, 201, 202], hora: '18:00' }));
     expect(tarde.status).toBe(400);
     expect(tarde.body.error).toMatch(/no caben/);
     await sinCita();
-    expect((await reservar(base({ servicios_ids: [204, 201, 202], hora: '16:00' }))).status).toBe(201);
+    expect((await reservar(base({ servicios_ids: [204, 201, 202], hora: '17:00' }))).status).toBe(201);
   });
 
   it('ignora totales, precios y duraciones que mande el navegador', async () => {

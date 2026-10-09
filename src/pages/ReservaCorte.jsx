@@ -311,6 +311,9 @@ const ReservaCorte = () => {
                     fecha={estado.fecha}
                     hora={estado.hora}
                     recargaHoras={estado.recargaHoras}
+                    horaOcupada={estado.horaOcupada}
+                    avisoHora={estado.avisoHora}
+                    onReasignarHora={(nueva) => dispatch({ type: 'REASIGNAR_HORA', hora: nueva })}
                     onSeleccionarFecha={(fecha) => dispatch({ type: 'SELECCIONAR_FECHA', fecha })}
                     onSeleccionarHora={(hora) => dispatch({ type: 'SELECCIONAR_HORA', hora })}
                     onServicioNoDisponible={manejarServicioNoDisponible}
