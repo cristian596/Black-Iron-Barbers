@@ -37,6 +37,8 @@ describe('Home sin la carta de servicios', () => {
 
     expect(screen.getByRole('link', { name: 'Ver servicios' })).toHaveAttribute('href', '/cortes')
     expect(screen.getByRole('button', { name: /Por servicio/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Mas Información' })).toHaveAttribute('href', '/cortes')
+    // MODIFICADO: el botón rojo "Mas Información" ahora es "VER SERVICIOS Y PRECIOS" (rediseño de la sección);
+    // se mantiene la misma aserción de destino (/cortes), solo cambia el nombre accesible.
+    expect(screen.getByRole('link', { name: 'VER SERVICIOS Y PRECIOS' })).toHaveAttribute('href', '/cortes')
   })
 })
