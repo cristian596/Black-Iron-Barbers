@@ -6,6 +6,7 @@ export const HORARIO_ATENCION = {
   dias: 'Lunes a domingo',
   apertura: '10:00',
   cierre: '20:00',
+  intervaloMin: 30, // rejilla de inicios que ofrece /api/disponibilidad (igual que el back-end)
   texto: '10:00 a. m. – 8:00 p. m.',
 }
 

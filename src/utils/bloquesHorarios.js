@@ -31,6 +31,18 @@ export const generarBloques = () => {
   return bloques
 }
 
+// Minutos desde medianoche de una hora HH:MM.
+export const minutosDeHora = aMinutos
+
+// Regla del back-end (/api/disponibilidad, hoy): solo se ofrecen inicios ESTRICTAMENTE posteriores al minuto actual de
+// Bogotá, sin antelación mínima. Con la rejilla de inicios, el último inicio posible de un bloque es fin - intervalo.
+// Un bloque ya pasado (hoy) es el que no puede tener ningún inicio posterior a `minutosAhora`.
+export const bloquePasado = (bloque, minutosAhora) => bloque.fin - HORARIO_ATENCION.intervaloMin <= minutosAhora
+
+// Bloques que aún tienen algún inicio posible hoy (en otras fechas pasar `minutosAhora = null`: se muestran todos).
+export const bloquesVigentes = (bloques, minutosAhora) =>
+  minutosAhora === null ? bloques : bloques.filter((bloque) => !bloquePasado(bloque, minutosAhora))
+
 // Cada bloque con sus horas de inicio libres (ordenadas) y si tiene al menos una. Las horas fuera de todo bloque se ignoran.
 export const agruparHorasEnBloques = (horas) =>
   generarBloques().map((bloque) => {

@@ -1,7 +1,7 @@
 import { render, screen, within, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import * as api from '../services/api'
@@ -100,7 +100,15 @@ const CITA_CORTE = {
   estado: 'pendiente',
 }
 
+// MODIFICADO: reloj fijo a las 09:00 de Bogotá. Estas pruebas eligen HOY y esperan el bloque 10–11; como ahora los bloques
+// pasados de hoy se ocultan, dependían de la hora real. Solo se falsea Date (los temporizadores quedan reales).
+const fijarReloj = () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-09T09:00:00-05:00'))
+}
+afterEach(() => vi.useRealTimers())
 beforeEach(() => {
+  fijarReloj()
   vi.clearAllMocks()
   sessionStorage.clear()
   vi.mocked(api.obtenerServicios).mockResolvedValue(SERVICIOS)

@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
@@ -80,7 +80,17 @@ const llenarContactoValido = async (user) => {
   await user.click(screen.getByRole('checkbox'))
 }
 
-beforeEach(() => sessionStorage.clear())
+// MODIFICADO: reloj fijo a las 09:00 de Bogotá. Estas pruebas eligen HOY y esperan el bloque 10–11; como ahora los bloques
+// pasados de hoy se ocultan, dependían de la hora real. Solo se falsea Date (los temporizadores quedan reales).
+const fijarReloj = () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-10-09T09:00:00-05:00'))
+}
+beforeEach(() => {
+  sessionStorage.clear()
+  fijarReloj()
+})
+afterEach(() => vi.useRealTimers())
 
 const renderConRuta = (ruta = '/reservar-corte') =>
   render(

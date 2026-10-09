@@ -10,6 +10,10 @@ describe('coherencia del horario front/backend', () => {
     expect(FRONT.cierre).toBe(BACK.cierre)
   })
 
+  it('la rejilla de inicios coincide', () => {
+    expect(FRONT.intervaloMin).toBe(BACK.intervaloMin)
+  })
+
   it('el texto del front refleja la apertura y el cierre', () => {
     const aTexto = (hhmm) => {
       const [h, m] = hhmm.split(':').map(Number)

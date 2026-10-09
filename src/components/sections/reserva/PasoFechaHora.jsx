@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { obtenerDisponibilidad } from '../../../services/api'
-import { hoyISO, sumarDiasISO, formatearFechaChip } from '../../../utils/fechas'
+import { ahoraBogota, hoyISO, sumarDiasISO, formatearFechaChip } from '../../../utils/fechas'
 import { CODIGO_PROFESIONAL_INCOMPATIBLE, mensajeErrorSeleccion } from './reservaReducer'
 import { TITULO_CITA, planCitas } from '../../../utils/reservaAsesoria'
 import { formatearDuracion } from '../../../utils/formato'
-import { agruparHorasEnBloques, bloqueDeHora, primeraHoraLibre, textoHoraAsignada } from '../../../utils/bloquesHorarios'
+import {
+  agruparHorasEnBloques,
+  bloqueDeHora,
+  bloquesVigentes,
+  minutosDeHora,
+  primeraHoraLibre,
+  textoHoraAsignada,
+} from '../../../utils/bloquesHorarios'
 
 const DIAS_VISIBLES = 30
+const MS_REEVALUAR = 60_000
 
 // servicioIds: los servicios elegidos (1 a 3): la disponibilidad se pide para el bloque completo (duración total).
 // `asesorId`: asesor concreto (null = cualquiera) cuando la reserva incluye una asesoría. `servicios` (opcional): los
@@ -15,6 +23,8 @@ const DIAS_VISIBLES = 30
 // La hora se elige por BLOQUES de 1 hora: al elegir uno se asigna su primera hora libre y `hora` guarda esa hora EXACTA.
 // `horaOcupada`: hora que dio 409 al confirmar; al recargar, `onReasignarHora(nueva | null)` pide la siguiente libre del
 // mismo bloque (o avisa que ya no hay). `avisoHora`: texto de esa reasignación (role="status").
+// Si la fecha es HOY (Bogotá, no la zona del navegador) se ocultan los bloques sin ningún inicio posible por el paso del
+// tiempo y se reevalúa cada minuto; "Completa" queda solo para falta de cupo.
 const PasoFechaHora = ({
   servicioIds,
   barberoId,
@@ -40,6 +50,9 @@ const PasoFechaHora = ({
   const [horas, setHoras] = useState([])
   const [cargandoHoras, setCargandoHoras] = useState(false)
   const [errorHoras, setErrorHoras] = useState('')
+  // "Ahora" en Bogotá, reevaluado cada minuto. `fechaHoraPasada`: fecha en la que se limpió la hora elegida por pasar el tiempo.
+  const [ahora, setAhora] = useState(() => ahoraBogota())
+  const [fechaHoraPasada, setFechaHoraPasada] = useState('')
 
   // Ref para no volver a pedir horas cada vez que el padre crea un manejador nuevo.
   const alServicioNoDisponible = useRef(onServicioNoDisponible)
@@ -59,6 +72,20 @@ const PasoFechaHora = ({
     horaActual.current = hora
     horaOcupadaActual.current = horaOcupada
   }, [onServicioNoDisponible, onErrorSeleccion, onErrorProfesional, onReasignarHora, onSeleccionarHora, hora, horaOcupada])
+
+  // Cada minuto: actualiza "ahora" y, si hoy la hora elegida ya pasó, la limpia y lo avisa.
+  useEffect(() => {
+    const id = setInterval(() => {
+      const nuevo = ahoraBogota()
+      setAhora(nuevo)
+      const elegida = horaActual.current
+      if (fecha && fecha === nuevo.fecha && elegida && minutosDeHora(elegida) <= nuevo.minutos) {
+        alSeleccionarHora.current?.('')
+        setFechaHoraPasada(fecha)
+      }
+    }, MS_REEVALUAR)
+    return () => clearInterval(id)
+  }, [fecha])
 
   // Clave estable de la selección: evita volver a pedir horas por una lista nueva con los mismos ids.
   const claveServicios = servicioIds.join(',')
@@ -124,8 +151,19 @@ const PasoFechaHora = ({
   const plan = planCitas(servicios, hora)
   const combinada = plan.length === 2
 
-  // Los 10 bloques del día con sus horas libres; se recalculan con cada respuesta de disponibilidad.
-  const bloques = useMemo(() => agruparHorasEnBloques(horas), [horas])
+  // Hoy solo cuentan los inicios posteriores al minuto actual (como el back-end): la respuesta puede estar desfasada.
+  const esHoy = fecha === ahora.fecha
+  const minutosAhora = esHoy ? ahora.minutos : null
+  const horasVigentes = useMemo(
+    () => (minutosAhora === null ? horas : horas.filter((h) => minutosDeHora(h) > minutosAhora)),
+    [horas, minutosAhora]
+  )
+  // Los bloques del día (hoy, sin los ya pasados) con sus horas libres; se recalculan con cada respuesta y cada minuto.
+  const bloques = useMemo(
+    () => bloquesVigentes(agruparHorasEnBloques(horasVigentes), minutosAhora),
+    [horasVigentes, minutosAhora]
+  )
+  const diaTerminado = Boolean(fecha) && esHoy && bloques.length === 0
   const bloqueElegido = bloqueDeHora(hora)?.clave
 
   return (
@@ -171,6 +209,10 @@ const PasoFechaHora = ({
       )}
       {!fecha ? (
         <p className="text-center font-poppins text-zinc-500">Selecciona primero una fecha.</p>
+      ) : diaTerminado ? (
+        <p role="status" className="text-center font-poppins font-semibold text-zinc-700">
+          Ya no quedan horarios para hoy. Elige otra fecha.
+        </p>
       ) : cargandoHoras ? (
         <p className="text-center font-poppins text-zinc-500">Cargando horas disponibles...</p>
       ) : errorHoras ? (
@@ -234,6 +276,11 @@ const PasoFechaHora = ({
       {/* Aviso de reasignación y hora EXACTA asignada (y, en una combinada, a qué hora empieza y termina cada parte);
           se anuncia al cambiar. */}
       <div role="status" aria-live="polite">
+        {!hora && fechaHoraPasada === fecha && (
+          <p className="mt-4 text-center font-poppins text-sm font-semibold text-black">
+            El horario que elegiste ya pasó. Elige otro bloque.
+          </p>
+        )}
         {avisoHora && <p className="mt-4 text-center font-poppins text-sm font-semibold text-black">{avisoHora}</p>}
         {hora && (
           <p className="mt-4 text-center font-poppins text-sm font-semibold text-black">

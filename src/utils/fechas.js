@@ -10,6 +10,26 @@ export const hoyISO = () =>
     day: '2-digit',
   }).format(new Date())
 
+// "Ahora" en Bogotá: { fecha: 'AAAA-MM-DD', minutos: minutos desde medianoche }. Nunca usa la zona del navegador
+// (misma regla del back-end: horaActualBogota). `instante` solo se inyecta en las pruebas.
+const FORMATO_AHORA = new Intl.DateTimeFormat('en-GB', {
+  timeZone: ZONA_HORARIA,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+export const ahoraBogota = (instante = new Date()) => {
+  const partes = Object.fromEntries(FORMATO_AHORA.formatToParts(instante).map(({ type, value }) => [type, value]))
+  return {
+    fecha: `${partes.year}-${partes.month}-${partes.day}`,
+    minutos: Number(partes.hour) * 60 + Number(partes.minute),
+  }
+}
+
 // Aritmética de fechas en UTC puro: evita que sumar/restar días se desfase por
 // la zona horaria local del navegador (la fecha es un dato de calendario, no un instante).
 export const sumarDiasISO = (fechaISO, dias) => {
