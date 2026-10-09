@@ -210,6 +210,12 @@ El negocio tiene dos **áreas**: `barberia` (cortes, barba…, atendidos por bar
 - **Sesión expirada:** `AuthContext` expone `sesionExpirada` (solo en memoria, nada sensible). Lo activan el handler de 401 con token (`expirarSesion`, que `api.js` llama como antes) y la restauración de un token ya vencido; `logout` (cierre voluntario) no, y `login` lo limpia. El login muestra "Tu sesión expiró. Vuelve a iniciar sesión" (`role="status"`).
 - Redirecciones sin cambios: admin → `/admin`, barbero → `/panel` (con la contraseña caducada el layout muestra la pantalla obligatoria); con sesión activa, `/acceso` redirige al panel.
 
+### Footer público (`components/layout/Footer.jsx`)
+
+- Solo lo monta `Landingpage` (rutas públicas); `/acceso`, `/panel` y `/admin` no lo usan. Banda "¿Listo para tu próximo corte?" (`BotonAcento` + enlace a `/asesorias#gratis`) en toda ruta pública salvo `/reservar-corte`; cuatro bloques (marca y redes, navegación `aria-label="Pie de página"`, horario, contacto) y barra inferior con "Volver arriba". `pb-36` (hasta 1440 px) deja libres WhatsApp, Inicio y la barra del carrito.
+- Datos en `src/data/negocio.js`: `contacto`, `HORARIO_ATENCION` (apertura `10:00`, cierre `20:00`; el backend `config/horario.js` sigue en 09:00–19:00 y `negocio.direccion`/`horario` del hero aún son los antiguos: pendiente unificar), `enlaceMapa`, `hayWhatsAppReal()` (el enlace de WhatsApp del footer solo sale con número real).
+- **Redes sociales: valores PROVISIONALES.** `URL_FACEBOOK`, `URL_INSTAGRAM` y `URL_TIKTOK` valen `'#'`: el clic no navega (`preventDefault`) ni abre pestaña; con una URL real abren en pestaña nueva con `rel="noopener noreferrer"`. Poner las URLs reales cuando existan.
+
 ### Sección "Nuestro Equipo" (Home, `#equipo`, `components/sections/NuestrosColaboradores.jsx`)
 
 - **Galería editorial, sin carrusel**: todos los barberos activos de `GET /api/barberos` (orden alfabético con `localeCompare(…, 'es')`) en una `ul`/`li` con `h2` de sección y `h3` por nombre. `flex-wrap` + `justify-center` (no `grid`) para que 1–3 barberos queden centrados y no se estiren: 2 columnas en móvil, 3 desde `md`, 4 desde `xl`, ancho máximo `max-w-6xl`. Fondo `bg-zinc-950` con resplandor dorado, cabecera (línea "El equipo", título, frase, filete dorado) y cierre "¿No sabes con quién?" con el enlace "Reservar con cualquier barbero" → `/reservar-corte` sin `?barbero=` (eso preselecciona "Cualquier barbero", `barberoId = null`).
