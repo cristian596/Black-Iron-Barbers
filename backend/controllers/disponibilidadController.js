@@ -1,4 +1,5 @@
 import { pool } from '../db/connection.js';
+import { leerIdEstricto, ID_MAXIMO_INT } from '../utils/parametrosQuery.js';
 import {
   esFechaValida,
   esFechaHoy,
@@ -48,7 +49,7 @@ const estaLibre = (profesionalId, inicioMin, duracionMin, ocupadas) => {
 // Id opcional de la consulta (barbero= / asesor=): undefined si no vino, { error } si no es un entero, { id } si sí.
 const leerIdOpcional = (valor, etiqueta) => {
   if (valor === undefined || valor === '') return { id: undefined };
-  const id = Number(valor);
+  const id = leerIdEstricto(valor);
   if (!Number.isInteger(id)) return { error: { status: 400, cuerpo: { error: `El ${etiqueta} debe ser un id numérico` } } };
   return { id };
 };
@@ -80,10 +81,11 @@ export const obtenerDisponibilidad = async (req, res, next) => {
       idsServicios = lectura.ids;
     } else {
       // Formato anterior `servicio=<id>`: mismas respuestas de siempre (404 si no existe, 400 si está inactivo).
-      const servicioId = Number(servicio);
-      if (!Number.isInteger(servicioId)) {
+      if (typeof servicio !== 'string' || !/^\d{1,15}$/.test(servicio)) {
         return res.status(400).json({ error: 'El servicio debe ser un id numérico' });
       }
+      const servicioId = Number(servicio);
+      if (servicioId > ID_MAXIMO_INT) return res.status(404).json({ error: 'Servicio no encontrado' });
       const { rows: existentes } = await pool.query('SELECT activo FROM servicios WHERE id = $1', [servicioId]);
       if (existentes.length === 0) {
         return res.status(404).json({ error: 'Servicio no encontrado' });

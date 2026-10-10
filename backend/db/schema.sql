@@ -160,6 +160,11 @@ CREATE TABLE IF NOT EXISTS migraciones_aplicadas (
 -- vez que se fija una contraseña: cambio propio, restablecimiento del admin, alta de empleado o de acceso.
 ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS contrasena_cambiada_en TIMESTAMPTZ NOT NULL DEFAULT now();
 
+-- Versión de la sesión: el JWT lleva `v` y solo vale si coincide. Sube al cambiar o restablecer la contraseña y al
+-- desactivar al usuario, así los tokens ya emitidos mueren (y reactivar no los resucita). Aditivo e idempotente; los tokens
+-- emitidos antes de esta columna no llevan `v` y se tratan como versión 0.
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS version_token INTEGER NOT NULL DEFAULT 0;
+
 -- Perfil del dashboard (nombre y foto que solo existen dentro del panel; aditivo e idempotente). NULL = se usan los
 -- valores públicos (barberos.nombre / barberos.foto; para el admin, usuarios.usuario). Nunca tocan la web pública.
 --  - foto_perfil guarda solo el nombre del archivo (UUID + extensión) dentro de la carpeta de subidas, no la ruta.

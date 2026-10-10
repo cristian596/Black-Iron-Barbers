@@ -7,6 +7,11 @@ export const VIGENCIA_DIAS = 60; // días de vida de una contraseña desde su ú
 export const AVISO_DIAS = 2; // se avisa cuando faltan 2 días o menos
 export const MIN_CONTRASENA = 8;
 export const MAX_CONTRASENA = 72; // bcrypt solo lee los primeros 72 bytes
+export const COSTO_BCRYPT = 10; // coste (rondas) de todos los hashes; el hash ficticio del login usa el mismo
+
+// bcrypt trunca en silencio a 72 BYTES (no caracteres): una contraseña de 60 letras con acentos puede pasar de 72 bytes y
+// dos contraseñas distintas coincidirían. Se rechaza en vez de truncar.
+export const bytesContrasenaValidos = (valor) => typeof valor === 'string' && Buffer.byteLength(valor, 'utf8') <= MAX_CONTRASENA;
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000;
 
@@ -33,4 +38,4 @@ export const estadoContrasena = (cambiadaEn, ahora = new Date()) => {
 };
 
 export const longitudContrasenaValida = (valor) =>
-  typeof valor === 'string' && valor.length >= MIN_CONTRASENA && valor.length <= MAX_CONTRASENA;
+  typeof valor === 'string' && valor.length >= MIN_CONTRASENA && bytesContrasenaValidos(valor);

@@ -18,7 +18,11 @@ const crearVerificador = ({ permitirCaducada }) => async (req, res, next) => {
 
   let payload;
   try {
-    payload = jwt.verify(token, env.jwtSecret);
+    // Algoritmo FIJADO (nunca el que declare el token) y exp obligatorio: un token sin caducidad no vale. El id debe ser un
+    // entero (un texto/objeto llegaría a la consulta y daría 500).
+    payload = jwt.verify(token, env.jwtSecret, { algorithms: ['HS256'] });
+    if (!Number.isInteger(payload.exp)) throw new Error('sin exp');
+    if (!Number.isSafeInteger(payload.id)) throw new Error('id');
   } catch {
     return res.status(401).json({ error: 'Token inválido o expirado' });
   }
@@ -26,14 +30,16 @@ const crearVerificador = ({ permitirCaducada }) => async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.usuario, u.rol, u.barbero_id, u.activo, u.contrasena_cambiada_en, u.nombre_perfil, u.foto_perfil,
-              b.activo AS barbero_activo, b.nombre AS barbero_nombre, b.foto AS barbero_foto, b.area AS barbero_area
+              u.version_token, b.activo AS barbero_activo, b.nombre AS barbero_nombre, b.foto AS barbero_foto, b.area AS barbero_area
        FROM usuarios u
        LEFT JOIN barberos b ON b.id = u.barbero_id
        WHERE u.id = $1`,
       [payload.id]
     );
     const actual = rows[0];
-    const vigente = actual && actual.activo && (actual.barbero_id === null || actual.barbero_activo);
+    // La versión del token debe coincidir: cambiar/restablecer la contraseña o desactivar al usuario la incrementa.
+    const vigente =
+      actual && actual.activo && (actual.barbero_id === null || actual.barbero_activo) && (payload.v ?? 0) === actual.version_token;
     if (!vigente) {
       return res.status(401).json({ error: 'Tu sesión ya no es válida. Inicia sesión de nuevo.', codigo: 'SESION_INVALIDA' });
     }

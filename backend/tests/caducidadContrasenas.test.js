@@ -163,8 +163,10 @@ describe('Cambio de contraseña: quién puede y cuándo', () => {
     expect((await login('prueba_cad', CLAVE_NUEVA)).status).toBe(200);
     expect((await login('prueba_cad', CLAVE)).status).toBe(401);
 
+    // MODIFICADO: cambiar la contraseña invalida el token anterior (revocación de sesiones) y devuelve uno nuevo.
+    expect((await cambiar(body.token, { actual: CLAVE_NUEVA, nueva: CLAVE })).status).toBe(401);
     // Ya vigente otra vez: no puede volver a cambiarla.
-    expect((await cambiar(body.token, { actual: CLAVE_NUEVA, nueva: CLAVE })).body.codigo).toBe('CAMBIO_NO_PERMITIDO');
+    expect((await cambiar(res.body.token, { actual: CLAVE_NUEVA, nueva: CLAVE })).body.codigo).toBe('CAMBIO_NO_PERMITIDO');
   });
 
   it('barbero caducada (día 60): puede cambiarla y vuelve a entrar con normalidad', async () => {
@@ -172,9 +174,11 @@ describe('Cambio de contraseña: quién puede y cuándo', () => {
     const { body } = await login('prueba_cad');
     expect((await request(app).get('/api/citas').set(conToken(body.token))).status).toBe(403);
 
-    expect((await cambiar(body.token, { actual: CLAVE, nueva: CLAVE_NUEVA })).status).toBe(200);
-    // El mismo token ya sirve para el resto de la API.
-    expect((await request(app).get('/api/citas').set(conToken(body.token))).status).toBe(200);
+    const cambio = await cambiar(body.token, { actual: CLAVE, nueva: CLAVE_NUEVA });
+    expect(cambio.status).toBe(200);
+    // MODIFICADO: el token anterior queda revocado y el que devuelve el cambio sirve para el resto de la API.
+    expect((await request(app).get('/api/citas').set(conToken(body.token))).status).toBe(401);
+    expect((await request(app).get('/api/citas').set(conToken(cambio.body.token))).status).toBe(200);
   });
 
   it('admin exento: cambia su contraseña cuando quiere aunque su fecha sea muy antigua', async () => {
@@ -187,7 +191,7 @@ describe('Cambio de contraseña: quién puede y cuándo', () => {
     expect(cambio.status).toBe(200);
     expect(cambio.body.vigencia).toBeNull();
     // Se devuelve a su valor original para no afectar a otras pruebas.
-    expect((await cambiar(body.token, { actual: CLAVE_NUEVA, nueva: process.env.ADMIN_PASSWORD })).status).toBe(200);
+    expect((await cambiar(cambio.body.token, { actual: CLAVE_NUEVA, nueva: process.env.ADMIN_PASSWORD })).status).toBe(200); // MODIFICADO: con el token renovado
   });
 
   describe('validaciones del cuerpo (con la contraseña por vencer)', () => {
@@ -225,10 +229,12 @@ describe('Cambio de contraseña: quién puede y cuándo', () => {
       expect(res.body).toMatchObject({ codigo: 'DATOS_INVALIDOS', campo: 'actual' });
     });
 
+    // MODIFICADO: antes eran 'n' repetidas; la política de contraseñas rechaza ahora un solo carácter repetido.
     it.each([8, 72])('acepta una nueva de %i caracteres', async (largo) => {
-      const res = await cambiar(token, { actual: CLAVE, nueva: 'n'.repeat(largo) });
+      const nueva = 'aB3$kLm9'.repeat(9).slice(0, largo);
+      const res = await cambiar(token, { actual: CLAVE, nueva });
       expect(res.status).toBe(200);
-      expect((await login('prueba_cad', 'n'.repeat(largo))).status).toBe(200);
+      expect((await login('prueba_cad', nueva)).status).toBe(200);
     });
   });
 });

@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { omitirLimitadores } from '../config/entorno.js';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { login, cambiarContrasena, obtenerSesion } from '../controllers/authController.js';
 import { verificarTokenPermitiendoCaducada } from '../middlewares/verificarToken.js';
@@ -24,7 +25,7 @@ const usuarioParaClave = (req) => {
   return usuario.trim().toLowerCase().slice(0, LARGO_MAX_CLAVE_USUARIO);
 };
 
-const omitirEnPruebas = () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true';
+const omitirEnPruebas = omitirLimitadores;
 
 // El cuerpo lleva el tiempo restante: el CORS no expone Retry-After al navegador (otro origen en desarrollo), así
 // que el front lee `reintentar_en_seg` del JSON en vez de depender de cabeceras. Mismo mensaje en ambos límites: no
@@ -75,7 +76,7 @@ const limitarCambioContrasena = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => `usuario-${req.usuario.id}`,
   message: { error: 'Demasiados intentos fallidos al cambiar la contraseña, intenta más tarde', codigo: 'DEMASIADOS_INTENTOS' },
-  skip: () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true',
+  skip: () => omitirLimitadores(),
 });
 
 router.post('/login', limitarLogin, login);

@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { leerConfigCorreo } from '../config/correo.js';
+import { esEntornoDePruebas } from '../config/entorno.js';
 
 // Transporte en memoria (pruebas): pasa cada mensaje por el compositor real de nodemailer (streamTransport) pero no
 // sale a la red. Guarda lo que se le pidió enviar (`opciones`) y el mensaje MIME resultante (`crudo`) para inspeccionar
@@ -32,10 +33,10 @@ export const inyectarTransporte = (transporte) => {
   inyectado = transporte;
 };
 
-// Bajo NODE_ENV=test SIEMPRE es el de memoria (nunca SMTP real); fuera de las pruebas, SMTP con la configuración.
+// Dentro de las pruebas (NODE_ENV=test bajo Vitest) SIEMPRE es el de memoria (nunca SMTP real); fuera de las pruebas, SMTP con la configuración.
 export const obtenerTransporte = () => {
   if (inyectado) return inyectado;
-  if (process.env.NODE_ENV === 'test') {
+  if (esEntornoDePruebas()) {
     memoria ??= crearTransporteMemoria();
     return memoria;
   }

@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../db/connection.js';
-import { longitudContrasenaValida, MIN_CONTRASENA, MAX_CONTRASENA } from '../utils/contrasenas.js';
+import { longitudContrasenaValida, MIN_CONTRASENA, MAX_CONTRASENA, COSTO_BCRYPT } from '../utils/contrasenas.js';
+import { leerIdEstricto } from '../utils/parametrosQuery.js';
+import { evaluarContrasena } from '../utils/politicaContrasenas.js';
 
 export const listarUsuarios = async (req, res, next) => {
   try {
@@ -29,7 +31,10 @@ export const crearUsuario = async (req, res, next) => {
       return res.status(400).json({ error: `La contraseña debe tener entre ${MIN_CONTRASENA} y ${MAX_CONTRASENA} caracteres` });
     }
 
-    const barberoId = Number(barbero_id);
+    const debil = evaluarContrasena(contrasena, { usuario });
+    if (debil) return res.status(400).json({ error: debil.error, codigo: debil.codigo, campo: 'contrasena' });
+
+    const barberoId = leerIdEstricto(barbero_id);
     if (!Number.isInteger(barberoId)) {
       return res.status(400).json({ error: 'El barbero_id es obligatorio' });
     }
@@ -42,7 +47,7 @@ export const crearUsuario = async (req, res, next) => {
       return res.status(409).json({ error: 'El barbero está inactivo: reactívalo en Empleados antes de crearle acceso', codigo: 'BARBERO_INACTIVO' });
     }
 
-    const hash = await bcrypt.hash(contrasena, 10);
+    const hash = await bcrypt.hash(contrasena, COSTO_BCRYPT);
 
     const { rows } = await pool.query(
       `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id, contrasena_cambiada_en)
@@ -65,7 +70,7 @@ export const actualizarUsuario = async (req, res, next) => {
     const { id } = req.params;
     const { contrasena, activo } = req.body;
 
-    const usuarioId = Number(id);
+    const usuarioId = leerIdEstricto(id);
     if (!Number.isInteger(usuarioId)) {
       return res.status(400).json({ error: 'Id de usuario inválido' });
     }
@@ -80,6 +85,12 @@ export const actualizarUsuario = async (req, res, next) => {
       return res.status(400).json({ error: 'El campo activo debe ser booleano' });
     }
 
+    if (contrasena !== undefined) {
+      const { rows: objetivo } = await pool.query('SELECT usuario FROM usuarios WHERE id = $1', [usuarioId]);
+      const debil = evaluarContrasena(contrasena, { usuario: objetivo[0]?.usuario });
+      if (debil) return res.status(400).json({ error: debil.error, codigo: debil.codigo, campo: 'contrasena' });
+    }
+
     if (activo === true) {
       // Un usuario activo con su barbero inactivo sería un estado inconsistente: se reactiva desde Empleados.
       const { rows: ligado } = await pool.query(
@@ -91,13 +102,15 @@ export const actualizarUsuario = async (req, res, next) => {
       }
     }
 
-    const hash = contrasena !== undefined ? await bcrypt.hash(contrasena, 10) : null;
+    const hash = contrasena !== undefined ? await bcrypt.hash(contrasena, COSTO_BCRYPT) : null;
 
     const { rows } = await pool.query(
       `UPDATE usuarios
        SET contrasena = COALESCE($1, contrasena),
            activo = COALESCE($2, activo),
-           contrasena_cambiada_en = COALESCE($4, contrasena_cambiada_en)
+           contrasena_cambiada_en = COALESCE($4, contrasena_cambiada_en),
+           -- Restablecer la contraseña o desactivar invalida los tokens ya emitidos (reactivar no los resucita).
+           version_token = version_token + CASE WHEN $1::text IS NOT NULL OR $2::boolean = false THEN 1 ELSE 0 END
        WHERE id = $3
        RETURNING id, usuario, rol, barbero_id, activo`,
       [hash, activo ?? null, usuarioId, hash ? new Date() : null] // fijar una contraseña reinicia los 60 días

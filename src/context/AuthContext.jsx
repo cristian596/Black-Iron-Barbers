@@ -59,6 +59,13 @@ export const AuthProvider = ({ children }) => {
     setSesion({ ...SIN_SESION, sesionExpirada: true })
   }, [])
 
+  // Cambiar la contraseña invalida los tokens anteriores en el servidor; la respuesta trae uno nuevo para seguir en sesión.
+  const renovarToken = useCallback((nuevoToken) => {
+    if (typeof nuevoToken !== 'string' || !nuevoToken) return
+    localStorage.setItem('token', nuevoToken)
+    setSesion((actual) => (actual.token ? { ...actual, token: nuevoToken } : actual))
+  }, [])
+
   const actualizarVigencia = useCallback((vigencia) => {
     setSesion((actual) => ({ ...actual, vigencia }))
   }, [])
@@ -104,7 +111,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, sesionExpirada: sesion.sesionExpirada, actualizarVigencia, actualizarArea, cargando, login, logout }}
+      value={{ token: sesion.token, usuario: sesion.usuario, vigencia: sesion.vigencia, sesionExpirada: sesion.sesionExpirada, actualizarVigencia, actualizarArea, renovarToken, cargando, login, logout }}
     >
       {children}
     </AuthContext.Provider>

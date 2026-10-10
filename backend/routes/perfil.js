@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { omitirLimitadores } from '../config/entorno.js';
 import rateLimit from 'express-rate-limit';
 import { verificarToken } from '../middlewares/verificarToken.js';
 import { obtenerPerfil, actualizarPerfil, leerFoto, subirFoto, quitarFoto, servirFoto } from '../controllers/perfilController.js';
@@ -14,7 +15,7 @@ const limitarSubidaFoto = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => `usuario-${req.usuario.id}`,
   message: { error: 'Demasiadas subidas de foto, intenta más tarde', codigo: 'DEMASIADOS_INTENTOS' },
-  skip: () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true',
+  skip: () => omitirLimitadores(),
 });
 
 // Pública a propósito (un <img> no manda Authorization): el nombre es un UUID y se valida con lista blanca.

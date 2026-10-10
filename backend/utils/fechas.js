@@ -26,8 +26,13 @@ export const minutosDesdeMedianoche = (hora) => {
   return horas * 60 + minutos;
 };
 
-export const esFechaValida = (fecha) =>
-  typeof fecha === 'string' && REGEX_FECHA.test(fecha) && !Number.isNaN(new Date(fecha).getTime());
+// Fecha de calendario REAL: 2030-02-31 cumple el formato pero no existe (Date lo "corrige" y Postgres la rechaza con un 500),
+// así que se comprueba que ir y volver por Date devuelva el mismo texto.
+export const esFechaValida = (fecha) => {
+  if (typeof fecha !== 'string' || !REGEX_FECHA.test(fecha)) return false;
+  const instante = new Date(`${fecha}T00:00:00Z`);
+  return !Number.isNaN(instante.getTime()) && instante.toISOString().slice(0, 10) === fecha;
+};
 
 export const esHoraValida = (hora) => typeof hora === 'string' && REGEX_HORA.test(hora);
 

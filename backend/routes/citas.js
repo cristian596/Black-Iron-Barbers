@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { omitirLimitadores } from '../config/entorno.js';
 import rateLimit from 'express-rate-limit';
 import { crearCita, listarCitas, actualizarCita } from '../controllers/citasController.js';
 import { verificarToken } from '../middlewares/verificarToken.js';
@@ -14,7 +15,7 @@ const limitarCreacionCitas = rateLimit({
   message: { error: 'Demasiadas solicitudes de reserva, intenta más tarde' },
   // Evita que el resto de la suite de Vitest (muchos POST seguidos sobre la misma app)
   // choque con el límite; FORZAR_RATE_LIMIT_PRUEBA=true lo reactiva para probarlo en sí mismo.
-  skip: () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true',
+  skip: () => omitirLimitadores(),
 });
 
 router.post('/', limitarCreacionCitas, crearCita);
