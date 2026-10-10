@@ -6,13 +6,22 @@ import { duracionTotal, precioTotal } from '../../../utils/carrito'
 import { TITULO_CITA, esAsesoriaGratis, planCitas, separarPorArea } from '../../../utils/reservaAsesoria'
 import { useComprobarGratis } from '../../../hooks/useComprobarGratis'
 import { rangoBloqueDeHora, textoHoraAsignada } from '../../../utils/bloquesHorarios'
+import { esCorreoValido } from '../../../utils/correo'
 import ListaServiciosReserva from './ListaServiciosReserva'
-
-const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export const CODIGO_GRATIS_YA_USADA = 'ASESORIA_GRATIS_YA_USADA'
 
+// Errores del servidor sobre la verificación del correo al confirmar: el comprobante venció, no es válido o no es de este
+// correo. En todos ya se descartó el comprobante (ReservaCorte) y hay que verificar de nuevo.
+const MENSAJES_VERIFICACION = {
+  VERIFICACION_EXPIRADA: 'La verificación de tu correo venció. Pide un código nuevo para continuar.',
+  VERIFICACION_INVALIDA: 'No pudimos validar la verificación de tu correo. Verifícalo de nuevo para continuar.',
+  VERIFICACION_REQUERIDA: 'Verifica tu correo para poder confirmar la reserva.',
+  CORREO_NO_COINCIDE: 'El correo verificado no coincide con el de la reserva. Verifícalo de nuevo.',
+}
+
 const mensajeParaError = (err) => {
+  if (MENSAJES_VERIFICACION[err.codigo]) return MENSAJES_VERIFICACION[err.codigo]
   if (err.status === 429) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.'
   if (err.status === 400) return err.message
   if (!err.status) return 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.'
@@ -36,19 +45,24 @@ const Fila = ({ etiqueta, children, fuerte = false }) => (
 // y su horario. Si la reserva incluye la asesoría gratuita y esa persona ya la usó (comprobación temprana o 409 del
 // servidor) se avisa, se bloquea confirmar y se ofrece quitarla (`onQuitarGratis`) o elegir otra asesoría
 // (`onElegirOtraAsesoria`); ambos reciben el id de la asesoría gratuita.
+// El correo y su verificación (`verificacion`, de useVerificacionCorreo) viven en el padre para que el comprobante
+// sobreviva si el modal se cierra (p. ej. tras un 409 de horario). Sin comprobante válido no se puede confirmar.
 const ModalConfirmacion = ({
   servicios,
   barbero,
   asesor = null,
   fecha,
   hora,
+  correo,
+  onCorreoChange,
+  verificacion,
   onClose,
   onConfirmar,
   onQuitarGratis,
   onElegirOtraAsesoria,
 }) => {
   const [cliente, setCliente] = useState('')
-  const [correo, setCorreo] = useState('')
+  const [codigo, setCodigo] = useState('')
   const [telefono, setTelefono] = useState('')
   const [consentimiento, setConsentimiento] = useState(false)
   const [enviando, setEnviando] = useState(false)
@@ -69,6 +83,37 @@ const ModalConfirmacion = ({
 
   const dialogRef = useRef(null)
   const primerCampoRef = useRef(null)
+  const correoRef = useRef(null)
+  const codigoRef = useRef(null)
+  const botonConfirmarRef = useRef(null)
+
+  // Foco: al pedir el código pasa al campo del código; al verificar, al botón de confirmar. Solo en la transición (si el
+  // modal se reabre con el correo ya verificado no se roba el foco).
+  const previoVerificacionRef = useRef({ solicitado: verificacion.codigoSolicitado, verificado: verificacion.verificado })
+  useEffect(() => {
+    const previo = previoVerificacionRef.current
+    if (verificacion.codigoSolicitado && !previo.solicitado && !verificacion.verificado) codigoRef.current?.focus()
+    if (verificacion.verificado && !previo.verificado) botonConfirmarRef.current?.focus()
+    previoVerificacionRef.current = { solicitado: verificacion.codigoSolicitado, verificado: verificacion.verificado }
+  }, [verificacion.codigoSolicitado, verificacion.verificado])
+
+  const verificarCodigo = async () => {
+    const correcto = await verificacion.confirmar(codigo)
+    if (correcto) setCodigo('')
+  }
+
+  const cambiarCorreo = () => {
+    verificacion.cambiarCorreo()
+    setCodigo('')
+    correoRef.current?.focus()
+  }
+
+  // El correo vive en el padre: cada tecla lo vuelve a renderizar y `onClose` llega como función nueva. El efecto de abajo
+  // (foco inicial, bloqueo del scroll, teclado) NO debe re-ejecutarse por eso, o el foco saltaría al campo Nombre.
+  const onCloseRef = useRef(onClose)
+  useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
 
   useEffect(() => {
     primerCampoRef.current?.focus()
@@ -78,7 +123,7 @@ const ModalConfirmacion = ({
 
     const manejarTeclado = (evento) => {
       if (evento.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (evento.key !== 'Tab' || !dialogRef.current) return
@@ -103,11 +148,11 @@ const ModalConfirmacion = ({
       document.removeEventListener('keydown', manejarTeclado)
       document.body.style.overflow = overflowPrevio
     }
-  }, [onClose])
+  }, [])
 
   const validar = () => {
     if (!cliente.trim()) return 'El nombre es obligatorio'
-    if (!REGEX_CORREO.test(correo)) return 'El correo no es válido'
+    if (!esCorreoValido(correo)) return 'El correo no es válido'
     if (!esTelefonoValido(telefono)) {
       return 'El teléfono debe ser un celular colombiano válido (10 dígitos, inicia en 3)'
     }
@@ -118,6 +163,10 @@ const ModalConfirmacion = ({
   const handleSubmit = async (evento) => {
     evento.preventDefault()
     if (gratisUsada) return
+    if (!verificacion.verificado) {
+      setError('Verifica tu correo para poder confirmar la reserva')
+      return
+    }
 
     const mensajeValidacion = validar()
     if (mensajeValidacion) {
@@ -263,14 +312,114 @@ const ModalConfirmacion = ({
               Correo electrónico
             </label>
             <input
+              ref={correoRef}
               id="reserva-correo"
               name="correo"
               type="email"
               value={correo}
-              onChange={(evento) => setCorreo(evento.target.value)}
+              onChange={(evento) => onCorreoChange(evento.target.value)}
               className="mt-1 min-h-11 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-oro focus:outline-none focus:ring-2 focus:ring-oro"
             />
           </div>
+
+          <section
+            aria-labelledby="titulo-verificar-correo"
+            className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-poppins text-sm"
+          >
+            <h3 id="titulo-verificar-correo" className="font-cinzel text-base font-bold text-black">
+              Verifica tu correo
+            </h3>
+
+            {verificacion.verificado ? (
+              <div className="mt-2 space-y-2">
+                <p className="font-semibold text-green-800">
+                  <span aria-hidden="true">✓ </span>Correo verificado
+                </p>
+                <button type="button" onClick={cambiarCorreo} className={botonAviso}>
+                  Cambiar correo
+                </button>
+              </div>
+            ) : verificacion.codigoSolicitado ? (
+              <div className="mt-2 space-y-2">
+                <p className="text-zinc-700">
+                  Enviamos un código de 6 dígitos a <strong className="break-all text-black">{correo.trim()}</strong>. Vence
+                  en 10 minutos. Si no lo ves, revisa tu carpeta de spam.
+                </p>
+                <label htmlFor="reserva-codigo" className="block font-medium text-zinc-700">
+                  Código de verificación
+                </label>
+                <input
+                  ref={codigoRef}
+                  id="reserva-codigo"
+                  name="codigo"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  pattern="[0-9]{6}"
+                  placeholder="000000"
+                  value={codigo}
+                  onChange={(evento) => setCodigo(evento.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={(evento) => {
+                    if (evento.key === 'Enter') {
+                      evento.preventDefault()
+                      verificarCodigo()
+                    }
+                  }}
+                  className="min-h-11 w-full rounded-lg border border-zinc-300 p-2 text-center font-poppins text-xl tracking-widest focus:border-oro focus:outline-none focus:ring-2 focus:ring-oro"
+                />
+                <button
+                  type="button"
+                  onClick={verificarCodigo}
+                  disabled={verificacion.pendiente !== ''}
+                  className="min-h-11 w-full rounded-xl bg-oro py-2 font-cinzel font-bold text-black duration-200 hover:bg-black hover:text-oro disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-oro disabled:hover:text-black"
+                >
+                  {verificacion.pendiente === 'verificando' ? 'Verificando...' : 'Verificar código'}
+                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={verificacion.solicitar}
+                    disabled={verificacion.restante > 0 || verificacion.pendiente !== ''}
+                    className={`${botonAviso} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-black`}
+                  >
+                    {verificacion.restante > 0 ? `Reenviar código (${verificacion.restante} s)` : 'Reenviar código'}
+                  </button>
+                  <button type="button" onClick={cambiarCorreo} className={botonAviso}>
+                    Cambiar correo
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 space-y-2">
+                <p className="text-zinc-700">
+                  Para confirmar tu reserva te enviaremos un código de 6 dígitos a tu correo.
+                </p>
+                <button
+                  type="button"
+                  onClick={verificacion.solicitar}
+                  disabled={verificacion.pendiente !== ''}
+                  className="min-h-11 w-full rounded-xl bg-oro py-2 font-cinzel font-bold text-black duration-200 hover:bg-black hover:text-oro disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-oro disabled:hover:text-black"
+                >
+                  {verificacion.pendiente === 'enviando' ? 'Enviando código...' : 'Enviar código'}
+                </button>
+              </div>
+            )}
+
+            {/* Siempre presente para que el lector de pantalla anuncie los avisos cuando aparecen. */}
+            <div role="status" aria-live="polite" className="sr-only">
+              {verificacion.verificado
+                ? 'Tu correo quedó verificado.'
+                : verificacion.codigoSolicitado
+                  ? 'Te enviamos un código. Escríbelo para verificar tu correo.'
+                  : ''}
+            </div>
+            {verificacion.error && (
+              <p role="alert" className="mt-2 font-semibold text-red-700">
+                {verificacion.error.mensaje}
+              </p>
+            )}
+          </section>
 
           <div>
             <label htmlFor="reserva-telefono" className="block font-poppins text-sm font-medium text-zinc-700">
@@ -336,10 +485,21 @@ const ModalConfirmacion = ({
             </p>
           )}
 
+          {!verificacion.verificado && (
+            <p id="aviso-verificacion" className="font-poppins text-xs text-zinc-700">
+              Verifica tu correo para poder confirmar la reserva.
+            </p>
+          )}
+
           <button
+            ref={botonConfirmarRef}
             type="submit"
-            disabled={enviando || gratisUsada}
-            aria-describedby={gratisUsada ? 'aviso-gratis-usada' : undefined}
+            disabled={enviando || gratisUsada || !verificacion.verificado}
+            aria-describedby={
+              [gratisUsada ? 'aviso-gratis-usada' : null, !verificacion.verificado ? 'aviso-verificacion' : null]
+                .filter(Boolean)
+                .join(' ') || undefined
+            }
             className="mt-2 min-h-11 w-full rounded-xl bg-oro py-2 font-cinzel font-bold text-black duration-200 hover:bg-black hover:text-oro disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-oro disabled:hover:text-black"
           >
             {enviando ? 'Enviando...' : 'Confirmar reserva'}

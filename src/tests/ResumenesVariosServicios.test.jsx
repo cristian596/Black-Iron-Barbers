@@ -1,9 +1,18 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
-import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
+import ContenedorModal from './ContenedorModalPrueba'
+import { prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
 import PantallaExito from '../components/sections/reserva/PantallaExito'
+
+vi.mock('../services/api', () => ({
+  solicitarCodigoCorreo: vi.fn(),
+  confirmarCodigoCorreo: vi.fn(),
+  comprobarAsesoriaGratis: vi.fn(),
+}))
+
+beforeEach(() => prepararVerificacionMock())
 
 const NOMBRE_LARGO = 'Tratamiento reconstructivo de keratina premium antifrizz con asesoría de imagen incluida'
 const UNO = { id: 1, nombre: 'Corte clásico', duracion_min: 35, precio: 55000 }
@@ -94,7 +103,7 @@ describe('ResumenReserva con 1, 2 y 3 servicios', () => {
 
 const montarModal = (servicios, props = {}) =>
   render(
-    <ModalConfirmacion
+    <ContenedorModal
       servicios={servicios}
       barbero={BARBERO}
       fecha="2030-06-15"
@@ -139,6 +148,7 @@ describe('ModalConfirmacion con 1, 2 y 3 servicios', () => {
     montarModal([UNO, DOS], { onConfirmar })
     await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
     await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
+    await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo antes de confirmar
     await user.type(screen.getByLabelText('Teléfono'), '3001234567')
     await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))

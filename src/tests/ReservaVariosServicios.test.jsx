@@ -5,8 +5,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
+import { prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
 
 vi.mock('../services/api', () => ({
+  solicitarCodigoCorreo: vi.fn(),
+  confirmarCodigoCorreo: vi.fn(),
   obtenerServicios: vi.fn(),
   // Sin asesorías por defecto: estos tests son del flujo de cortes (las de asesorías están en ReservaAsesoria.test.jsx).
   obtenerServiciosAsesoria: vi.fn().mockResolvedValue([]),
@@ -86,6 +89,7 @@ const hastaElModal = async (user) => {
 const llenarContacto = async (user) => {
   await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
   await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
+  await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo (código de 6 dígitos) antes de poder confirmar
   await user.type(screen.getByLabelText('Teléfono'), '3001234567')
   await user.click(screen.getByRole('checkbox'))
 }
@@ -117,6 +121,7 @@ afterEach(() => vi.useRealTimers())
 beforeEach(() => {
   fijarReloj()
   vi.resetAllMocks() // también vacía las respuestas "una sola vez" que dejara un test anterior
+  prepararVerificacionMock()
   sessionStorage.clear()
   obtenerServicios.mockResolvedValue(CATALOGO)
   obtenerBarberos.mockResolvedValue(BARBEROS)

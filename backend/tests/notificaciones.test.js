@@ -11,7 +11,7 @@ import { hoyISO } from '../utils/fechas.js';
 import { DIRECCION_NEGOCIO, NOMBRE_NEGOCIO } from '../config/negocio.js';
 import { leerConfigCorreo } from '../config/correo.js';
 import { transporteMemoria } from '../utils/transporteCorreo.js';
-import { configurarNotificaciones, restablecerNotificaciones, esperarNotificaciones } from '../utils/notificaciones.js';
+import { configurarNotificaciones, restablecerNotificaciones, esperarNotificaciones, notificarCitasCreadas } from '../utils/notificaciones.js';
 import { construirIcs, escaparTextoIcs, plegarLinea, instanteDeBogota } from '../utils/ics.js';
 import { correoSeguro, enmascararCorreo, escaparHtml, limpiarLinea } from '../utils/plantillasCorreo.js';
 
@@ -313,12 +313,27 @@ describe('robustez', () => {
     expect(transporte.enviados).toHaveLength(0);
   });
 
-  it('un correo del cliente que no es una sola dirección simple no recibe nada (ni se cuela otro destinatario)', async () => {
+  // MODIFICADO (verificación de correo): el validador único ya rechaza estos correos en POST /api/citas con 400, así que la
+  // reserva ni se crea ni envía nada. La defensa de las plantillas (correoSeguro) se conserva y se prueba abajo con una
+  // fila escrita directo en la base, como la barrera final por si algún día entrara un dato así por otra vía.
+  it('un correo del cliente que no es una sola dirección simple se rechaza al reservar y no envía nada', async () => {
     for (const correo of ['victima@example.com,otro.com', 'a@b.com;c.d', 'x@y.com>']) {
       transporte.vaciar();
       await pool.query('TRUNCATE citas RESTART IDENTITY CASCADE');
       const res = await reservar({ correo, servicios_ids: [CORTE], barbero_id: 2 });
-      expect(res.status, JSON.stringify([correo, res.body])).toBe(201);
+      expect(res.status, JSON.stringify([correo, res.body])).toBe(400);
+      await esperarNotificaciones();
+      expect(transporte.enviados).toHaveLength(0);
+    }
+  });
+
+  it('defensa en profundidad: aunque una fila trajera un correo con varias direcciones, no se le envía nada', async () => {
+    for (const correo of ['victima@example.com,otro.com', 'a@b.com;c.d', 'x@y.com>']) {
+      transporte.vaciar();
+      await pool.query('TRUNCATE citas RESTART IDENTITY CASCADE');
+      const id = await insertarCita({ fecha: FECHA, estado: 'pendiente', barbero_id: 2, hora: '10:30' });
+      await pool.query('UPDATE citas SET correo = $2 WHERE id = $1', [id, correo]);
+      notificarCitasCreadas([id]);
       await esperarNotificaciones();
       // Solo el aviso del profesional; ningún mensaje lleva esa dirección como destinatario.
       expect(transporte.enviados).toHaveLength(1);

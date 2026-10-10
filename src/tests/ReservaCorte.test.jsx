@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
+import { TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
 
 vi.mock('../services/api', () => ({
   obtenerServicios: vi.fn(),
@@ -13,6 +14,8 @@ vi.mock('../services/api', () => ({
   obtenerBarberos: vi.fn(),
   obtenerDisponibilidad: vi.fn(),
   crearCita: vi.fn(),
+  solicitarCodigoCorreo: vi.fn(),
+  confirmarCodigoCorreo: vi.fn(),
 }))
 
 const CORTES = { id: 1, nombre: 'Cortes', slug: 'cortes' }
@@ -76,6 +79,7 @@ const llegarAlModal = async (user) => {
 const llenarContactoValido = async (user) => {
   await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
   await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
+  await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo (código de 6 dígitos) antes de poder confirmar
   await user.type(screen.getByLabelText('Teléfono'), '3001234567')
   await user.click(screen.getByRole('checkbox'))
 }
@@ -89,6 +93,7 @@ const fijarReloj = () => {
 beforeEach(() => {
   sessionStorage.clear()
   fijarReloj()
+  prepararVerificacionMock()
 })
 afterEach(() => vi.useRealTimers())
 
@@ -321,6 +326,7 @@ describe('ReservaCorte — confirmación y éxito', () => {
       expect.objectContaining({
         servicios_ids: [1],
         barbero_id: undefined,
+        verificacion_token: TOKEN_PRUEBA,
         fecha: expect.any(String),
         hora: '10:00',
         telefono: '3001234567',

@@ -34,6 +34,11 @@ const PantallaExito = ({ resumen, onNuevaReserva, areaUnica = 'barberia' }) => {
         {combinada ? '¡Citas agendadas con éxito!' : '¡Cita agendada con éxito!'}
       </h1>
       <p className="font-poppins text-zinc-600">Te esperamos en Black Iron Barbers.</p>
+      {citas[0].correo && (
+        <p className="font-poppins text-sm text-zinc-700">
+          Te enviamos la confirmación a <strong className="break-all text-black">{citas[0].correo}</strong>.
+        </p>
+      )}
 
       {combinada ? (
         <div className="mt-2 w-full max-w-sm space-y-3 rounded-2xl border border-zinc-200 bg-white p-5 text-left font-poppins text-sm shadow-sm">

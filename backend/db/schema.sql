@@ -326,3 +326,33 @@ BEGIN
       EXECUTE FUNCTION trg_citas_area_barbero();
   END IF;
 END $$;
+
+-- ---------------------------------------------------------------------------------------------------------------
+-- Verificación del correo con código de 6 dígitos (obligatoria al reservar). Aditivo e idempotente.
+--  - verificaciones_correo: un código por solicitud. SOLO se guarda su HMAC-SHA256 (nunca el código). `correo` es el
+--    exacto (recorte + minúsculas). `intentos` se incrementa de forma atómica antes de comparar (máx. 5).
+--    `invalidado_en` marca los códigos reemplazados por uno nuevo. Los límites por correo (60 s entre solicitudes,
+--    5 por hora) se calculan contra `creado_en`, así que viven en la base y no se reinician con el servidor.
+--  - verificaciones_usadas: comprobantes (jti) ya consumidos por una reserva. El UNIQUE decide cuando dos reservas
+--    usan el mismo comprobante a la vez.
+-- ---------------------------------------------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS verificaciones_correo (
+  id SERIAL PRIMARY KEY,
+  correo VARCHAR(254) NOT NULL,
+  codigo_hash CHAR(64) NOT NULL,
+  intentos INTEGER NOT NULL DEFAULT 0,
+  expira_en TIMESTAMPTZ NOT NULL,
+  usado_en TIMESTAMPTZ,
+  invalidado_en TIMESTAMPTZ,
+  creado_en TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_verificaciones_correo_correo_fecha ON verificaciones_correo (correo, creado_en DESC);
+
+CREATE TABLE IF NOT EXISTS verificaciones_usadas (
+  id SERIAL PRIMARY KEY,
+  jti VARCHAR(64) NOT NULL,
+  correo VARCHAR(254) NOT NULL,
+  usado_en TIMESTAMPTZ NOT NULL,
+  CONSTRAINT verificaciones_usadas_jti_key UNIQUE (jti)
+);

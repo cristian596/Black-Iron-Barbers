@@ -11,6 +11,7 @@ import categoriasRoutes from './routes/categorias.js';
 import disponibilidadRoutes from './routes/disponibilidad.js';
 import citasRoutes from './routes/citas.js';
 import asesoriasRoutes from './routes/asesorias.js';
+import verificacionCorreoRoutes from './routes/verificacionCorreo.js';
 import { errorHandler } from './middlewares/errorHandler.js';
 
 export const crearApp = () => {
@@ -33,6 +34,7 @@ export const crearApp = () => {
   app.use('/api/disponibilidad', disponibilidadRoutes);
   app.use('/api/citas', citasRoutes);
   app.use('/api/asesorias', asesoriasRoutes);
+  app.use('/api/verificacion-correo', verificacionCorreoRoutes);
 
   app.use(errorHandler);
 

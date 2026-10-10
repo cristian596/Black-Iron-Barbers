@@ -129,6 +129,20 @@ export const comprobarAsesoriaGratis = (correo, telefono, signal) =>
     signal,
   });
 
+// Verificación del correo con código de 6 dígitos (obligatoria al reservar). `solicitar` envía el código;
+// `confirmar` devuelve { token, expira_en_seg }: el comprobante que viaja como `verificacion_token` en crearCita.
+export const solicitarCodigoCorreo = (correo) =>
+  request('/verificacion-correo/solicitar', {
+    method: 'POST',
+    body: JSON.stringify({ correo }),
+  });
+
+export const confirmarCodigoCorreo = (correo, codigo) =>
+  request('/verificacion-correo/confirmar', {
+    method: 'POST',
+    body: JSON.stringify({ correo, codigo }),
+  });
+
 export const crearCita = (cita) =>
   request('/citas', {
     method: 'POST',

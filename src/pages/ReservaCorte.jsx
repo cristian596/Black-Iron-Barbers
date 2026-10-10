@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { obtenerServicios, obtenerServiciosAsesoria, obtenerBarberos, crearCita } from '../services/api'
 import { useCarrito } from '../context/CarritoContext'
+import { useVerificacionCorreo } from '../hooks/useVerificacionCorreo'
 import IndicadorProgreso from '../components/sections/reserva/IndicadorProgreso'
 import PasoServicio from '../components/sections/reserva/PasoServicio'
 import PasoBarbero from '../components/sections/reserva/PasoBarbero'
@@ -24,6 +25,8 @@ import { AREA_ASESORIA, AREA_BARBERIA, esDeBarberia, soloBarberia } from '../uti
 import { MENSAJE_LIMITE_ASESORIAS, esAsesoria, separarPorArea } from '../utils/reservaAsesoria'
 
 const CODIGO_GRATIS_YA_USADA = 'ASESORIA_GRATIS_YA_USADA'
+// Códigos del servidor cuando el comprobante de verificación del correo no sirve para esta reserva.
+const CODIGOS_VERIFICACION = ['VERIFICACION_REQUERIDA', 'VERIFICACION_INVALIDA', 'VERIFICACION_EXPIRADA', 'CORREO_NO_COINCIDE']
 
 const pasoCompleto = (estado) => {
   switch (estado.paso) {
@@ -65,6 +68,10 @@ const ReservaCorte = () => {
   const [errorCarga, setErrorCarga] = useState('')
   // Se incrementa para volver a pedir servicios y barberos (Reintentar, o un servicio que dejó de estar activo).
   const [recarga, setRecarga] = useState(0)
+  // El correo y su verificación viven aquí (no en el modal): si un 409 de horario cierra el modal, el comprobante sigue
+  // siendo válido (no se consumió) y la persona elige otro bloque sin verificar de nuevo.
+  const [correo, setCorreo] = useState('')
+  const verificacion = useVerificacionCorreo(correo)
 
   const recargarDatos = useCallback(() => {
     setErrorCarga('')
@@ -191,6 +198,7 @@ const ReservaCorte = () => {
       const resumen = await crearCita({
         cliente: datosContacto.cliente,
         correo: datosContacto.correo,
+        verificacion_token: verificacion.token,
         telefono: datosContacto.telefono,
         consentimiento: datosContacto.consentimiento,
         servicios_ids: estado.servicioIds,
@@ -201,8 +209,15 @@ const ReservaCorte = () => {
       })
       // La reserva terminó: si llegó desde el carrito, esa selección ya se agendó y se vacía.
       if (desdeCarrito) vaciarCarrito()
+      verificacion.descartar() // el comprobante se consumió con la reserva
       dispatch({ type: 'RESERVA_CONFIRMADA', resumen })
     } catch (err) {
+      if (CODIGOS_VERIFICACION.includes(err.codigo)) {
+        // El servidor no aceptó el comprobante (venció, no es válido o no es de este correo): se descarta y la persona
+        // vuelve a pedir el código. El modal sigue abierto con el motivo.
+        verificacion.descartar()
+        throw err
+      }
       if (err.codigo === CODIGO_GRATIS_YA_USADA) {
         // La persona ya usó su asesoría gratuita: no se creó nada. El modal muestra el aviso con sus dos salidas.
         throw err
@@ -236,7 +251,10 @@ const ReservaCorte = () => {
       <PantallaExito
         resumen={estado.resumen}
         areaUnica={soloAsesoria ? AREA_ASESORIA : AREA_BARBERIA}
-        onNuevaReserva={() => dispatch({ type: 'REINICIAR' })}
+        onNuevaReserva={() => {
+          setCorreo('')
+          dispatch({ type: 'REINICIAR' })
+        }}
       />
     )
   }
@@ -360,6 +378,9 @@ const ReservaCorte = () => {
           asesor={asesorSeleccionado}
           fecha={estado.fecha}
           hora={estado.hora}
+          correo={correo}
+          onCorreoChange={setCorreo}
+          verificacion={verificacion}
           onClose={() => dispatch({ type: 'IR_A_PASO', paso: 'fecha-hora' })}
           onConfirmar={confirmarReserva}
           onQuitarGratis={(gratisId) => dispatch({ type: 'QUITAR_ASESORIA_GRATIS', gratisId, otra: false })}

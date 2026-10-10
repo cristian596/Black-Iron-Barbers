@@ -45,7 +45,7 @@ export const esAsesoriaGratisYaUsada = (err) => err?.code === '23505' && CONSTRA
 // asesorías (una gratis por persona), que tienen otro significado y no deben disfrazarse de "horario ocupado".
 export const esConflictoDeHorario = (err) => {
   if (err?.code === '23P01') return true;
-  if (err?.code === '23505') return !String(err.constraint ?? '').startsWith('asesoria_gratis_usos_');
+  if (err?.code === '23505') return !/^(asesoria_gratis_usos_|verificaciones_usadas_)/.test(String(err.constraint ?? ''));
   return false;
 };
 

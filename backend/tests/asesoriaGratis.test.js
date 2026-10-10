@@ -114,8 +114,9 @@ describe('La primera asesoría gratis', () => {
     expect(res.body).toMatchObject({ servicio_id: GRATIS, precio: 0, duracion_min: 15 });
     expect([A1, A2]).toContain(res.body.barbero_id);
     expect(await usos()).toEqual([{ cita_id: res.body.id, correo_norm: 'personauno@gmail.com', telefono_norm: '3001234567' }]);
-    // La cita guarda lo que escribió el cliente; solo el registro de uso va normalizado.
-    expect((await pool.query('SELECT correo FROM citas WHERE id = $1', [res.body.id])).rows[0].correo).toBe('Persona.UNO+promo@Gmail.com');
+    // MODIFICADO (verificación de correo): la cita guarda el correo recortado y en minúsculas (el validador único lo
+    // normaliza); el +etiqueta y los puntos se conservan en la cita y solo el registro de uso los reduce.
+    expect((await pool.query('SELECT correo FROM citas WHERE id = $1', [res.body.id])).rows[0].correo).toBe('persona.uno+promo@gmail.com');
   });
 
   it('con un asesor concreto también', async () => {

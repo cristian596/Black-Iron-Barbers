@@ -361,7 +361,7 @@ describe('POST /api/citas y las áreas', () => {
   it('en una hora libre se asigna a un barbero de barbería, nunca al asesor', async () => {
     const asignados = new Set();
     for (const hora of ['10:00', '10:30', '11:00', '11:30', '12:00', '12:30']) {
-      const res = await reservar({ hora, correo: `c${hora}@example.com` });
+      const res = await reservar({ hora, correo: `c${hora.replace(':', '')}@example.com` }); // MODIFICADO: ':' ya no es válido en un correo
       expect(res.status).toBe(201);
       asignados.add(res.body.barbero_id);
     }

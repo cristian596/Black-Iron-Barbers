@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import PasoFechaHora from '../components/sections/reserva/PasoFechaHora'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
 import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
+import { VERIFICACION_VACIA } from './verificacionPrueba'
 import PantallaExito from '../components/sections/reserva/PantallaExito'
 import {
   MENSAJE_BLOQUE_LLENO,
@@ -237,6 +238,9 @@ describe('hora exacta en resumen, modal y éxito', () => {
         barbero={BARBERO}
         fecha="2030-06-15"
         hora="10:30"
+        correo=""
+        onCorreoChange={vi.fn()}
+        verificacion={VERIFICACION_VACIA}
         onClose={vi.fn()}
         onConfirmar={vi.fn()}
       />

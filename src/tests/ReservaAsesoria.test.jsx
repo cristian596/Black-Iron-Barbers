@@ -5,6 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import * as api from '../services/api'
+import { prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
 import { ASESORIAS_API, ASESORA, ASESOR_2, GRATIS_API, PREMIUM_API, BARBA_API } from './fixturesAsesorias'
 
 vi.mock('../services/api')
@@ -69,6 +70,7 @@ const llegarAlModal = async (user, hora = '10:00') => {
 const llenarContacto = async (user, correo = 'juan@example.com', telefono = '3001234567') => {
   await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
   await user.type(screen.getByLabelText('Correo electrónico'), correo)
+  await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo (código de 6 dígitos) antes de poder confirmar
   await user.type(screen.getByLabelText('Teléfono'), telefono)
   await user.click(screen.getByRole('checkbox'))
 }
@@ -110,6 +112,7 @@ afterEach(() => vi.useRealTimers())
 beforeEach(() => {
   fijarReloj()
   vi.clearAllMocks()
+  prepararVerificacionMock()
   sessionStorage.clear()
   vi.mocked(api.obtenerServicios).mockResolvedValue(SERVICIOS)
   vi.mocked(api.obtenerServiciosAsesoria).mockResolvedValue(ASESORIAS_API)
@@ -655,6 +658,7 @@ describe('Asesoría gratuita: una por persona', () => {
 
     await user.type(screen.getByLabelText('Correo electrónico'), 'x')
     await waitFor(() => expect(screen.queryByText(/Ya usaste tu asesoría gratuita/)).toBeNull())
+    await verificarCorreoEnModal(user) // MODIFICADO: cambiar el correo descarta la verificación; hay que repetirla
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
     expect(await screen.findByText(/¡cita agendada con éxito!/i)).toBeInTheDocument()
     expect(api.crearCita).toHaveBeenCalledTimes(2)

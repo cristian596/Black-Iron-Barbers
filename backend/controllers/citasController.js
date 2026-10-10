@@ -23,7 +23,15 @@ import {
 import { identidadAsesoria } from '../utils/identidadAsesoria.js';
 import { notificarCitasCreadas, notificarCancelacion, notificarCambioProfesional } from '../utils/notificaciones.js';
 
-const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { validarCorreo } from '../utils/validarCorreo.js';
+import { verificacionRequerida } from '../config/verificacion.js';
+import {
+  leerComprobante,
+  comprobanteYaUsado,
+  consumirComprobante,
+  esComprobanteYaUsado,
+} from '../utils/verificacionCorreo.js';
+
 const ESTADOS_VALIDOS = ['pendiente', 'completada', 'cancelada'];
 // Conflicto de horario = 23P01 (solapamiento) o 23505 (doble reserva exacta) de las restricciones de citas. Se decide con
 // esConflictoDeHorario (utils/areas.js), que distingue por err.constraint: las restricciones de asesoria_gratis_usos y el
@@ -68,13 +76,22 @@ const errorFueraDeHorario = (cantidadServicios) => ({
 // 'commit'), que permite avanzar SOLO al siguiente candidato del profesional que falló, sin probar todas las combinaciones.
 // `segmentos`: [{ clave: 'asesoria' | 'barberia', profesionalId }] en el orden en que se atienden.
 // Devuelve { citas: [{ cita, lista }] } o { error } (error de validación de los servicios, ya en forma { status, cuerpo }).
-const insertarReserva = async ({ idsServicios, segmentos, reservaId, identidad, cliente, correo, telefono, fecha, hora, consentimientoEn }) => {
+const insertarReserva = async ({ idsServicios, segmentos, reservaId, identidad, comprobante, cliente, correo, telefono, fecha, hora, consentimientoEn }) => {
   for (let intento = 1; intento <= MAX_REINTENTOS_DEADLOCK; intento += 1) {
     const conexion = await pool.connect();
     let fallaRollback = false;
     let etapa = 'servicios';
     try {
       await conexion.query('BEGIN');
+
+      // El comprobante de verificación del correo se consume AQUÍ, dentro de la misma transacción que crea la cita: si
+      // algo falla después (horario ocupado, asesoría gratis ya usada…) el ROLLBACK lo devuelve y el cliente reintenta con
+      // el mismo comprobante. El UNIQUE de verificaciones_usadas decide si dos reservas lo usan a la vez.
+      if (comprobante) {
+        etapa = 'verificacion';
+        await consumirComprobante(conexion, comprobante);
+        etapa = 'servicios';
+      }
 
       // Se vuelve a leer con bloqueo: lo que se guarda es lo vigente en este instante, no lo de la validación previa.
       const servicios = await cargarServicios(conexion, idsServicios, { bloquear: true });
@@ -217,8 +234,35 @@ export const crearCita = async (req, res, next) => {
     if (!cliente || typeof cliente !== 'string' || cliente.trim().length === 0) {
       return res.status(400).json({ error: 'El nombre del cliente es obligatorio' });
     }
-    if (!correo || typeof correo !== 'string' || !REGEX_CORREO.test(correo)) {
+    // Validador único (utils/validarCorreo.js): una sola dirección simple, ya en minúsculas y sin espacios. Es la que se
+    // guarda en la cita y contra la que se compara el comprobante de verificación.
+    const correoCita = validarCorreo(correo);
+    if (!correoCita) {
       return res.status(400).json({ error: 'El correo no es válido' });
+    }
+
+    // Verificación del correo: se comprueba ANTES de cualquier otra lógica costosa (firma, typ, aud, vigencia, que sea de
+    // ESTE correo y que no se haya usado). El consumo ocurre dentro de la transacción de la reserva (insertarReserva).
+    let comprobante = null;
+    if (verificacionRequerida()) {
+      const { verificacion_token: token } = req.body;
+      if (token === undefined || token === null || token === '') {
+        return res.status(400).json({ error: 'Verifica tu correo para poder reservar', codigo: 'VERIFICACION_REQUERIDA' });
+      }
+      const leido = leerComprobante(token);
+      if (!leido.ok) {
+        return res.status(400).json({
+          error: leido.codigo === 'VERIFICACION_EXPIRADA' ? 'La verificación de tu correo venció, verifícalo de nuevo' : 'La verificación de tu correo no es válida',
+          codigo: leido.codigo,
+        });
+      }
+      if (leido.correo !== correoCita) {
+        return res.status(400).json({ error: 'El correo verificado no coincide con el de la reserva', codigo: 'CORREO_NO_COINCIDE' });
+      }
+      if (await comprobanteYaUsado(leido.jti)) {
+        return res.status(400).json({ error: 'La verificación de tu correo no es válida', codigo: 'VERIFICACION_INVALIDA' });
+      }
+      comprobante = { jti: leido.jti, correo: correoCita };
     }
 
     const telefonoNormalizado = normalizarTelefono(telefono);
@@ -235,7 +279,7 @@ export const crearCita = async (req, res, next) => {
     const idsServicios = pedidos.ids;
 
     // Identidad para el límite de la asesoría gratis (el correo ya pasó la validación de formato).
-    const identidad = identidadAsesoria(correo, telefonoNormalizado);
+    const identidad = identidadAsesoria(correoCita, telefonoNormalizado);
     if (!identidad) return res.status(400).json({ error: 'El correo no es válido' });
 
     const lecturaBarbero = leerIdProfesional(barbero_id, 'barbero');
@@ -326,8 +370,9 @@ export const crearCita = async (req, res, next) => {
           segmentos: segmentos.map(({ clave }) => ({ clave, profesionalId: candidatos[clave][indices[clave]] })),
           reservaId,
           identidad,
+          comprobante,
           cliente: cliente.trim(),
-          correo,
+          correo: correoCita,
           telefono: telefonoNormalizado,
           fecha,
           hora,
@@ -358,6 +403,10 @@ export const crearCita = async (req, res, next) => {
         notificarCitasCreadas(idsCreadas);
         return undefined;
       } catch (err) {
+        // Otra reserva (en paralelo) consumió el mismo comprobante: no es un conflicto de horario.
+        if (esComprobanteYaUsado(err)) {
+          return res.status(400).json({ error: 'La verificación de tu correo no es válida', codigo: 'VERIFICACION_INVALIDA' });
+        }
         // La persona ya usó su asesoría gratis: 409 sin más datos (ni qué campo coincidió) y sin probar otro candidato.
         if (esAsesoriaGratisYaUsada(err)) {
           const { status, cuerpo } = errorAsesoriaGratisYaUsada(servicios.asesoria.lista.find(esAsesoriaGratis).id);

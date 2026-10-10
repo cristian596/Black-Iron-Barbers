@@ -212,6 +212,25 @@ export const plantillaAvisoProfesional = (cita, tipo) => {
   });
 };
 
+// Código de verificación del correo. El código va SOLO en el cuerpo (nunca en el asunto, que se ve en las notificaciones).
+export const plantillaCodigoVerificacion = (codigo, minutosVigencia) => {
+  const digitos = String(codigo).replace(/\D/g, '');
+  const parrafos = [
+    'Usa este código para verificar tu correo y confirmar tu reserva:',
+    `El código vence en ${minutosVigencia} minutos y solo sirve una vez.`,
+    'Si no fuiste tú, ignora este mensaje: no se hará ninguna reserva.',
+  ];
+  const texto = ['Hola.', parrafos[0], `Código: ${digitos}`, parrafos[1], parrafos[2], pieTexto].join('\n\n');
+  const bloque = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="${ESTILO.tarjeta}"><tr><td align="center" style="${ESTILO.tarjetaCelda}"><p style="margin:0;font-family:Georgia,serif;font-size:32px;font-weight:bold;letter-spacing:8px;color:#111111;">${escaparHtml(digitos)}</p></td></tr></table>`;
+  const html = envolver({
+    titulo: 'Verifica tu correo',
+    parrafosAntes: [parrafos[0]],
+    citasHtml: bloque,
+    parrafosDespues: [parrafos[1], parrafos[2]],
+  });
+  return { asunto: limpiarLinea(`Tu código de verificación de ${NOMBRE_NEGOCIO}`), texto, html };
+};
+
 // ---------- Eventos de calendario (.ics) ----------
 
 export const eventoDeCita = (cita) => {

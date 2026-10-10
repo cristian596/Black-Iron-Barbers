@@ -13,6 +13,7 @@ import {
   plantillaCancelacionCliente,
   plantillaCambioCliente,
   plantillaAvisoProfesional,
+  plantillaCodigoVerificacion,
 } from './plantillasCorreo.js';
 
 // Notificaciones por correo de los eventos de una cita.
@@ -101,6 +102,16 @@ const configActiva = () => {
     registrar(`Configuración de correo inválida, no se envía nada: ${enmascararCorreosEnTexto(err.message)}`);
     return null;
   }
+};
+
+// Correo con el código de verificación del correo (utils/verificacionCorreo.js). A diferencia de las notificaciones de
+// citas, aquí el resultado importa: devuelve true si se entregó al transporte y false si no (correo apagado, SMTP caído…).
+// No lanza y NUNCA registra el código: solo el correo enmascarado.
+export const enviarCodigoVerificacion = async (para, codigo, minutosVigencia) => {
+  const config = configActiva();
+  if (!config) return false;
+  const { asunto, texto, html } = plantillaCodigoVerificacion(codigo, minutosVigencia);
+  return lanzar(() => enviarCorreo({ para, asunto, texto, html, config }));
 };
 
 // ---------- Datos ----------

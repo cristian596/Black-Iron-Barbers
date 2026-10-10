@@ -34,13 +34,17 @@ services:
       FRONTEND_URL: ${FRONTEND_URL}
       # Correo (utils/notificaciones.js). Apagado por defecto. En desarrollo: EMAIL_ENABLED=true en el .env y Mailpit
       # levantado (docker compose --profile dev up -d mailpit); en producción, el SMTP real por variables de entorno.
-      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
       EMAIL_FROM: ${EMAIL_FROM:-Black Iron Barbers <no-reply@blackiron.local>}
+      # Verificación del correo con código (obligatoria al reservar). EMAIL_VERIF_SECRET: propio, aleatorio, >= 32
+      # caracteres y distinto de JWT_SECRET; sin él (o débil) el backend no arranca.
+      EMAIL_VERIF_SECRET: ${EMAIL_VERIF_SECRET:-}
+      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
     volumes:
       # Fotos de perfil subidas desde el dashboard (backend/uploads): sobreviven a recrear el contenedor.
       - fotos_perfil_data:/app/uploads

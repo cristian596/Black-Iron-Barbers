@@ -135,8 +135,18 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
   - [ ] `EMAIL_ENABLED` y las credenciales fuera del repo (solo en el `.env` de producción o el panel del hosting; nunca en `docker-compose.yml` ni en `.env.example`).
   - [ ] Proveedor: Gmail con **contraseña de aplicación** (límite aproximado de 500 correos al día), o un proveedor transaccional como Resend o Brevo.
   - [ ] Si hay dominio propio: SPF y DKIM (y DMARC) del dominio del remitente `EMAIL_FROM`, o los correos caerán en spam.
-  - [ ] Riesgo de abuso: hoy cualquiera puede escribir el correo de OTRA persona al reservar y esa persona recibe la confirmación. Lo mitiga la tarea siguiente (verificación del correo con código de 6 dígitos); hasta entonces, mantener el límite de reservas por IP.
+  - [x] Riesgo de abuso (escribir el correo de OTRA persona al reservar): resuelto con la verificación del correo con código de 6 dígitos (ver abajo).
   - [ ] Los correos a profesionales siguen apagados mientras no exista un correo de profesional en el sistema (ver «Correos y notificaciones»).
+
+- [ ] **Verificación del correo con código (ver «Verificación de correo» en `CLAUDE.md`; obligatoria en todas las reservas):**
+  - [ ] `EMAIL_VERIF_SECRET` en el `.env` de producción: **aleatorio, mínimo 32 caracteres, distinto de `JWT_SECRET`** (`node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`). Nunca el valor de ejemplo de `.env.example`, nunca en el repo.
+  - [ ] `REQUIRE_EMAIL_VERIFICATION=true` (o sin definir: es true por defecto) y `NODE_ENV=production`.
+  - [ ] **SMTP real** con `EMAIL_ENABLED=true` (ver «Correo» arriba): sin correo no se puede reservar (solicitar el código responde 503).
+  - [ ] **El arranque falla a propósito** si en producción falta `EMAIL_ENABLED=true` con SMTP válido, falta o es débil `EMAIL_VERIF_SECRET`, o `REQUIRE_EMAIL_VERIFICATION` no es `true`. Probar el arranque en el servidor antes de abrir al público.
+  - [ ] **`trust proxy` bien configurado** (`app.set('trust proxy', <nº de saltos o IP del proxy>)`, nunca `true` a ciegas): el límite por IP de solicitar/confirmar el código depende de `req.ip`; sin él todos los clientes comparten el cupo del proxy.
+  - [ ] Riesgo residual: los límites **por IP** viven en la memoria del proceso y se reinician con el servidor (y con varias instancias hay que moverlos a un almacén compartido, p. ej. Redis). Los límites **por correo** (60 s entre solicitudes, 5 códigos por hora, 5 intentos por código) están en la base y NO se reinician.
+  - [ ] Cambiar `EMAIL_VERIF_SECRET` invalida de golpe los códigos y comprobantes en curso (los clientes solo tendrían que pedir otro código); no afecta a las citas.
+  - [ ] Decidir qué hacer con `POST /api/asesorias/gratis/comprobar` (oráculo: ver el hallazgo en «Verificación de correo»).
 
 ## 📝 Notas de cuota
 - Una sesión nueva por bloque; si se corta por el límite de 5 h, continúa en la misma cuando se reinicie.
