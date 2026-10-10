@@ -32,11 +32,32 @@ services:
       ADMIN_USER: ${ADMIN_USER}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       FRONTEND_URL: ${FRONTEND_URL}
+      # Correo (utils/notificaciones.js). Apagado por defecto. En desarrollo: EMAIL_ENABLED=true en el .env y Mailpit
+      # levantado (docker compose --profile dev up -d mailpit); en producción, el SMTP real por variables de entorno.
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Black Iron Barbers <no-reply@blackiron.local>}
     volumes:
       # Fotos de perfil subidas desde el dashboard (backend/uploads): sobreviven a recrear el contenedor.
       - fotos_perfil_data:/app/uploads
     depends_on:
       - db_black_iron
+
+  # Bandeja de correo SOLO para desarrollo (profile "dev": no arranca con un `docker compose up` normal, así que
+  # nunca llega a producción). Recibe lo que envía el backend (SMTP en 1025) y lo muestra en http://localhost:8025.
+  # Los puertos se publican únicamente en 127.0.0.1: no quedan expuestos a la red.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: black_iron_mailpit
+    profiles: ["dev"]
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
 
 volumes:
   postgres_barber_data:

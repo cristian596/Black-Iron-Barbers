@@ -129,6 +129,14 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
 - [ ] Variables de entorno configuradas en el panel del hosting, nunca en el repo.
 - [ ] CORS con el dominio real, HTTPS activo y `JWT_SECRET` distinto al de desarrollo.
 - [ ] Copia de seguridad periódica de la base de datos.
+- [ ] **Correo (ver «Correos y notificaciones» en `CLAUDE.md`):**
+  - [ ] Variables SMTP por `environment:` de `docker-compose.yml` (`EMAIL_ENABLED`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`) tomadas del `.env` de producción. Con `EMAIL_ENABLED=true` el back-end no arranca si falta alguna obligatoria.
+  - [ ] **Mailpit NO va a producción** (está en el profile `dev`: no lo levantes con `--profile dev` en el servidor). Los valores por defecto del compose (`SMTP_HOST=mailpit`) solo sirven en desarrollo: en producción define siempre el SMTP real.
+  - [ ] `EMAIL_ENABLED` y las credenciales fuera del repo (solo en el `.env` de producción o el panel del hosting; nunca en `docker-compose.yml` ni en `.env.example`).
+  - [ ] Proveedor: Gmail con **contraseña de aplicación** (límite aproximado de 500 correos al día), o un proveedor transaccional como Resend o Brevo.
+  - [ ] Si hay dominio propio: SPF y DKIM (y DMARC) del dominio del remitente `EMAIL_FROM`, o los correos caerán en spam.
+  - [ ] Riesgo de abuso: hoy cualquiera puede escribir el correo de OTRA persona al reservar y esa persona recibe la confirmación. Lo mitiga la tarea siguiente (verificación del correo con código de 6 dígitos); hasta entonces, mantener el límite de reservas por IP.
+  - [ ] Los correos a profesionales siguen apagados mientras no exista un correo de profesional en el sistema (ver «Correos y notificaciones»).
 
 ## 📝 Notas de cuota
 - Una sesión nueva por bloque; si se corta por el límite de 5 h, continúa en la misma cuando se reinicie.

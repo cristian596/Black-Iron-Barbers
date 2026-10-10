@@ -21,6 +21,7 @@ import {
   esErrorAreaProfesional,
 } from '../utils/areas.js';
 import { identidadAsesoria } from '../utils/identidadAsesoria.js';
+import { notificarCitasCreadas, notificarCancelacion, notificarCambioProfesional } from '../utils/notificaciones.js';
 
 const REGEX_CORREO = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ESTADOS_VALIDOS = ['pendiente', 'completada', 'cancelada'];
@@ -344,12 +345,18 @@ export const crearCita = async (req, res, next) => {
           barbero_nombre: nombres.find((fila) => fila.id === cita.barbero_id).nombre,
         });
 
+        // Correos DESPUÉS del commit y sin await: no retrasan ni cambian la respuesta (utils/notificaciones.js no lanza).
+        const idsCreadas = resultado.citas.map(({ cita }) => cita.id);
         if (combinada) {
-          return res.status(201).json({ reserva_id: reservaId, citas: resultado.citas.map(armar) });
+          res.status(201).json({ reserva_id: reservaId, citas: resultado.citas.map(armar) });
+          notificarCitasCreadas(idsCreadas);
+          return undefined;
         }
         const plana = armar(resultado.citas[0]);
         delete plana.reserva_id; // una cita suelta conserva la forma de siempre (sin reserva_id)
-        return res.status(201).json(plana);
+        res.status(201).json(plana);
+        notificarCitasCreadas(idsCreadas);
+        return undefined;
       } catch (err) {
         // La persona ya usó su asesoría gratis: 409 sin más datos (ni qué campo coincidió) y sin probar otro candidato.
         if (esAsesoriaGratisYaUsada(err)) {
@@ -555,6 +562,10 @@ export const actualizarCita = async (req, res, next) => {
       }
 
       res.json({ ...rows[0], ...(await serviciosDeCita(pool, citaId)) });
+
+      // Correos DESPUÉS del commit y sin await. Completar no notifica; repetir 'cancelada' tampoco.
+      if (estado === 'cancelada' && cita.estado !== 'cancelada') notificarCancelacion(citaId);
+      else if (nuevoBarberoId !== cita.barbero_id) notificarCambioProfesional(citaId, cita.barbero_id);
     } catch (err) {
       // Última barrera (carrera con un cambio de área o de servicios): el trigger de la base rechazó la reasignación.
       if (esErrorAreaProfesional(err)) {
