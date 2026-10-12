@@ -18,7 +18,7 @@ import {
 
 // Notificaciones por correo de los eventos de una cita.
 //
-// REGLAS (ver «Correos y notificaciones» en CLAUDE.md):
+// REGLAS (ver «Invariantes de negocio» en CLAUDE.md):
 //  - Se llaman DESPUÉS del COMMIT, sin await desde el controlador: el envío no retrasa ni cambia la respuesta HTTP.
 //  - Nunca lanzan hacia afuera: un fallo (SMTP caído, dato raro) se registra con el correo enmascarado y se sigue.
 //  - Con EMAIL_ENABLED=false, o sin correo válido, no se envía nada y no es un error.

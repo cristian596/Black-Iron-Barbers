@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS verificaciones_usadas (
   CONSTRAINT verificaciones_usadas_jti_key UNIQUE (jti)
 );
 
--- Recordatorios por correo (~24 h antes de la cita; ver «Recordatorios» en CLAUDE.md). Columnas aditivas: NULL / 0 por
+-- Recordatorios por correo (~24 h antes de la cita; ver «Invariantes de negocio» en CLAUDE.md). Columnas aditivas: NULL / 0 por
 -- defecto y SIN ningún UPDATE sobre las filas existentes.
 --  - recordatorio_enviado_en: instante en que el recordatorio se entregó al transporte (NULL = pendiente de enviar).
 --  - recordatorio_intentos: envíos fallidos; con 3 se deja de intentar.

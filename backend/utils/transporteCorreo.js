@@ -24,18 +24,11 @@ export const crearTransporteMemoria = () => {
   return transporte;
 };
 
-let inyectado = null;
 let memoria = null;
 let smtp = null;
 
-// Para pruebas: fuerza un transporte concreto (null = volver al normal).
-export const inyectarTransporte = (transporte) => {
-  inyectado = transporte;
-};
-
 // Dentro de las pruebas (NODE_ENV=test bajo Vitest) SIEMPRE es el de memoria (nunca SMTP real); fuera de las pruebas, SMTP con la configuración.
 export const obtenerTransporte = () => {
-  if (inyectado) return inyectado;
   if (esEntornoDePruebas()) {
     memoria ??= crearTransporteMemoria();
     return memoria;

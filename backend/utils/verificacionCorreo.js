@@ -1,4 +1,4 @@
-// Verificación del correo con código de 6 dígitos (ver «Verificación de correo» en CLAUDE.md).
+// Verificación del correo con código de 6 dígitos (ver «Invariantes de negocio» en CLAUDE.md).
 //
 // Flujo: solicitar (se envía un código por correo) → confirmar (el código correcto da un COMPROBANTE firmado de un solo
 // uso) → POST /api/citas con ese comprobante, que se consume dentro de la misma transacción que crea la cita.

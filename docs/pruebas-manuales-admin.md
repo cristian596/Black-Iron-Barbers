@@ -89,7 +89,7 @@ Reloj de Bogotá: entre las 7 pm y la medianoche, `periodo=hoy` debe seguir most
 
 ### I. Pantalla `/admin` (Resumen)
 
-1. **Nombre:** el avatar muestra tus iniciales y el menú el usuario real. Con un token anterior a este cambio (sesión abierta de antes) dice "Administrador"; vuelve a iniciar sesión para ver el nombre.
+1. **Nombre:** el avatar muestra las iniciales del usuario y el menú el usuario real. Con un token anterior a este cambio (sesión abierta de antes) dice "Administrador"; vuelve a iniciar sesión para ver el nombre.
 2. **Selector de período:** Hoy / 7 días / 30 días / Mes. El activo va en dorado. Debajo del título aparece "Comparado con … (rango)" y cambia al elegir otro período.
 3. **Tarjetas:** Ingresos, Citas, Completadas, Canceladas y Ticket promedio, con cifras en negrita. El delta lleva flecha, porcentaje y color: subir ingresos es verde; subir canceladas es rojo. Si el período anterior no tiene datos se ve "—" (nunca NaN ni ∞).
 4. **Ticket promedio:** una completada de precio 0 cuenta como completada pero no baja el promedio.
@@ -107,21 +107,21 @@ Reloj de Bogotá: entre las 7 pm y la medianoche, `periodo=hoy` debe seguir most
    - Error: apaga el backend (`docker compose stop backend_black_iron`) y recarga: cada panel muestra su error con "Reintentar"; enciéndelo y pulsa Reintentar.
 9. **Móvil (360–414 px):** las tarjetas van de a dos (la quinta ocupa todo el ancho) y no hay scroll horizontal en toda la página.
 
-### J. Datos de demostración (`seed:demo`) — solo desarrollo
+### J. Datos de demostración (`sembrar:demo`) — solo desarrollo
 
-> No se ejecuta solo ni en los tests normales. **Antes de usarlo, haz un respaldo de tu base de desarrollo** (`pg_dump`).
+> No se ejecuta solo ni en los tests normales. **Antes de usarlo, haz un respaldo de la base de desarrollo** (`pg_dump`).
 >
-> **Estado actual:** al cerrar el dashboard las citas demo se borraron de la base de desarrollo (quedan solo las citas reales). Si quieres repetir las pruebas con volumen (paginación de 29 páginas, gráficos con datos), vuelve a generarlas con `npm run seed:demo -- --confirmar`; las cifras de las secciones siguientes (p. ej. "435 citas = 29 páginas") suponen que están generadas.
+> **Nota:** las cifras de las secciones siguientes (p. ej. "435 citas = 29 páginas") suponen que los datos de demostración están generados con `npm run sembrar:demo -- --confirmar`; con la base sin ellos verás listas y gráficos casi vacíos (es correcto: comprueba los estados vacíos).
 
 ```bash
 cd backend
-npm run seed:demo                              # simulación: muestra cuántas citas crearía, no escribe
-npm run seed:demo -- --confirmar               # crea las citas demo (~60 días atrás y 5 adelante)
-npm run seed:demo -- --limpiar                 # simulación de la limpieza
-npm run seed:demo -- --limpiar --confirmar     # borra SOLO las citas demo
+npm run sembrar:demo                           # simulación: muestra el resumen del plan, no escribe
+npm run sembrar:demo -- --confirmar            # borra y recrea las citas demo (~40 días atrás y 14 adelante)
+npm run sembrar:demo -- --limpiar              # simulación de la limpieza
+npm run sembrar:demo -- --limpiar --confirmar  # borra SOLO las citas demo
 ```
 
-Comprobaciones: (1) las citas demo tienen el cliente `[demo] Nombre`; (2) tus citas reales siguen intactas tras `--limpiar --confirmar`; (3) con `NODE_ENV=production` el comando se niega; (4) contra una base con "test" en el nombre se niega; (5) volver a sembrar sin limpiar pide limpiar primero; (6) las citas respetan horarios y no se solapan, y guardan el precio del servicio.
+Comprobaciones: (1) las citas demo tienen el correo `...@demo.blackiron.example`; (2) las citas reales siguen intactas tras `--limpiar --confirmar`; (3) con `NODE_ENV=production` el comando se niega; (4) contra una base con "test" en el nombre se niega; (5) volver a ejecutar con `--confirmar` deja los mismos conteos (es re-ejecutable); (6) las citas respetan horarios y no se solapan, y guardan el precio del servicio.
 
 ---
 
@@ -165,9 +165,9 @@ En el menú de usuario → **Cambiar contraseña**, el botón "Guardar contrase�
 
 ## Fase 2 — Servicios y categorías (`/admin/servicios`) y seed que solo inserta
 
-> Antes de empezar: haz un `pg_dump` de tu base y reconstruye el back-end (`docker compose up --build -d backend_black_iron`). Al arrancar, el backend aplica el esquema y los dos pasos únicos de migración.
+> Antes de empezar: haz un `pg_dump` de la base de desarrollo y reconstruye el back-end (`docker compose up --build -d backend_black_iron`). Al arrancar, el backend aplica el esquema y los dos pasos únicos de migración.
 
-### N. Migración en tu base de desarrollo
+### N. Migración en la base de desarrollo
 
 ```bash
 docker exec black_iron_postgres psql -U <POSTGRES_USER> -d <POSTGRES_DB> -c "SELECT clave FROM migraciones_aplicadas"
@@ -257,7 +257,7 @@ Cortes del mes: se cuentan las citas `completada` del mes en curso **en Bogotá*
 4. **Avatar:** los barberos con foto la muestran; los demás (los creados aquí) llevan sus iniciales. Los inactivos se ven atenuados y con la etiqueta "Inactivo".
 5. **Nuevo empleado:** nombre, cargo y especialidad (opcionales), usuario y contraseña (con ojo para verla). Valida al enviar con las mismas reglas del back-end y lleva el foco al primer error; "usuario ya existe" sale en el campo usuario.
 6. **Editar:** solo nombre, cargo y especialidad; solo se envían los campos que cambiaron.
-7. **Contraseña:** restablece la del usuario del empleado. Si un barbero no tiene usuario (Manuel y Rafa en tu base) el botón dice **Crear acceso** y pide usuario y contraseña. Si hay varios usuarios ligados, la fila indica "(+N más)".
+7. **Contraseña:** restablece la del usuario del empleado. Si un barbero no tiene usuario (p. ej. Manuel y Rafa en la base de desarrollo) el botón dice **Crear acceso** y pide usuario y contraseña. Si hay varios usuarios ligados, la fila indica "(+N más)".
 8. **Desactivar** pide confirmación en un diálogo. Si tiene citas pendientes, el aviso dice cuántas y ofrece "Ver y reasignar sus citas", que abre `/admin/citas?barbero=<id>&pestana=proximas`; esas citas siguen asignadas hasta que las reasignes. **Activar** es directo.
 9. **Efecto en la web:** desactiva a un barbero y comprueba que desaparece de "Nuestro Equipo" en `/`, del paso 2 de `/reservar-corte` y de "cualquier barbero"; reactívalo y vuelve. Un barbero nuevo (sin foto) aparece con su avatar de iniciales en `/` y en la reserva.
 10. **Sesión del empleado:** inicia sesión como un barbero en otra ventana, desactívalo desde el admin y recarga su panel: te devuelve al login.
@@ -297,7 +297,7 @@ CSV: la respuesta lleva `Content-Type: text/csv; charset=utf-8` y `Content-Dispo
 
 1. **Día:** por defecto hoy en Bogotá. "Día anterior" y "Día siguiente" cambian de a un día; "Día siguiente" está deshabilitado en hoy y el calendario no deja elegir días futuros (si escribes uno, vuelve a hoy). El día queda en la URL (`?fecha=`): recarga, copia el enlace y ábrelo en otra pestaña. Una fecha inválida o futura en la URL se ignora y muestra hoy.
 2. **Cifras:** total de cortes, ingresos, ticket promedio (no cuenta los cortes gratis) y canceladas (aparte, no suman ingresos). **Servicios más pedidos** en una tabla.
-3. **Aviso de citas sin cerrar:** en un día con citas pendientes (por ejemplo hoy en tu base de demostración) aparece "Hay N citas sin cerrar; el reporte solo cuenta las completadas." con el enlace "Ver las citas de este día", que abre `/admin/citas` filtrado a ese día. Completa una cita y vuelve: el número baja y las cifras suben.
+3. **Aviso de citas sin cerrar:** en un día con citas pendientes (por ejemplo hoy en la base de demostración) aparece "Hay N citas sin cerrar; el reporte solo cuenta las completadas." con el enlace "Ver las citas de este día", que abre `/admin/citas` filtrado a ese día. Completa una cita y vuelve: el número baja y las cifras suben.
 4. **Estados:** cargando; día sin citas ("No hay citas registradas en este día."); error con "Reintentar" (apaga el back-end y cambia de día).
 5. **Descargar CSV:** el botón baja `reporte-diario-AAAA-MM-DD.csv` del día que ves (el enlace directo no serviría: lleva token). Si falla, muestra el error.
 6. **Imprimir:** el botón abre el diálogo de impresión. En la vista previa deben desaparecer la barra lateral, la barra superior, el selector de día y los botones; el fondo es blanco, el texto negro, y arriba sale "Black Iron Barbers · Reporte diario" con la fecha.
@@ -308,7 +308,7 @@ CSV: la respuesta lleva `Content-Type: text/csv; charset=utf-8` y `Content-Dispo
 
 ## Dashboard del barbero, fase 1 — caducidad de contraseñas
 
-Las contraseñas de los barberos duran 60 días; el admin está exento. Los pasos con "reloj" cambian la fecha guardada en tu base de desarrollo, así que no hace falta esperar. **Haz un `pg_dump` antes** y usa un barbero de prueba (por ejemplo `prueba_uno`), no uno real.
+Las contraseñas de los barberos duran 60 días; el admin está exento. Los pasos con "reloj" cambian la fecha guardada en la base de desarrollo, así que no hace falta esperar. **Haz un `pg_dump` antes** y usa un barbero de prueba (por ejemplo `prueba_uno`), no uno real.
 
 ### V. Migración y endpoints (curl)
 
@@ -321,7 +321,7 @@ BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d
 
 | Qué haces | Qué debe pasar |
 |---|---|
-| Al arrancar el back-end por primera vez con este cambio | Todos tus usuarios quedan con `contrasena_cambiada_en` = ese momento (nadie caduca de golpe). Reiniciar de nuevo no la mueve |
+| Al arrancar el back-end por primera vez con este cambio | Todos los usuarios quedan con `contrasena_cambiada_en` = ese momento (nadie caduca de golpe). Reiniciar de nuevo no la mueve |
 | Login del admin | `"vigencia": null` |
 | Login de `prueba_uno` recién creado | `"vigencia": {"estado":"vigente","dias_restantes":60,"vence_en":"…"}` |
 | `curl -X PATCH $API/auth/contrasena -H "Authorization: Bearer $BARBERO" -H 'Content-Type: application/json' -d '{"actual":"clave-segura-1","nueva":"otra-clave-2"}'` con la contraseña vigente | `403` con `codigo: "CAMBIO_NO_PERMITIDO"` |
@@ -394,9 +394,9 @@ BARBERO=$(curl -s -X POST $API/auth/login -H 'Content-Type: application/json' -d
 
 ## Dashboard del barbero, fase 3 — layout, Resumen, bienvenida y aviso persistente
 
-> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: con la base limpia verás listas y gráficos casi vacíos (es correcto: comprueba los estados vacíos). Para regenerarlas: `pg_dump`, `cd backend && npm run seed:demo -- --confirmar`; para borrarlas: `npm run seed:demo -- --limpiar --confirmar`. Los barberos de prueba se reactivan desde `/admin/empleados` (o crea uno nuevo y restablece su contraseña).
+> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: con la base limpia verás listas y gráficos casi vacíos (es correcto: comprueba los estados vacíos). Para regenerarlas: `pg_dump`, `cd backend && npm run sembrar:demo -- --confirmar`; para borrarlas: `npm run sembrar:demo -- --limpiar --confirmar`. Los barberos de prueba se reactivan desde `/admin/empleados` (o crea uno nuevo y restablece su contraseña).
 
-Solo front-end. Necesitas citas: haz un `pg_dump`, corre `cd backend && npm run seed:demo` (simulación) y luego `npm run seed:demo -- --confirmar`. Entra como un barbero con usuario (el admin puede restablecer la contraseña de uno de prueba). Las citas demo se borran al final de todo el dashboard.
+Solo front-end. Necesitas citas: haz un `pg_dump`, corre `cd backend && npm run sembrar:demo` (simulación) y luego `npm run sembrar:demo -- --confirmar`. Entra como un barbero con usuario (el admin puede restablecer la contraseña de uno de prueba). Las citas demo se borran al final de todo el dashboard.
 
 ### AA. Layout (`/panel`)
 
@@ -437,9 +437,9 @@ A 360, 375, 414, 768, 1024 y 1440 px no hay scroll horizontal (`scrollWidth` = `
 
 ## Dashboard del barbero, fase 4 — Mis citas (`/panel/citas`)
 
-> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: p. ej. "Mostrando 1–15 de 28" es un ejemplo, no lo que verás. Regenera las citas con `seed:demo` (ver la fase 3).
+> **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: p. ej. "Mostrando 1–15 de 28" es un ejemplo, no lo que verás. Regenera las citas con `sembrar:demo` (ver la fase 3).
 
-No cambia el esquema. Necesitas citas (ver la fase 3: `seed:demo`). Entra con un barbero que tenga varias.
+No cambia el esquema. Necesitas citas (ver la fase 3: `sembrar:demo`). Entra con un barbero que tenga varias.
 
 ### AF. Endpoint (curl)
 
@@ -477,7 +477,7 @@ curl -s "$API/barbero/citas?pestana=completadas&limite=5&pagina=2" -H "Authoriza
 
 > **Estado de la base de desarrollo:** al cerrar el dashboard se borraron las citas demo y se desactivaron los barberos `prueba_f3a`, `prueba_f3b` y `prueba_f3c`. Las cifras de ejemplo de esta sección (totales, páginas, ingresos) salen de una base con citas demo generadas: los totales que devuelva `curl` dependen de las citas que haya. Con la base limpia, un barbero sin citas debe ver ceros ($0) y los mensajes de vacío; es parte de la prueba.
 
-No cambia el esquema. Necesitas citas completadas del barbero (ver la fase 3: `seed:demo`).
+No cambia el esquema. Necesitas citas completadas del barbero (ver la fase 3: `sembrar:demo`).
 
 ### AH. Endpoints de estadísticas (curl)
 

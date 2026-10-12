@@ -8,7 +8,7 @@ API="http://localhost:5001/api"
 
 > **Si cambias el código del back-end, reconstruye la imagen** (`docker compose up --build -d backend`) y corre el seed dentro del contenedor (`docker compose exec backend npm run seed`). Un contenedor viejo en el puerto 5001 sirve el listado anterior (sin descripción, con los 6 servicios inactivos) y estos casos fallarían.
 >
-> Los ids de los servicios nuevos los asigna la secuencia de la base. En la base de desarrollo actual `Corte militar` es el **34** y `Corte clásico` el **35**. Si en tu base son otros, consúltalos con el caso 1 y sustituye el número en los casos que lo usan. Los ids **1 a 6** son los servicios viejos (inactivos).
+> Los ids de los servicios nuevos los asigna la secuencia de la base. En la base de desarrollo actual `Corte militar` es el **34** y `Corte clásico` el **35**. Si en la base son otros, consúltalos con el caso 1 y sustituye el número en los casos que lo usan. Los ids **1 a 6** son los servicios viejos (inactivos).
 
 Los casos con `?q=` o caracteres especiales usan `--get --data-urlencode` para que `curl` codifique bien el valor.
 

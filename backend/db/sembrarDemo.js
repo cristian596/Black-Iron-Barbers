@@ -13,8 +13,8 @@
 //
 // Cómo reconoce sus filas: el correo de la cita termina en `@demo.blackiron.example` (dominio reservado, no
 // existe). Al re-ejecutarlo borra SOLO esas citas, por id exacto (sus líneas y filas de asesoría gratis caen en
-// cascada), y las vuelve a crear con fechas relativas a hoy (Bogotá), todo en una transacción. Las citas reales y
-// las de `seed:demo` (marca "[demo] ") no se tocan. No desactiva ninguna restricción de la base. Sus filas se crean con
+// cascada), y las vuelve a crear con fechas relativas a hoy (Bogotá), todo en una transacción. Las citas reales no se tocan.
+// No desactiva ninguna restricción de la base. Sus filas se crean con
 // `recordatorio_enviado_en` ya marcado (nunca reciben recordatorio); para aplicarlo a filas demo ya existentes, se vuelve a
 // ejecutar el script (es re-ejecutable).
 //

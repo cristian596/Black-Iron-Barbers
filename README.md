@@ -47,7 +47,7 @@ docker compose up --build
 |---|---|
 | `npm start` | Levanta el servidor (necesita Postgres) |
 | `npm run seed` | Siembra barberos, el admin inicial y **solo inserta** lo que falte del catálogo (nunca pisa, reactiva ni desactiva lo que el admin edite); se puede repetir. `-- --restablecer-catalogo [--confirmar]` vuelve el catálogo a los datos de los archivos (solo desarrollo; sin `--confirmar` solo muestra qué sobrescribiría) |
-| `npm run seed:demo` | Citas de demostración, **solo desarrollo**: simula por defecto; `-- --confirmar` las crea y `-- --limpiar --confirmar` borra únicamente las marcadas `[demo]` |
+| `npm run sembrar:demo` | Citas de demostración del portafolio (~1 900, datos ficticios), **solo desarrollo**: simula por defecto; `-- --confirmar` borra y recrea las suyas y `-- --limpiar --confirmar` borra únicamente las suyas (correos `@demo.blackiron.example`) |
 | `npm test` | Tests con Vitest + Supertest contra una base de pruebas aislada |
 
 Para correr `npm test` en local, copia `backend/.env.test.example` a
@@ -89,10 +89,10 @@ públicos y con `noindex`), `/panel` (barbero: Resumen en `/panel`, Mis citas en
 | `/admin/empleados` | Empleados: crear (barbero + usuario), editar, activar o desactivar (sin borrar) y restablecer contraseña. Muestra cortes del mes, citas pendientes y el estado de la contraseña (vigente, "caduca en N días" o caducada) de cada uno |
 
 Endpoints del admin (`/api/admin/*`, solo rol admin): `estadisticas`, `estadisticas/ingresos`,
-`estadisticas/servicios-top`, `citas`, `servicios` y `categorias`, `empleados` (GET, POST y PATCH; no hay DELETE), `reportes/diario` y `reportes/diario.csv` (GET) y `usuarios`. Desactivar a un empleado desactiva también su usuario, lo saca de la web y de la reserva e invalida su sesión al instante. Las contraseñas de los barberos caducan a los 60 días (el admin está exento): el barbero solo puede cambiarla cuando faltan 2 días o menos (o ya caducó; entonces solo puede cambiarla o cerrar sesión), y cuando el admin restablece una contraseña el contador vuelve a empezar. Ver "Autenticación y roles" en CLAUDE.md. Completar y cancelar citas es exclusivo de los barberos (sobre las suyas; el admin solo puede reasignar y recibe 403 `SOLO_BARBERO`). El panel del barbero tiene endpoints de solo lectura en `/api/barbero/*` (`resumen`, `citas-por-confirmar`, `agenda-hoy`): una cita pendiente queda "por confirmar" cuando su fin más 2 horas ya pasó. Una cita solo se puede completar si su fecha es hoy
+`estadisticas/servicios-top`, `citas`, `servicios` y `categorias`, `empleados` (GET, POST y PATCH; no hay DELETE), `reportes/diario` y `reportes/diario.csv` (GET) y `usuarios`. Desactivar a un empleado desactiva también su usuario, lo saca de la web y de la reserva e invalida su sesión al instante. Las contraseñas de los barberos caducan a los 60 días (el admin está exento): el barbero solo puede cambiarla cuando faltan 2 días o menos (o ya caducó; entonces solo puede cambiarla o cerrar sesión), y cuando el admin restablece una contraseña el contador vuelve a empezar. Ver "Seguridad" en CLAUDE.md. Completar y cancelar citas es exclusivo de los barberos (sobre las suyas; el admin solo puede reasignar y recibe 403 `SOLO_BARBERO`). El panel del barbero tiene endpoints de solo lectura en `/api/barbero/*` (`resumen`, `citas-por-confirmar`, `agenda-hoy`): una cita pendiente queda "por confirmar" cuando su fin más 2 horas ya pasó. Una cita solo se puede completar si su fecha es hoy
 (hora de Bogotá) o anterior; si no, la API responde 400 con `codigo: "CITA_FUTURA"`.
 
 ## Más contexto
 
-Ver [CLAUDE.md](./CLAUDE.md) para el modelo de datos, la API, las
-convenciones de código y las reglas de seguridad del proyecto.
+Ver [CLAUDE.md](./CLAUDE.md) para el modelo de datos, los grupos de endpoints, las
+convenciones de código y las reglas de seguridad del proyecto, y [docs/despliegue.md](./docs/despliegue.md) para lo pendiente antes de publicar.

@@ -147,7 +147,6 @@ describe('elegibilidad (reloj fijo)', () => {
     ['correo inválido (sin dominio)', { correo: 'sin-arroba' }],
     ['fila de demostración (dominio demo)', { correo: `alguien@${DOMINIO_DEMO}` }, true],
     ['fila de demostración (dominio demo en mayúsculas)', { correo: `Alguien@${DOMINIO_DEMO.toUpperCase()}` }],
-    ['fila de seed:demo (cliente con marca "[demo] ")', { cliente: '[demo] Cliente' }, true],
     ['con un reclamo vigente de otro ciclo', { reclamado: new Date(ahora24().getTime() - 60_000) }, true],
   ])('%s: no se envía', async (_, datos, ni_siquiera_se_reclama) => {
     await insertar(datos);

@@ -3,7 +3,7 @@ import BotonAcento from '../ui/BotonAcento'
 import Revelar from '../ui/Revelar'
 import { PIE_SERVICIOS } from '../../data/experiencia'
 
-const NuestrosServicos = () => {
+const NuestrosServicios = () => {
   return (
     <section aria-labelledby="titulo-servicios-home" className="relative overflow-hidden bg-black">
       {/* Foto decorativa: el degradado oscuro garantiza el contraste del texto en todo el ancho */}
@@ -58,4 +58,4 @@ const NuestrosServicos = () => {
   )
 }
 
-export default NuestrosServicos
+export default NuestrosServicios

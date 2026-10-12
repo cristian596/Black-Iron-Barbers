@@ -4,7 +4,7 @@ import NuestrosColaboradores from '../components/sections/NuestrosColaboradores'
 import Estadisticas from '../components/sections/Estadisticas';
 import Testimonios from '../components/sections/Testimonios';
 import ComeAndTry from '../components/sections/ComeAndTry';
-import NuestrosServicos from '../components/sections/NuestrosServicos';
+import NuestrosServicios from '../components/sections/NuestrosServicios';
 
 const Home = () => {
   return (
@@ -15,7 +15,7 @@ const Home = () => {
       <NuestrosColaboradores />
       <Testimonios />
       <ComeAndTry />
-      <NuestrosServicos />
+      <NuestrosServicios />
     </>
   );
 };

@@ -21,13 +21,13 @@ import {
   plantillaRecordatorioCliente,
 } from './plantillasCorreo.js';
 
-// Recordatorios por correo ~24 h antes de la cita (solo al cliente). Ver «Recordatorios» en CLAUDE.md.
+// Recordatorios por correo ~24 h antes de la cita (solo al cliente). Ver «Invariantes de negocio» en CLAUDE.md.
 //
 // Elegibilidad (todas deben cumplirse; el inicio es fecha + hora interpretadas en America/Bogotá, nunca la zona del servidor):
 //  - estado 'pendiente', recordatorio_enviado_en NULL y recordatorio_intentos < 3 (y sin reclamo vigente de otro ciclo).
 //  - ahora >= inicio − RECORDATORIO_HORAS_ANTES h  y  inicio − ahora > 1 h (no se recuerda lo inminente).
 //  - la cita se creó con al menos RECORDATORIO_HORAS_ANTES h de anticipación (inicio − creada_en).
-//  - correo válido según el validador único; no es una fila de demostración (dominio demo o cliente "[demo] ").
+//  - correo válido según el validador único; no es una fila de demostración (dominio demo).
 // En una reserva combinada (mismo reserva_id) la ventana se mide contra el inicio de la PRIMERA cita elegible: así las dos
 // salen en UN correo y se marcan juntas (si solo una cumple las reglas de estado, va sola).
 //
@@ -56,7 +56,6 @@ const SQL_RECLAMAR = `
     FROM citas c
     WHERE ${CONDICIONES_DE_ESTADO}
       AND NOT (lower(c.correo) LIKE ('%@' || $4::text))
-      AND c.cliente NOT LIKE '[demo] %'
       AND ((c.fecha + c.hora) AT TIME ZONE 'America/Bogota') - c.creada_en::timestamptz >= make_interval(hours => $2::int)
   ),
   con_grupo AS (

@@ -471,7 +471,7 @@ describe('los scripts de datos de demostración no envían correos', () => {
     return hallados;
   };
 
-  it.each(['sembrarDemo.js', 'seedDemo.js'])('%s no importa (ni transitivamente) el servicio de notificaciones', (script) => {
+  it.each(['sembrarDemo.js'])('%s no importa (ni transitivamente) el servicio de notificaciones', (script) => {
     const hallados = importsAlcanzables(path.resolve(__dirname, '../db', script));
     expect(hallados.length).toBeGreaterThan(0);
     for (const destino of hallados) {
