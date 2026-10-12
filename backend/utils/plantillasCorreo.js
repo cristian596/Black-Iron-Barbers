@@ -1,5 +1,6 @@
 import { NOMBRE_NEGOCIO, DIRECCION_NEGOCIO, CIUDAD_NEGOCIO } from '../config/negocio.js';
 import { instanteDeBogota } from './ics.js';
+import { fechaBogota } from './fechas.js';
 
 // Plantillas de los correos de citas (texto plano + HTML). Reglas:
 //  - TODO valor que escribe una persona (cliente, nombres de profesional y de servicio) pasa por escaparHtml en el HTML
@@ -209,6 +210,38 @@ export const plantillaAvisoProfesional = (cita, tipo) => {
     parrafosAntes: [detalle[tipo]],
     citas: [cita],
     tachada: tipo !== 'nueva',
+  });
+};
+
+// "hoy", "mañana" o "el sábado": según la fecha de BOGOTÁ en el instante del envío (no la zona del servidor).
+const MS_DIA = 86_400_000;
+const formateadorDiaSemana = new Intl.DateTimeFormat('es-CO', { timeZone: 'UTC', weekday: 'long' });
+const aMedianocheUtc = (fecha) => Date.parse(`${fecha}T00:00:00Z`);
+export const etiquetaDia = (fechaCita, ahora) => {
+  const dias = Math.round((aMedianocheUtc(fechaCita) - aMedianocheUtc(fechaBogota(ahora))) / MS_DIA);
+  if (dias === 0) return 'hoy';
+  if (dias === 1) return 'mañana';
+  return `el ${formateadorDiaSemana.format(new Date(`${fechaCita}T12:00:00Z`))}`;
+};
+
+// Recordatorio al cliente (~24 h antes). UNA reserva (una cita, o las dos de una combinada) → UN correo. Sin adjunto .ics
+// (ya lo recibió en la confirmación) y sin datos de contacto inventados: el backend no tiene teléfono del negocio, así
+// que no hay línea de "avísanos".
+export const plantillaRecordatorioCliente = (citas, ahora = new Date()) => {
+  const combinada = citas.length > 1;
+  const cuando = [...new Set(citas.map((cita) => etiquetaDia(cita.fecha, ahora)))].join(' y ');
+  return armar({
+    asunto: `Recordatorio de tu cita en ${NOMBRE_NEGOCIO}`,
+    titulo: combinada ? 'Te recordamos tus citas' : 'Te recordamos tu cita',
+    saludo: saludoA(citas[0].cliente),
+    parrafosAntes: [
+      combinada
+        ? `Te recordamos que tienes dos citas seguidas ${cuando}. Estos son los detalles:`
+        : `Te recordamos que tu cita es ${cuando}. Estos son los detalles:`,
+    ],
+    citas,
+    resumenTotal: true,
+    parrafosDespues: [`Te esperamos en ${DIRECCION_NEGOCIO}, ${CIUDAD_NEGOCIO}.`],
   });
 };
 

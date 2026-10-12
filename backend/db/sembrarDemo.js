@@ -14,7 +14,9 @@
 // Cómo reconoce sus filas: el correo de la cita termina en `@demo.blackiron.example` (dominio reservado, no
 // existe). Al re-ejecutarlo borra SOLO esas citas, por id exacto (sus líneas y filas de asesoría gratis caen en
 // cascada), y las vuelve a crear con fechas relativas a hoy (Bogotá), todo en una transacción. Las citas reales y
-// las de `seed:demo` (marca "[demo] ") no se tocan. No desactiva ninguna restricción de la base.
+// las de `seed:demo` (marca "[demo] ") no se tocan. No desactiva ninguna restricción de la base. Sus filas se crean con
+// `recordatorio_enviado_en` ya marcado (nunca reciben recordatorio); para aplicarlo a filas demo ya existentes, se vuelve a
+// ejecutar el script (es re-ejecutable).
 //
 // La planificación (`planificarDemo`) es una función pura y determinista (misma semilla = mismos datos): se prueba sin
 // base de datos en tests/sembrarDemo.test.js.
@@ -528,14 +530,17 @@ const planDesdeBase = async (db, { semilla } = {}) => {
   return plan;
 };
 
-const insertarPlan = async (cliente, { citas }) => {
+// Las filas demo nacen con recordatorio_enviado_en ya marcado: defensa adicional a la exclusión por dominio del ciclo de
+// recordatorios (utils/recordatorios.js), para que jamás se les envíe un correo aunque esa exclusión se perdiera.
+export const insertarPlan = async (cliente, { citas }) => {
+  const marcaRecordatorio = new Date();
   for (const c of citas) {
     const { rows } = await cliente.query(
       `INSERT INTO citas
-         (cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado, creada_en, consentimiento_en, reserva_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12)
+         (cliente, correo, telefono, servicio_id, barbero_id, fecha, hora, duracion_min, precio, estado, creada_en, consentimiento_en, reserva_id, recordatorio_enviado_en)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, $12, $13)
        RETURNING id`,
-      [c.cliente, c.correo, c.telefono, c.servicio_id, c.barbero_id, c.fecha, c.hora, c.duracion_min, c.precio, c.estado, c.creada_en, c.reserva_id]
+      [c.cliente, c.correo, c.telefono, c.servicio_id, c.barbero_id, c.fecha, c.hora, c.duracion_min, c.precio, c.estado, c.creada_en, c.reserva_id, marcaRecordatorio]
     );
     const citaId = rows[0].id;
     for (const s of c.servicios) {

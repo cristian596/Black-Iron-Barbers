@@ -45,6 +45,11 @@ services:
       # caracteres y distinto de JWT_SECRET; sin él (o débil) el backend no arranca.
       EMAIL_VERIF_SECRET: ${EMAIL_VERIF_SECRET:-}
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
+      # Recordatorios por correo ~24 h antes de la cita (apagados por defecto; solo corren con EMAIL_ENABLED=true).
+      RECORDATORIOS_ENABLED: ${RECORDATORIOS_ENABLED:-false}
+      RECORDATORIO_HORAS_ANTES: ${RECORDATORIO_HORAS_ANTES:-24}
+      RECORDATORIO_INTERVALO_MIN: ${RECORDATORIO_INTERVALO_MIN:-5}
+      RECORDATORIO_MAX_POR_CICLO: ${RECORDATORIO_MAX_POR_CICLO:-50}
     volumes:
       # Fotos de perfil subidas desde el dashboard (backend/uploads): sobreviven a recrear el contenedor.
       - fotos_perfil_data:/app/uploads

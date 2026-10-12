@@ -138,6 +138,14 @@ Cada sesión se abre en un **chat/sesión nueva** de Claude Code. Al terminar ca
   - [x] Riesgo de abuso (escribir el correo de OTRA persona al reservar): resuelto con la verificación del correo con código de 6 dígitos (ver abajo).
   - [ ] Los correos a profesionales siguen apagados mientras no exista un correo de profesional en el sistema (ver «Correos y notificaciones»).
 
+- [ ] **Recordatorios por correo (ver «Recordatorios» en `CLAUDE.md`):**
+  - [ ] `RECORDATORIOS_ENABLED=true` en el `.env` de producción **junto con `EMAIL_ENABLED=true`** (sin el segundo el temporizador no arranca y solo se avisa en consola). Valores opcionales: `RECORDATORIO_HORAS_ANTES` (24), `RECORDATORIO_INTERVALO_MIN` (5), `RECORDATORIO_MAX_POR_CICLO` (50).
+  - [ ] **Una sola instancia del back-end**, o confirmar que el reclamo atómico (`UPDATE … FOR UPDATE SKIP LOCKED` sobre `citas.recordatorio_reclamado_en`) cubre varias: está probado con ciclos concurrentes en la misma base, pero cada instancia llevaría su propio temporizador.
+  - [ ] **Límite diario del SMTP**: Gmail ~500 correos al día en total (confirmaciones + códigos + recordatorios). `RECORDATORIO_MAX_POR_CICLO` (50 cada 5 min) acota la ráfaga, no el total diario; el resto se atiende en los ciclos siguientes. Un proveedor transaccional (Resend, Brevo) evita el problema.
+  - [ ] **Hosting que "duerme" por inactividad**: el temporizador NO corre mientras el servidor duerme. La recuperación tardía (un recordatorio sigue siendo válido hasta 1 hora antes de la cita) lo mitiga pero no lo resuelve: usar un hosting siempre activo o un disparador externo que despierte el servicio.
+  - [ ] Tras aplicar el esquema (columnas `recordatorio_*` en `citas`, aditivas), volver a ejecutar `npm run sembrar:demo -- --confirmar` solo en desarrollo para que las filas demo existentes queden marcadas (en producción no hay filas demo).
+  - [ ] Al activarlo por primera vez se enviarán recordatorios a las citas pendientes que ya cumplan las reglas (ver «Recordatorios»): revisar cuántas son antes de activar.
+
 - [ ] **Verificación del correo con código (ver «Verificación de correo» en `CLAUDE.md`; obligatoria en todas las reservas):**
   - [ ] `EMAIL_VERIF_SECRET` en el `.env` de producción: **aleatorio, mínimo 32 caracteres, distinto de `JWT_SECRET`** (`node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`). Nunca el valor de ejemplo de `.env.example`, nunca en el repo.
   - [ ] `REQUIRE_EMAIL_VERIFICATION=true` (o sin definir: es true por defecto) y `NODE_ENV=production`.

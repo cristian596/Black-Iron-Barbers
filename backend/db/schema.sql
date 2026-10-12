@@ -356,3 +356,14 @@ CREATE TABLE IF NOT EXISTS verificaciones_usadas (
   usado_en TIMESTAMPTZ NOT NULL,
   CONSTRAINT verificaciones_usadas_jti_key UNIQUE (jti)
 );
+
+-- Recordatorios por correo (~24 h antes de la cita; ver «Recordatorios» en CLAUDE.md). Columnas aditivas: NULL / 0 por
+-- defecto y SIN ningún UPDATE sobre las filas existentes.
+--  - recordatorio_enviado_en: instante en que el recordatorio se entregó al transporte (NULL = pendiente de enviar).
+--  - recordatorio_intentos: envíos fallidos; con 3 se deja de intentar.
+--  - recordatorio_reclamado_en: marca del reclamo atómico de un ciclo (un reclamo de más de 10 min se considera liberado).
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_enviado_en TIMESTAMPTZ;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_intentos SMALLINT NOT NULL DEFAULT 0;
+ALTER TABLE citas ADD COLUMN IF NOT EXISTS recordatorio_reclamado_en TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_citas_recordatorio_pendiente ON citas (fecha, hora)
+  WHERE estado = 'pendiente' AND recordatorio_enviado_en IS NULL AND recordatorio_intentos < 3;

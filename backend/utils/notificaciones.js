@@ -117,7 +117,7 @@ export const enviarCodigoVerificacion = async (para, codigo, minutosVigencia) =>
 // ---------- Datos ----------
 
 // Lee las citas (con fecha/hora como texto de Bogotá, profesional y líneas de servicio) DESPUÉS del commit.
-const cargarCitas = async (ids) => {
+export const cargarCitas = async (ids) => {
   const { rows } = await pool.query(
     `SELECT c.id, c.cliente, c.correo, c.fecha::text AS fecha, to_char(c.hora, 'HH24:MI') AS hora,
             c.duracion_min, c.precio, c.estado, c.reserva_id, c.barbero_id,
