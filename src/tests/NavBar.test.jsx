@@ -43,11 +43,12 @@ describe('NavBar', () => {
 
     expect(header).toHaveClass('sticky', 'top-0')
     expect(header).toHaveAttribute('data-scrolled', 'false')
-    expect(header).not.toHaveClass('backdrop-blur-md')
+    expect(header).not.toHaveClass('md:backdrop-blur-md')
 
     hacerScroll(200)
     expect(header).toHaveAttribute('data-scrolled', 'true')
-    expect(header).toHaveClass('backdrop-blur-md')
+    // Móvil: fondo sólido (bg-black); desde md vuelve el fondo translúcido con desenfoque.
+    expect(header).toHaveClass('bg-black', 'md:backdrop-blur-md')
 
     hacerScroll(0)
     expect(header).toHaveAttribute('data-scrolled', 'false')

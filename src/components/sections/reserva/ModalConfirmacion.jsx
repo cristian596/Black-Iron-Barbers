@@ -376,16 +376,16 @@ const ModalConfirmacion = ({
                 >
                   {verificacion.pendiente === 'verificando' ? 'Verificando...' : 'Verificar código'}
                 </button>
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={verificacion.solicitar}
                     disabled={verificacion.restante > 0 || verificacion.pendiente !== ''}
-                    className={`${botonAviso} disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-black`}
+                    className={`${botonAviso} w-auto! grow whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-black`}
                   >
                     {verificacion.restante > 0 ? `Reenviar código (${verificacion.restante} s)` : 'Reenviar código'}
                   </button>
-                  <button type="button" onClick={cambiarCorreo} className={botonAviso}>
+                  <button type="button" onClick={cambiarCorreo} className={`${botonAviso} w-auto! grow whitespace-nowrap`}>
                     Cambiar correo
                   </button>
                 </div>

@@ -46,7 +46,7 @@ const CarritoServicios = () => {
     <>
       <aside
         aria-label="Tu selección"
-        className="hidden min-w-0 rounded-2xl border border-oro/40 bg-zinc-950 p-5 text-white shadow-xl lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto"
+        className="hidden min-w-0 rounded-2xl border border-oro/40 bg-zinc-950 p-5 text-white shadow-xl lg:sticky lg:top-24 lg:block lg:max-h-[calc(100dvh-15rem)] lg:overflow-y-auto"
       >
         <h2 className="mb-3 font-cinzel text-2xl font-bold text-oro">Tu selección</h2>
         <ContenidoCarrito

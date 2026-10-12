@@ -19,7 +19,7 @@ const HeroDatos = ({ className = '' }) => {
   return (
     <ul
       aria-label='Datos de la barbería'
-      className={`flex flex-col gap-3 border-t border-white/15 pt-6 font-poppins text-sm text-zinc-200 sm:flex-row sm:flex-wrap sm:gap-x-8 ${className}`}
+      className={`flex flex-col gap-3 pr-14 sm:pr-0 border-t border-white/15 pt-6 font-poppins text-sm text-zinc-200 sm:flex-row sm:flex-wrap sm:gap-x-8 ${className}`}
     >
       {datos.map(({ Icono, texto }) => (
         <li key={texto} className='flex items-center gap-2'>

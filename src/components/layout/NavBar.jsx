@@ -97,7 +97,7 @@ const NavBar = () => {
           menuMovil ? 'fixed inset-x-0' : 'sticky'
         } top-0 ${menuMovil ? 'z-70' : 'z-50'} border-b transition-colors duration-300 text-white ${
           conScroll
-            ? 'bg-black/70 backdrop-blur-md border-oro/30'
+            ? 'bg-black border-oro/30 md:bg-black/70 md:backdrop-blur-md'
             : 'bg-black/90 border-white/10'
         }`}
       >

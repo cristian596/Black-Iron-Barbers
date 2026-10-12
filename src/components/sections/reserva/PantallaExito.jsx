@@ -26,7 +26,7 @@ const PantallaExito = ({ resumen, onNuevaReserva, areaUnica = 'barberia' }) => {
     <div className="flex min-h-[70vh] flex-col items-center justify-center gap-4 px-5 text-center">
       <span
         aria-hidden="true"
-        className="flex h-16 w-16 items-center justify-center rounded-full bg-oro3xl font-bold text-black"
+        className="flex h-20 w-20 items-center justify-center rounded-full bg-oro text-5xl font-bold leading-none text-black sm:h-24 sm:w-24 sm:text-6xl"
       >
         ✓
       </span>
