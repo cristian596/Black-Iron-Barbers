@@ -7,7 +7,7 @@ Todas las capturas se hicieron con datos ficticios (clientes `@example.com` o `@
 | `01-inicio-hero-escritorio.webp` | Portada: hero con titular, botones de reserva y datos del local | 77 KB | Portada con llamada directa a reservar, horario y dirección. |
 | `01-inicio-hero-movil.webp` | La misma portada en móvil (390 px) | 109 KB | La portada se adapta a móvil con botones a ancho completo. |
 | `02-inicio-secciones-escritorio.webp` | Secciones «Más que una barbería» y «Nuestros servicios» | 149 KB | Secciones de presentación con acceso a la carta y a la asesoría gratuita. |
-| `03-cortes-catalogo-escritorio.webp` | Carta de servicios con filtros y el carrito «Tu selección» con 2 servicios | 116 KB | Catálogo filtrable por categoría y nivel, con carrito de hasta 3 servicios y total de tiempo y precio. |
+| `03-cortes-catalogo-escritorio.webp` | Carta de servicios con filtros y el carrito «Tu selección» con 2 servicios | 117 KB | Catálogo filtrable por categoría y nivel, con carrito de hasta 3 servicios y total de tiempo y precio. |
 | `03-cortes-carrito-movil.webp` | Panel deslizable «Tu selección» abierto en móvil | 53 KB | En móvil el carrito es un panel inferior con el total y el botón de agendar. |
 | `04-asesorias-escritorio.webp` | Página `/asesorias`: resumen y asesoría de imagen gratis | 107 KB | Página de asesorías de imagen con precios y duraciones que vienen de la API. |
 | `05-footer-escritorio.webp` | Cierre de página y pie con navegación, horario y contacto | 39 KB | Pie de página con navegación, horario, dirección y contacto. |
