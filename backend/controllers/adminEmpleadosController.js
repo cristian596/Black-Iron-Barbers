@@ -7,7 +7,8 @@ import { pool } from '../db/connection.js';
 import { ahoraBogota, hoyISO } from '../utils/fechas.js';
 import { primerDiaDelMes, sumarMeses } from '../utils/periodos.js';
 import { validarParametros } from '../utils/parametrosQuery.js';
-import { estadoContrasena, MIN_CONTRASENA, MAX_CONTRASENA } from '../utils/contrasenas.js';
+import { estadoContrasena, MIN_CONTRASENA, MAX_CONTRASENA, COSTO_BCRYPT, bytesContrasenaValidos } from '../utils/contrasenas.js';
+import { evaluarContrasena } from '../utils/politicaContrasenas.js';
 import { AREAS, AREA_BARBERIA, esAreaValida, contarCitasAbiertas } from '../utils/areas.js';
 
 const ID_MAXIMO_INT = 2147483647;
@@ -43,7 +44,7 @@ const REGLAS_ALTA = {
       ? { valor: v.trim() }
       : { mensaje: `El usuario es obligatorio y debe tener entre 1 y ${MAX_USUARIO} caracteres` },
   contrasena: (v) =>
-    typeof v === 'string' && v.length >= MIN_CONTRASENA && v.length <= MAX_CONTRASENA
+    typeof v === 'string' && v.length >= MIN_CONTRASENA && bytesContrasenaValidos(v)
       ? { valor: v }
       : { mensaje: `La contraseña debe tener entre ${MIN_CONTRASENA} y ${MAX_CONTRASENA} caracteres` },
 };
@@ -152,7 +153,10 @@ export const crearEmpleado = async (req, res, next) => {
       if (!(obligatorio in datos)) return datoInvalido(res, obligatorio, `El campo ${obligatorio} es obligatorio`);
     }
 
-    const hash = await bcrypt.hash(datos.contrasena, 10);
+    const debil = evaluarContrasena(datos.contrasena, { usuario: datos.usuario });
+    if (debil) return datoInvalido(res, 'contrasena', debil.error);
+
+    const hash = await bcrypt.hash(datos.contrasena, COSTO_BCRYPT);
 
     cliente = await pool.connect();
     await cliente.query('BEGIN');
@@ -224,7 +228,7 @@ export const actualizarEmpleado = async (req, res, next) => {
     }
 
     if (datos.activo === false) {
-      await cliente.query(`UPDATE usuarios SET activo = false WHERE barbero_id = $1 AND rol = 'barbero'`, [id]);
+      await cliente.query(`UPDATE usuarios SET activo = false, version_token = version_token + 1 WHERE barbero_id = $1 AND rol = 'barbero'`, [id]);
     } else if (datos.activo === true) {
       // Se reactiva solo el usuario que el listado muestra (el más reciente); los demás ligados quedan como estaban.
       await cliente.query(

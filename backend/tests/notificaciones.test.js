@@ -356,9 +356,20 @@ describe('robustez', () => {
     expect(cliente.opciones.html).toContain('O&#39;Brien &amp; &quot;Hijos&quot;');
   });
 
-  it('con saltos de línea y un Bcc: en el nombre, no se crea ninguna cabecera extra', async () => {
+  // MODIFICADO: antes la reserva con saltos de línea en el nombre se aceptaba (201) y solo la plantilla lo neutralizaba. Ahora la
+  // API lo rechaza en el borde (400, sin crear nada ni enviar correo) y la plantilla sigue defendiéndose de datos ya guardados.
+  it('un nombre con saltos de línea y un Bcc: se rechaza al reservar (400) y no se envía nada', async () => {
     const res = await reservar({ cliente: 'Eve\r\nBcc: victima@example.com\r\nSubject: hackeado' });
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(400);
+    await esperarNotificaciones();
+    expect(transporte.enviados).toHaveLength(0);
+  });
+
+  it('con saltos de línea y un Bcc: en un nombre ya guardado, no se crea ninguna cabecera extra', async () => {
+    await pool.query('TRUNCATE citas RESTART IDENTITY CASCADE');
+    const id = await insertarCita({ fecha: FECHA, estado: 'pendiente', barbero_id: 2, hora: '10:30', cliente: 'Eve\r\nBcc: victima@example.com\r\nSubject: hackeado' });
+    transporte.vaciar();
+    notificarCitasCreadas([id]);
     await esperarNotificaciones();
 
     expect(transporte.enviados.length).toBeGreaterThan(0);
@@ -370,7 +381,7 @@ describe('robustez', () => {
       expect(lineas.filter((linea) => /^bcc:/i.test(linea))).toHaveLength(0);
       expect(lineas.filter((linea) => /^subject:/i.test(linea))).toHaveLength(1);
     }
-    const aviso = enviadosA('barbero1@example.com')[0];
+    const aviso = enviadosA('barbero2@example.com')[0];
     expect(aviso.opciones.subject).toContain('Eve Bcc: victima@example.com');
   });
 

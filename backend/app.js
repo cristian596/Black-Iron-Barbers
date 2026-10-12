@@ -13,12 +13,22 @@ import citasRoutes from './routes/citas.js';
 import asesoriasRoutes from './routes/asesorias.js';
 import verificacionCorreoRoutes from './routes/verificacionCorreo.js';
 import { errorHandler } from './middlewares/errorHandler.js';
+import { cabecerasSeguridad } from './middlewares/cabecerasSeguridad.js';
 
 export const crearApp = () => {
   const app = express();
 
+  app.disable('x-powered-by');
+  app.use(cabecerasSeguridad);
   app.use(cors({ origin: env.frontendUrl }));
-  app.use(express.json());
+  app.use(express.json({ limit: '100kb' }));
+  // Con un Content-Type distinto de JSON (form-urlencoded, texto, sin cuerpo) Express 5 deja req.body sin definir y los
+  // controladores que lo desestructuran fallaban con un TypeError (500). Un objeto vacío los lleva a su validación normal (400).
+  // La subida de fotos usa su propio parser (express.raw) en esa ruta y lo reemplaza.
+  app.use((req, res, next) => {
+    if (req.body === undefined) req.body = {};
+    next();
+  });
 
   app.get('/', (req, res) => {
     res.send('Servidor de Black Iron Barbers corriendo con éxito 💈');
@@ -35,6 +45,9 @@ export const crearApp = () => {
   app.use('/api/citas', citasRoutes);
   app.use('/api/asesorias', asesoriasRoutes);
   app.use('/api/verificacion-correo', verificacionCorreoRoutes);
+
+  // Cualquier otra ruta: JSON genérico (el 404 por defecto de Express es HTML y nombra el framework).
+  app.use((req, res) => res.status(404).json({ error: 'Ruta no encontrada' }));
 
   app.use(errorHandler);
 

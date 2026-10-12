@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { omitirLimitadores } from '../config/entorno.js';
 import rateLimit from 'express-rate-limit';
 import { comprobarAsesoriaGratis } from '../controllers/asesoriasController.js';
 
@@ -21,7 +22,7 @@ const limitarComprobacionGratis = rateLimit({
       reintentar_en_seg: reintentarEnSeg,
     });
   },
-  skip: () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true',
+  skip: () => omitirLimitadores(),
 });
 
 router.post('/gratis/comprobar', limitarComprobacionGratis, comprobarAsesoriaGratis);

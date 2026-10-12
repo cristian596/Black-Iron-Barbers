@@ -3,9 +3,16 @@ import { pool } from './connection.js';
 import { env } from '../config/env.js';
 import { sembrarCatalogo, restablecerCatalogo, calcularRestablecimiento } from './sembrarCatalogo.js';
 import { sembrarPersonal } from './sembrarPersonal.js';
+import { problemaContrasenaAdmin } from '../utils/politicaContrasenas.js';
+import { COSTO_BCRYPT } from '../utils/contrasenas.js';
 
 const seedAdmin = async () => {
-  const hash = await bcrypt.hash(env.adminPassword, 10);
+  // Si el admin ya existe no se toca (ni se juzga su contraseña); solo se valida la de .env cuando se va a CREAR.
+  const { rows: existente } = await pool.query('SELECT 1 FROM usuarios WHERE usuario = $1', [env.adminUser]);
+  if (existente.length > 0) return;
+  const problema = problemaContrasenaAdmin(env.adminUser, env.adminPassword);
+  if (problema) throw new Error(`ADMIN_PASSWORD no es aceptable: ${problema}`);
+  const hash = await bcrypt.hash(env.adminPassword, COSTO_BCRYPT);
   await pool.query(
     `INSERT INTO usuarios (usuario, contrasena, rol, barbero_id)
      SELECT $1::varchar, $2::varchar, 'admin', NULL

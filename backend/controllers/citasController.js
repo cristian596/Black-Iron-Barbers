@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { pool } from '../db/connection.js';
+import { leerIdEstricto } from '../utils/parametrosQuery.js';
 import {
   esFechaValida,
   esHoraValida,
@@ -24,7 +25,6 @@ import { identidadAsesoria } from '../utils/identidadAsesoria.js';
 import { notificarCitasCreadas, notificarCancelacion, notificarCambioProfesional } from '../utils/notificaciones.js';
 
 import { validarCorreo } from '../utils/validarCorreo.js';
-import { verificacionRequerida } from '../config/verificacion.js';
 import {
   leerComprobante,
   comprobanteYaUsado,
@@ -204,7 +204,7 @@ const horaDesdeMinutos = (minutos) =>
 // Id opcional del cuerpo (barbero_id / asesor_id): vacío = no vino. Devuelve { id } (null si no vino) o { error }.
 const leerIdProfesional = (valor, etiqueta) => {
   if (valor === undefined || valor === null || valor === '') return { id: null };
-  const id = Number(valor);
+  const id = leerIdEstricto(valor);
   if (!Number.isInteger(id)) return { error: { status: 400, cuerpo: { error: `El ${etiqueta} debe ser un id numérico` } } };
   return { id };
 };
@@ -226,6 +226,8 @@ const TEXTOS_AREA = {
   },
 };
 
+const MAX_NOMBRE_CLIENTE = 100;
+
 export const crearCita = async (req, res, next) => {
   try {
     // Cualquier total, precio, duración o área que mande el cliente se ignora: solo se leen estos campos.
@@ -233,6 +235,10 @@ export const crearCita = async (req, res, next) => {
 
     if (!cliente || typeof cliente !== 'string' || cliente.trim().length === 0) {
       return res.status(400).json({ error: 'El nombre del cliente es obligatorio' });
+    }
+    // citas.cliente es VARCHAR(100): más largo daba un 500 de Postgres. Se rechaza antes, junto con caracteres de control.
+    if (cliente.length > MAX_NOMBRE_CLIENTE || [...cliente].some((c) => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127)) {
+      return res.status(400).json({ error: `El nombre del cliente debe tener hasta ${MAX_NOMBRE_CLIENTE} caracteres y sin caracteres de control`, codigo: 'DATOS_INVALIDOS', campo: 'cliente' });
     }
     // Validador único (utils/validarCorreo.js): una sola dirección simple, ya en minúsculas y sin espacios. Es la que se
     // guarda en la cita y contra la que se compara el comprobante de verificación.
@@ -243,27 +249,25 @@ export const crearCita = async (req, res, next) => {
 
     // Verificación del correo: se comprueba ANTES de cualquier otra lógica costosa (firma, typ, aud, vigencia, que sea de
     // ESTE correo y que no se haya usado). El consumo ocurre dentro de la transacción de la reserva (insertarReserva).
-    let comprobante = null;
-    if (verificacionRequerida()) {
-      const { verificacion_token: token } = req.body;
-      if (token === undefined || token === null || token === '') {
-        return res.status(400).json({ error: 'Verifica tu correo para poder reservar', codigo: 'VERIFICACION_REQUERIDA' });
-      }
-      const leido = leerComprobante(token);
-      if (!leido.ok) {
-        return res.status(400).json({
-          error: leido.codigo === 'VERIFICACION_EXPIRADA' ? 'La verificación de tu correo venció, verifícalo de nuevo' : 'La verificación de tu correo no es válida',
-          codigo: leido.codigo,
-        });
-      }
-      if (leido.correo !== correoCita) {
-        return res.status(400).json({ error: 'El correo verificado no coincide con el de la reserva', codigo: 'CORREO_NO_COINCIDE' });
-      }
-      if (await comprobanteYaUsado(leido.jti)) {
-        return res.status(400).json({ error: 'La verificación de tu correo no es válida', codigo: 'VERIFICACION_INVALIDA' });
-      }
-      comprobante = { jti: leido.jti, correo: correoCita };
+    // Siempre obligatoria: no hay ninguna variable de entorno ni modo de prueba que la salte.
+    const { verificacion_token: token } = req.body;
+    if (token === undefined || token === null || token === '') {
+      return res.status(400).json({ error: 'Verifica tu correo para poder reservar', codigo: 'VERIFICACION_REQUERIDA' });
     }
+    const leido = leerComprobante(token);
+    if (!leido.ok) {
+      return res.status(400).json({
+        error: leido.codigo === 'VERIFICACION_EXPIRADA' ? 'La verificación de tu correo venció, verifícalo de nuevo' : 'La verificación de tu correo no es válida',
+        codigo: leido.codigo,
+      });
+    }
+    if (leido.correo !== correoCita) {
+      return res.status(400).json({ error: 'El correo verificado no coincide con el de la reserva', codigo: 'CORREO_NO_COINCIDE' });
+    }
+    if (await comprobanteYaUsado(leido.jti)) {
+      return res.status(400).json({ error: 'La verificación de tu correo no es válida', codigo: 'VERIFICACION_INVALIDA' });
+    }
+    const comprobante = { jti: leido.jti, correo: correoCita };
 
     const telefonoNormalizado = normalizarTelefono(telefono);
     if (!esTelefonoValido(telefonoNormalizado)) {
@@ -451,7 +455,7 @@ export const listarCitas = async (req, res, next) => {
       valores.push(barberoToken);
       condiciones.push(`c.barbero_id = $${valores.length}`);
     } else if (rol === 'admin' && barbero) {
-      const barberoId = Number(barbero);
+      const barberoId = leerIdEstricto(barbero);
       if (!Number.isInteger(barberoId)) {
         return res.status(400).json({ error: 'El filtro barbero debe ser un id numérico' });
       }
@@ -501,9 +505,14 @@ export const actualizarCita = async (req, res, next) => {
     const { estado, barbero_id } = req.body;
     const { rol, barbero_id: barberoToken } = req.usuario;
 
-    const citaId = Number(id);
+    const citaId = leerIdEstricto(id);
     if (!Number.isInteger(citaId)) {
       return res.status(400).json({ error: 'Id de cita inválido' });
+    }
+    // barbero_id (solo el admin lo manda): un entero estricto, antes de tocar la base.
+    const nuevoBarberoSolicitado = barbero_id === undefined ? undefined : leerIdEstricto(barbero_id);
+    if (nuevoBarberoSolicitado !== undefined && !Number.isInteger(nuevoBarberoSolicitado)) {
+      return res.status(400).json({ error: 'El barbero_id debe ser un id numérico' });
     }
 
     if (estado === undefined && barbero_id === undefined) {
@@ -544,7 +553,7 @@ export const actualizarCita = async (req, res, next) => {
     }
 
     // Tampoco se reasigna una cita en estado final (cambiar de profesional no tiene sentido y movería citas del historial).
-    if (barbero_id !== undefined && ESTADOS_FINALES.includes(cita.estado) && Number(barbero_id) !== cita.barbero_id) {
+    if (barbero_id !== undefined && ESTADOS_FINALES.includes(cita.estado) && nuevoBarberoSolicitado !== cita.barbero_id) {
       return res.status(409).json(errorTransicionInvalida(cita.estado, undefined));
     }
 
@@ -559,10 +568,7 @@ export const actualizarCita = async (req, res, next) => {
 
     let nuevoBarberoId = cita.barbero_id;
     if (barbero_id !== undefined) {
-      nuevoBarberoId = Number(barbero_id);
-      if (!Number.isInteger(nuevoBarberoId)) {
-        return res.status(400).json({ error: 'El barbero_id debe ser un id numérico' });
-      }
+      nuevoBarberoId = nuevoBarberoSolicitado;
       const { rows: barberos } = await pool.query(
         'SELECT id, area FROM barberos WHERE id = $1 AND activo = true',
         [nuevoBarberoId]

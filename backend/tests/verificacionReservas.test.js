@@ -289,10 +289,11 @@ describe('POST /api/citas exige el comprobante del correo', () => {
     expect((await reservar(cuerpo({ verificacion_token: token }))).status).toBe(201);
   });
 
-  it('REQUIRE_EMAIL_VERIFICATION=false (solo fuera de producción) permite reservar sin comprobante', async () => {
+  it('REQUIRE_EMAIL_VERIFICATION=false NO permite reservar sin comprobante (la bandera ya no existe)', async () => {
     vi.stubEnv('REQUIRE_EMAIL_VERIFICATION', 'false');
     const res = await reservar(cuerpo({ verificacion_token: undefined }));
-    expect(res.status).toBe(201);
+    expect(res.status).toBe(400);
+    expect(res.body.codigo).toBe('VERIFICACION_REQUERIDA');
     expect(await filasUsadas()).toEqual([]);
   });
 });

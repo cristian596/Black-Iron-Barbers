@@ -72,8 +72,10 @@ export const leerServiciosDelCuerpo = ({ servicio_id: servicioId, servicios_ids:
   if (typeof servicioId !== 'number' && typeof servicioId !== 'string') {
     return { error: falla({ error: 'El servicio es obligatorio' }) };
   }
+  // Solo enteros decimales: nada de "0x2", " 2", "1e0" ni decimales (Number() los aceptaría).
+  if (typeof servicioId === 'string' && !/^\d{1,15}$/.test(servicioId)) return { error: falla({ error: 'El servicio es obligatorio' }) };
   const numero = Number(servicioId);
-  if (!Number.isInteger(numero)) return { error: falla({ error: 'El servicio es obligatorio' }) };
+  if (!Number.isSafeInteger(numero)) return { error: falla({ error: 'El servicio es obligatorio' }) };
   if (numero < 1 || numero > ID_MAXIMO_INT) return { error: errorServiciosNoDisponibles([numero], 1) };
   return { ids: [numero] };
 };

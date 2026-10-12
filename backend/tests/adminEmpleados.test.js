@@ -273,8 +273,8 @@ describe('POST /api/admin/empleados', () => {
 
   it('acepta los límites: nombre de 100, usuario de 50 y contraseña de 8 y 72', async () => {
     const nombre = `Prueba ${'n'.repeat(93)}`;
-    expect((await post('/empleados', empleadoValido({ nombre, usuario: `prueba_${'u'.repeat(43)}`, contrasena: 'c'.repeat(8) }))).status).toBe(201);
-    expect((await post('/empleados', empleadoValido({ usuario: 'prueba_72', contrasena: 'c'.repeat(72) }))).status).toBe(201);
+    expect((await post('/empleados', empleadoValido({ nombre, usuario: `prueba_${'u'.repeat(43)}`, contrasena: 'aB3$kLm9' }))).status).toBe(201);
+    expect((await post('/empleados', empleadoValido({ usuario: 'prueba_72', contrasena: 'aB3$kLm9'.repeat(9) }))).status).toBe(201); // MODIFICADO: ya no se aceptan contraseñas triviales (un solo carácter repetido)
   });
 
   it('rechaza claves desconocidas (también activo, foto y rol) y cuerpos que no son objeto', async () => {
@@ -442,7 +442,7 @@ describe('barbero inactivo en la reserva', () => {
 });
 
 describe('token de un usuario desactivado', () => {
-  it('deja de funcionar al instante (401 SESION_INVALIDA) aunque no haya expirado, y vuelve al reactivar', async () => {
+  it('deja de funcionar al instante (401 SESION_INVALIDA) aunque no haya expirado, y NO revive al reactivar (hay que volver a entrar)', async () => {
     const empleado = await crear();
     const token = await iniciarSesion('prueba_angel');
     const propias = () => request(app).get('/api/citas').set('Authorization', `Bearer ${token}`);
@@ -454,7 +454,10 @@ describe('token de un usuario desactivado', () => {
     expect(rechazada.body.codigo).toBe('SESION_INVALIDA');
 
     await patch(`/empleados/${empleado.id}`, { activo: true });
-    expect((await propias()).status).toBe(200);
+    // MODIFICADO: antes el mismo token volvía a servir al reactivar; ahora la desactivación revoca la sesión (version_token).
+    expect((await propias()).status).toBe(401);
+    const nuevo = await iniciarSesion('prueba_angel');
+    expect((await request(app).get('/api/citas').set('Authorization', `Bearer ${nuevo}`)).status).toBe(200);
   });
 
   it('desactivar solo el barbero (estado inconsistente heredado) también invalida el token', async () => {

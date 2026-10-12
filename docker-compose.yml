@@ -8,8 +8,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+    # Solo en localhost: la base NO debe quedar publicada en la red (en producción, sin `ports`: la alcanza el backend por la red interna).
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - postgres_barber_data:/var/lib/postgresql/data
 
@@ -18,8 +19,9 @@ services:
     build: ./backend
     container_name: black_iron_backend
     restart: always
+    # Solo en localhost en desarrollo; en producción lo publica el proxy inverso (TLS), no este mapeo.
     ports:
-      - "5001:5000"
+      - "127.0.0.1:5001:5000"
     environment:
       DB_USER: ${POSTGRES_USER}
       DB_PASSWORD: ${POSTGRES_PASSWORD}
@@ -28,6 +30,8 @@ services:
       DB_NAME: ${POSTGRES_DB}
       PORT: 5000
       TZ: America/Bogota
+      # En un despliegue real DEBE ser production (activa las exigencias de arranque). Sin definir, el backend avisa en consola.
+      NODE_ENV: ${NODE_ENV:-development}
       JWT_SECRET: ${JWT_SECRET}
       ADMIN_USER: ${ADMIN_USER}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
@@ -44,7 +48,6 @@ services:
       # Verificación del correo con código (obligatoria al reservar). EMAIL_VERIF_SECRET: propio, aleatorio, >= 32
       # caracteres y distinto de JWT_SECRET; sin él (o débil) el backend no arranca.
       EMAIL_VERIF_SECRET: ${EMAIL_VERIF_SECRET:-}
-      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
       # Recordatorios por correo ~24 h antes de la cita (apagados por defecto; solo corren con EMAIL_ENABLED=true).
       RECORDATORIOS_ENABLED: ${RECORDATORIOS_ENABLED:-false}
       RECORDATORIO_HORAS_ANTES: ${RECORDATORIO_HORAS_ANTES:-24}

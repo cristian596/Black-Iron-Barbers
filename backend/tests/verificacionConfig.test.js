@@ -4,12 +4,14 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool } from '../db/connection.js';
-import { validarConfiguracionVerificacion, verificacionRequerida } from '../config/verificacion.js';
+import * as moduloVerificacion from '../config/verificacion.js';
+import { validarConfiguracionVerificacion } from '../config/verificacion.js';
 
 // Configuración de la verificación del correo: arranque en producción, valores débiles o ausentes y esquema idempotente.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const SECRETO = 'un-secreto-propio-de-la-verificacion-0123456789abcdef';
+const JWT_FUERTE = 'Qw3rTy9uIo1pAs5dFg7hJk2lZx4cVb6nM8qWe0rTy3uIo5pA';
 
 const produccionValida = {
   NODE_ENV: 'production',
@@ -19,15 +21,11 @@ const produccionValida = {
   EMAIL_FROM: 'Black Iron Barbers <no-reply@example.com>',
   EMAIL_VERIF_SECRET: SECRETO,
   JWT_SECRET: 'otro-secreto-del-login-que-es-distinto-0123456789',
-  REQUIRE_EMAIL_VERIFICATION: 'true',
 };
 
 describe('validarConfiguracionVerificacion en producción', () => {
-  it('arranca si todo está bien (también con REQUIRE_EMAIL_VERIFICATION sin definir: es true por defecto)', () => {
+  it('arranca si todo está bien', () => {
     expect(() => validarConfiguracionVerificacion(produccionValida)).not.toThrow();
-    const sinBandera = { ...produccionValida };
-    delete sinBandera.REQUIRE_EMAIL_VERIFICATION;
-    expect(() => validarConfiguracionVerificacion(sinBandera)).not.toThrow();
   });
 
   it.each([
@@ -39,7 +37,6 @@ describe('validarConfiguracionVerificacion en producción', () => {
     ['EMAIL_VERIF_SECRET débil (31 caracteres)', { EMAIL_VERIF_SECRET: 'x'.repeat(31) }, /demasiado corto/],
     ['EMAIL_VERIF_SECRET igual al JWT_SECRET', { EMAIL_VERIF_SECRET: SECRETO, JWT_SECRET: SECRETO }, /distinto de JWT_SECRET/],
     ['EMAIL_VERIF_SECRET con el valor de ejemplo de .env.example', { EMAIL_VERIF_SECRET: 'cambia-esto-por-un-secreto-aleatorio-de-al-menos-32-caracteres' }, /valor de ejemplo/],
-    ['REQUIRE_EMAIL_VERIFICATION=false', { REQUIRE_EMAIL_VERIFICATION: 'false' }, /REQUIRE_EMAIL_VERIFICATION/],
   ])('no arranca: %s', (_, cambios, patron) => {
     const variables = { ...produccionValida, ...cambios };
     expect(() => validarConfiguracionVerificacion(variables)).toThrow(patron);
@@ -66,16 +63,12 @@ describe('validarConfiguracionVerificacion fuera de producción', () => {
     expect(() => validarConfiguracionVerificacion({ EMAIL_VERIF_SECRET: 'corto' })).toThrow(/demasiado corto/);
   });
 
-  it('REQUIRE_EMAIL_VERIFICATION es true por defecto y solo "false"/"0"/"no" lo apagan', () => {
-    expect(verificacionRequerida({})).toBe(true);
-    expect(verificacionRequerida({ REQUIRE_EMAIL_VERIFICATION: '' })).toBe(true);
-    expect(verificacionRequerida({ REQUIRE_EMAIL_VERIFICATION: 'true' })).toBe(true);
-    expect(verificacionRequerida({ REQUIRE_EMAIL_VERIFICATION: 'cualquier-cosa' })).toBe(true);
-    expect(verificacionRequerida({ REQUIRE_EMAIL_VERIFICATION: 'false' })).toBe(false);
-  });
-
-  it('con la verificación apagada ya no exige el secreto', () => {
-    expect(() => validarConfiguracionVerificacion({ REQUIRE_EMAIL_VERIFICATION: 'false' })).not.toThrow();
+  it('REQUIRE_EMAIL_VERIFICATION ya no existe: ninguna variante apaga la verificación ni evita exigir el secreto', () => {
+    expect(moduloVerificacion.verificacionRequerida).toBeUndefined();
+    for (const valor of ['false', '0', 'no', 'FALSE', '']) {
+      expect(() => validarConfiguracionVerificacion({ REQUIRE_EMAIL_VERIFICATION: valor })).toThrow(/EMAIL_VERIF_SECRET/);
+      expect(() => validarConfiguracionVerificacion({ NODE_ENV: 'development', REQUIRE_EMAIL_VERIFICATION: valor })).toThrow(/EMAIL_VERIF_SECRET/);
+    }
   });
 });
 
@@ -85,7 +78,7 @@ describe('Arranque real del servidor (index.js)', () => {
       execFile(
         process.execPath,
         ['index.js'],
-        { cwd: path.resolve(__dirname, '..'), env: { ...process.env, ...sobrescribir }, timeout: 20000 },
+        { cwd: path.resolve(__dirname, '..'), env: { ...process.env, JWT_SECRET: JWT_FUERTE, FRONTEND_URL: 'https://blackiron.example', ...sobrescribir }, timeout: 20000 },
         (error, stdout, stderr) => resolve({ codigo: error?.code ?? 0, stdout, stderr })
       );
     });
@@ -102,7 +95,25 @@ describe('Arranque real del servidor (index.js)', () => {
     });
     expect(resultado.codigo).toBe(1);
     expect(resultado.stderr).toContain('EMAIL_VERIF_SECRET');
-    expect(resultado.stderr).not.toContain(process.env.JWT_SECRET);
+    expect(resultado.stderr).not.toContain(JWT_FUERTE);
+  }, 30000);
+
+  it.each([
+    ['JWT_SECRET débil', 'changeme'],
+    ['JWT_SECRET de ejemplo', 'cambia-esto-por-un-secreto-aleatorio-de-al-menos-32-caracteres'],
+  ])('en producción con %s sale con error claro', async (_, jwt) => {
+    const resultado = await arrancar({
+      NODE_ENV: 'production',
+      EMAIL_ENABLED: 'true',
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_PORT: '587',
+      EMAIL_FROM: 'a@example.com',
+      EMAIL_VERIF_SECRET: SECRETO,
+      JWT_SECRET: jwt,
+      PORT: '0',
+    });
+    expect(resultado.codigo).toBe(1);
+    expect(resultado.stderr).toContain('JWT_SECRET');
   }, 30000);
 
   it('en producción con EMAIL_ENABLED=false sale con error claro', async () => {
@@ -147,4 +158,16 @@ describe('Esquema de la verificación', () => {
     });
     await pool.query("DELETE FROM verificaciones_usadas WHERE jti = 'jti-config'");
   });
+});
+
+describe('Arranque real: FRONTEND_URL en producción', () => {
+  it('con http o un comodín el servidor no arranca', async () => {
+    for (const FRONTEND_URL of ['http://blackiron.example', '*']) {
+      const resultado = await new Promise((resolve) =>
+        execFile(process.execPath, ['index.js'], { cwd: path.resolve(__dirname, '..'), env: { ...process.env, NODE_ENV: 'production', JWT_SECRET: JWT_FUERTE, EMAIL_VERIF_SECRET: SECRETO, EMAIL_ENABLED: 'true', SMTP_HOST: 'smtp.example.com', SMTP_PORT: '587', EMAIL_FROM: 'a@example.com', FRONTEND_URL, PORT: '0' }, timeout: 20000 }, (error, _out, stderr) => resolve({ codigo: error?.code ?? 0, stderr }))
+      );
+      expect(resultado.codigo).toBe(1);
+      expect(resultado.stderr).toContain('FRONTEND_URL');
+    }
+  }, 60000);
 });

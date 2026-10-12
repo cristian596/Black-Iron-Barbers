@@ -42,9 +42,12 @@ describe('Limitador de PATCH /api/auth/contrasena', () => {
 
   it('los cambios correctos no gastan cupo', async () => {
     const token = await sesion('prueba_rl3');
-    expect((await cambiar(token, { actual: CLAVE, nueva: 'nueva-clave-99' })).status).toBe(200);
+    const cambio = await cambiar(token, { actual: CLAVE, nueva: 'nueva-clave-99' });
+    expect(cambio.status).toBe(200);
+    // MODIFICADO: el cambio revoca el token anterior; se sigue con el que devuelve.
+    const vigente = cambio.body.token;
     // Ya vigente: los 403 por ventana tampoco consumen más de lo permitido antes del 429 (cuentan como fallo, 5 máx.).
-    for (let i = 0; i < 5; i += 1) expect((await cambiar(token, { actual: 'x', nueva: 'y' })).status).toBe(403);
-    expect((await cambiar(token, { actual: 'x', nueva: 'y' })).status).toBe(429);
+    for (let i = 0; i < 5; i += 1) expect((await cambiar(vigente, { actual: 'x', nueva: 'y' })).status).toBe(403);
+    expect((await cambiar(vigente, { actual: 'x', nueva: 'y' })).status).toBe(429);
   });
 });

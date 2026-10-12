@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { omitirLimitadores } from '../config/entorno.js';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { solicitar, confirmar } from '../controllers/verificacionCorreoController.js';
 
@@ -19,7 +20,7 @@ const crearLimite = ({ ventanaMs, limite, mensaje }) =>
       const reintentarEnSeg = Math.max(1, Math.ceil((req.rateLimit.resetTime.getTime() - Date.now()) / 1000));
       res.status(opciones.statusCode).json({ error: mensaje, codigo: 'DEMASIADOS_INTENTOS', reintentar_en_seg: reintentarEnSeg });
     },
-    skip: () => process.env.NODE_ENV === 'test' && process.env.FORZAR_RATE_LIMIT_PRUEBA !== 'true',
+    skip: () => omitirLimitadores(),
   });
 
 const limitarSolicitudes = crearLimite({

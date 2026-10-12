@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool } from '../db/connection.js';
@@ -616,10 +617,23 @@ describe('esquema y datos de demostración', () => {
 
 // ---------- Arranque real del servidor (proceso hijo, base de pruebas, SMTP inalcanzable: nunca sale un correo) ----------
 
+// El hijo NO es "entorno de pruebas" (sin NODE_ENV=test + VITEST): aplica las validaciones de arranque del pentest, así que
+// recibe secretos fuertes generados al vuelo (nunca los del .env.test, que son débiles a propósito).
 const lanzarServidor = (variables) => {
+  const entorno = { ...process.env };
+  delete entorno.VITEST;
   const hijo = spawn(process.execPath, ['index.js'], {
     cwd: path.resolve(__dirname, '..'),
-    env: { ...process.env, NODE_ENV: 'development', PORT: '5057', EMAIL_ENABLED: 'false', RECORDATORIOS_ENABLED: 'false', ...variables },
+    env: {
+      ...entorno,
+      NODE_ENV: 'development',
+      PORT: '5057',
+      JWT_SECRET: randomBytes(48).toString('base64url'),
+      EMAIL_VERIF_SECRET: randomBytes(48).toString('base64url'),
+      EMAIL_ENABLED: 'false',
+      RECORDATORIOS_ENABLED: 'false',
+      ...variables,
+    },
   });
   let salida = '';
   hijo.stdout.on('data', (d) => (salida += d));

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { cambiarContrasena } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 import CampoContrasena from '../admin/CampoContrasena'
 import { LIMITES_EMPLEADO } from '../../utils/empleados'
 
@@ -13,6 +14,7 @@ const BOTON = {
 const { contrasenaMin, contrasenaMax } = LIMITES_EMPLEADO
 
 const CambiarContrasena = ({ token, variante = 'panel', alExito, titulo = 'Cambiar contraseña' }) => {
+  const auth = useAuth()
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
   const [confirmar, setConfirmar] = useState('')
@@ -42,6 +44,7 @@ const CambiarContrasena = ({ token, variante = 'panel', alExito, titulo = 'Cambi
     setCargando(true)
     try {
       const respuesta = await cambiarContrasena(token, actual, nueva)
+      auth?.renovarToken?.(respuesta?.token) // el servidor invalida los tokens anteriores al cambiar la contraseña
       setMensaje('Contraseña actualizada correctamente')
       setActual('')
       setNueva('')

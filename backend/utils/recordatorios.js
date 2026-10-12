@@ -1,5 +1,6 @@
 import { pool } from '../db/connection.js';
 import { leerConfigCorreo } from '../config/correo.js';
+import { esEntornoDePruebas } from '../config/entorno.js';
 import {
   HORAS_ANTES_POR_DEFECTO,
   MAX_POR_CICLO_POR_DEFECTO,
@@ -184,10 +185,10 @@ export const ejecutarCicloRecordatorios = async ({ ahora = new Date(), transport
 };
 
 // Planificador: setInterval con unref (no mantiene vivo el proceso). Corre un ciclo al arrancar (recuperación tardía tras
-// una caída) y luego cada `intervaloMin`. Nunca solapa ciclos. Bajo NODE_ENV=test no arranca salvo `forzar: true`.
+// una caída) y luego cada `intervaloMin`. Nunca solapa ciclos. Dentro de las pruebas (NODE_ENV=test bajo Vitest, ver config/entorno.js) no arranca salvo `forzar: true`.
 // `detener()` para el temporizador y espera al ciclo en curso.
 export const iniciarPlanificadorRecordatorios = ({ intervaloMin, forzar = false, ...opciones } = {}) => {
-  if (process.env.NODE_ENV === 'test' && !forzar) return null;
+  if (esEntornoDePruebas() && !forzar) return null;
   let enCurso = null;
   const ejecutarAhora = () => {
     enCurso ??= ejecutarCicloRecordatorios({ ...opciones, ahora: new Date() }).finally(() => {
