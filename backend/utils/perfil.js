@@ -11,7 +11,7 @@ export const PATRON_ARCHIVO_FOTO = /^[0-9a-f-]{36}\.(jpg|png|webp)$/;
 
 export const TIPOS_FOTO = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' };
 
-// Carpeta de las fotos subidas, FUERA de public/. Se lee en cada uso para que las pruebas puedan apuntar a una
+// Carpeta de las fotos subidas, FUERA de frontend/public/. Se lee en cada uso para que las pruebas puedan apuntar a una
 // carpeta temporal (UPLOADS_DIR) sin tocar la real.
 export const carpetaFotos = () => process.env.UPLOADS_DIR || path.resolve(__dirname, '../uploads/perfiles');
 

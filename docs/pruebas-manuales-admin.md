@@ -1,6 +1,6 @@
 # Pruebas manuales — dashboard del administrador
 
-Requisitos: backend y Postgres arriba (`docker compose up`) y el front con `npm run dev` (http://localhost:5173). Entra en `/acceso` con el usuario admin del `.env` (`ADMIN_USER` / `ADMIN_PASSWORD`).
+Requisitos: backend y Postgres arriba (`docker compose up`) y el front con `cd frontend && npm run dev` (http://localhost:5173). Entra en `/acceso` con el usuario admin del `.env` (`ADMIN_USER` / `ADMIN_PASSWORD`).
 
 Las partes se amplían a medida que se entregan. Marca cada caso en los anchos 360, 375, 414, 768, 1024 y 1440 px (DevTools → modo responsive).
 

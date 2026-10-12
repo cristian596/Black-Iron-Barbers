@@ -8,7 +8,6 @@ export default defineConfig([
   globalIgnores(['dist']),
   {
     files: ['**/*.{js,jsx}'],
-    ignores: ['backend/**'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -23,14 +22,6 @@ export default defineConfig([
     files: ['**/*.test.{js,jsx}', 'src/tests/**/*.{js,jsx}'],
     languageOptions: {
       globals: { ...globals.browser, ...globals.vitest },
-    },
-  },
-  {
-    files: ['backend/**/*.js'],
-    extends: [js.configs.recommended],
-    languageOptions: {
-      globals: globals.node,
-      sourceType: 'module',
     },
   },
 ])

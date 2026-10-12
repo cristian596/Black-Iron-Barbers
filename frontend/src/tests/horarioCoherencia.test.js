@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { HORARIO_ATENCION as FRONT, DIRECCION_NEGOCIO, NOMBRE_NEGOCIO } from '../data/negocio'
-import { HORARIO_ATENCION as BACK } from '../../backend/config/horario.js'
-import { DIRECCION_NEGOCIO as DIRECCION_BACK, NOMBRE_NEGOCIO as NOMBRE_BACK } from '../../backend/config/negocio.js'
+import { HORARIO_ATENCION as BACK } from '../../../backend/config/horario.js'
+import { DIRECCION_NEGOCIO as DIRECCION_BACK, NOMBRE_NEGOCIO as NOMBRE_BACK } from '../../../backend/config/negocio.js'
 
 // Guardia: el front (texto de Hero y Footer) y el backend (validación y disponibilidad) tienen cada uno su fuente única
 // de horario; este test falla si apertura o cierre dejan de coincidir.

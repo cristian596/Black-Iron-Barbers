@@ -15,7 +15,7 @@ administrador).
 
 ## Requisitos
 
-- Node.js 20+
+- Node.js 22.12 o superior
 - Docker (para levantar Postgres y el backend con `docker compose`)
 
 ## Puesta en marcha
@@ -25,14 +25,22 @@ administrador).
 cp .env.example .env
 
 # Frontend
-npm install
-npm run dev          # http://localhost:5173
+cd frontend && npm install && npm run dev          # http://localhost:5173
 
 # Backend + Postgres
 docker compose up --build
 ```
 
-## Scripts del frontend
+## Estructura del repositorio
+
+| Carpeta | Contenido |
+|---|---|
+| `frontend/` | App React + Vite (`src/`, `public/`, `index.html`, su propio `package.json`). Lee el `.env` único de la raíz (`envDir: '..'`) |
+| `backend/` | API Express + PostgreSQL, con su propio `package.json` |
+| `docs/` | Despliegue y pruebas manuales |
+| `.github/` | CI (GitHub Actions) |
+
+## Scripts del frontend (`cd frontend`)
 
 | Comando | Qué hace |
 |---|---|
@@ -47,7 +55,8 @@ docker compose up --build
 |---|---|
 | `npm start` | Levanta el servidor (necesita Postgres) |
 | `npm run seed` | Siembra barberos, el admin inicial y **solo inserta** lo que falte del catálogo (nunca pisa, reactiva ni desactiva lo que el admin edite); se puede repetir. `-- --restablecer-catalogo [--confirmar]` vuelve el catálogo a los datos de los archivos (solo desarrollo; sin `--confirmar` solo muestra qué sobrescribiría) |
-| `npm run sembrar:demo` | Citas de demostración del portafolio (~1 900, datos ficticios), **solo desarrollo**: simula por defecto; `-- --confirmar` borra y recrea las suyas y `-- --limpiar --confirmar` borra únicamente las suyas (correos `@demo.blackiron.example`) |
+| `npm run sembrar:demo` | Citas de demostración del portafolio (datos ficticios), **solo desarrollo**: simula por defecto; `-- --confirmar` borra y recrea las suyas y `-- --limpiar --confirmar` borra únicamente las suyas (correos `@demo.blackiron.example`) |
+| `npm run lint` | ESLint del back — debe dar 0 errores |
 | `npm test` | Tests con Vitest + Supertest contra una base de pruebas aislada |
 
 Para correr `npm test` en local, copia `backend/.env.test.example` a

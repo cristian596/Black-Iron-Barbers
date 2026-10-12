@@ -7,6 +7,7 @@
     "start": "node index.js",
     "seed": "node db/seed.js",
     "sembrar:demo": "node db/sembrarDemo.js",
+    "lint": "eslint .",
     "test": "vitest run"
   },
   "keywords": [],
@@ -24,6 +25,9 @@
     "pg": "^8.21.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
     "supertest": "^7.3.0",
     "vitest": "^5.0.3"
   },

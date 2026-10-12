@@ -106,7 +106,7 @@ export default [
 
   // 7. ASESORÍAS (area "asesoria": las atiende la asesora de imagen, nunca un barbero). Datos ficticios de portafolio.
   // Los ids 40-42 son solo para casar con descripciones.js (no son ids de la base). Precio y duración: la API es la
-  // fuente de verdad; src/data/asesorias.js (front) los repite solo para el texto de /asesorias hasta la fase de reservas.
+  // fuente de verdad; frontend/src/data/asesorias.js (front) los repite solo para el texto de /asesorias hasta la fase de reservas.
   // `tipo` es el nivel de la oferta (original/elite/vip), no el área: gratis = original, barba = elite, premium = vip.
   {
     categoria: "Asesorías",
