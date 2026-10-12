@@ -1,6 +1,7 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 
+import ScrollToTop from '../components/layout/ScrollToTop'
 import Landingpage from '../pages/Landingpage'
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
@@ -26,7 +27,18 @@ const Reportes = lazy(() => import('../pages/admin/Reportes'));
 const Configuracion = lazy(() => import('../pages/Configuracion'));
 const NotFound = lazy(() => import('../pages/NotFound'));
 
+// Ruta raíz sin path: monta ScrollToTop una sola vez dentro del router, antes de todas las rutas.
+const RaizConScroll = () => (
+  <>
+    <ScrollToTop />
+    <Outlet />
+  </>
+)
+
 const AppRouter = createBrowserRouter([
+  {
+    element: <RaizConScroll />,
+    children: [
   {
     path: '/',
     element: <Landingpage />,
@@ -108,6 +120,8 @@ const AppRouter = createBrowserRouter([
       { path: 'reportes', element: <Reportes /> },
       { path: 'configuracion', element: <Configuracion /> },
       { path: '*', element: <Navigate to="/admin" replace /> },
+    ]
+  }
     ]
   }
 ]);
