@@ -7,7 +7,7 @@ Lista práctica de lo que hay que hacer o decidir **antes de publicar** el sitio
 - [ ] **`NODE_ENV=production`.** Sin él el arranque solo avisa en consola y se comporta como desarrollo. Con él se activan las exigencias de arranque (SMTP real, secretos fuertes, `FRONTEND_URL` con https) y HSTS.
 - [ ] **Secretos propios, aleatorios y distintos:** `JWT_SECRET` y `EMAIL_VERIF_SECRET` (≥ 32 caracteres). Generar con `node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"`. El backend rechaza los débiles, los de ejemplo y los que estuvieron publicados en el repo. Cambiar `EMAIL_VERIF_SECRET` invalida los códigos y comprobantes en curso (no afecta a las citas).
 - [ ] **Credenciales nuevas:** contraseña de Postgres y `ADMIN_PASSWORD` (≥ 12 caracteres, no trivial). La contraseña de Postgres que estuvo en el historial público se considera comprometida.
-- [ ] **`FRONTEND_URL`:** un único origen, con https y sin barra final ni comodín. `VITE_API_URL` del front apunta al backend real.
+- [ ] **`FRONTEND_URL`:** un único origen, con https y sin barra final ni comodín. `VITE_API_URL` del front apunta al backend real, con https y terminando en `/api` (sin ese sufijo todas las llamadas dan 404).
 - [ ] **Base de datos no expuesta.** En desarrollo Postgres y el backend se publican solo en `127.0.0.1`; en producción quitar `ports` del servicio de la base y publicar el backend únicamente a través de un proxy inverso con TLS.
 - [ ] **Respaldo antes de migrar:** `pg_dump` (dentro del contenedor con `-f` y luego `docker cp`) y copia periódica de la base **y** del volumen `fotos_perfil_data`, fuera del repositorio. Los `.env` y los respaldos nunca se versionan.
 - [ ] **Aplicar cambios con** `docker compose up -d --build backend_black_iron`. **Nunca `docker compose down -v`** (borra la base y las fotos de perfil).
@@ -34,7 +34,7 @@ Lista práctica de lo que hay que hacer o decidir **antes de publicar** el sitio
 - [ ] **Token de sesión en `localStorage`.** Si hubiera un XSS, se leería. Mitigación: CSP estricta en el hosting del front, más `X-Content-Type-Options`, `Referrer-Policy` y `frame-ancestors`. Migrar a cookie `HttpOnly` sería un rediseño. HTTPS obligatorio en el front.
 - [ ] **Número de WhatsApp:** `VITE_WHATSAPP_NUMERO` en el entorno de producción (solo dígitos con indicativo). Sin él, el botón flotante apunta a un marcador de posición.
 - [ ] **Rutas del SPA.** El hosting del front debe reescribir todas las rutas a `index.html` (React Router, SPA); sin eso, recargar `/cortes` o `/acceso` da 404.
-- [ ] **Variables `VITE_*` en el build.** Se incrustan al compilar: cambiar `VITE_API_URL` o `VITE_WHATSAPP_NUMERO` exige reconstruir el front. El directorio raíz del proyecto en el hosting es `frontend/`.
+- [ ] **Variables `VITE_*` en el build.** Se incrustan al compilar: cambiar `VITE_API_URL` (incluye el sufijo `/api`) o `VITE_WHATSAPP_NUMERO` exige reconstruir el front. El directorio raíz del proyecto en el hosting es `frontend/`.
 - [ ] **Dependencias:** `npm audit` periódico en front y back. `bcryptjs` es JS puro y bloquea el bucle de eventos; con mucha carga, valorar `bcrypt` nativo o `argon2`.
 
 ## 5. Decisiones abiertas

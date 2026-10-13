@@ -315,7 +315,7 @@ Esperado: `201`, con `servicio_id` 34, `duracion_min` 25, `precio` 18000 y `serv
 
 ## Lo que NO queda cubierto por pruebas automáticas
 
-- **Contra el catálogo real de desarrollo.** Las pruebas Supertest crean sus propios servicios y categorías en la base de pruebas; el contenido real (39 servicios, textos y precios) solo se verifica con el seed (`catalogo.test.js`) y con estos curls.
+- **Contra el catálogo real de desarrollo.** Las pruebas Supertest crean sus propios servicios y categorías en la base de pruebas; el contenido real (42 servicios: 39 de barbería y 3 de asesoría, textos y precios) solo se verifica con el seed (`catalogo.test.js`) y con estos curls.
 - **Rendimiento.** No hay medición de tiempos ni de carga; el listado hace una sola consulta sin paginación (son 39 filas).
 - **Intercalación (orden alfabético con tildes y mayúsculas).** `ordenar=nombre` usa el orden de la base de datos; las pruebas usan nombres con iniciales distintas y sin tildes iniciales, por lo que no cubren diferencias de intercalación entre servidores.
 - **Reglas de reserva más allá de lo indicado** (solapamientos, cierre, asignación): las cubren las pruebas existentes de citas, disponibilidad y concurrencia, no estas.

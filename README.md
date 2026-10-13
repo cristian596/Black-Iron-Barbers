@@ -111,7 +111,7 @@ flowchart LR
    ```bash
    cp .env.example .env
    ```
-   Hay que sustituir los `changeme` por valores propios: credenciales de Postgres (`POSTGRES_*`, `DB_*`), `PORT`, `ADMIN_USER`, `ADMIN_PASSWORD`, `FRONTEND_URL`, `VITE_API_URL` y los secretos `JWT_SECRET` y `EMAIL_VERIF_SECRET` (distintos entre sí, aleatorios y de al menos 32 caracteres).
+   Hay que sustituir los `changeme` por valores propios: credenciales de Postgres (`POSTGRES_*`, `DB_*`), `PORT`, `ADMIN_USER`, `ADMIN_PASSWORD`, `FRONTEND_URL`, `VITE_API_URL` (debe terminar en `/api`, p. ej. `http://localhost:5001/api`) y los secretos `JWT_SECRET` y `EMAIL_VERIF_SECRET` (distintos entre sí, aleatorios y de al menos 32 caracteres).
 2. Levanta el backend y Postgres:
    ```bash
    docker compose up --build
@@ -120,7 +120,7 @@ flowchart LR
    ```bash
    cd frontend && npm install && npm run dev
    ```
-4. Para poder reservar hace falta Mailpit y `EMAIL_ENABLED=true` en el `.env`, porque la verificación de correo es obligatoria y no hay forma de desactivarla. La bandeja queda en http://localhost:8025:
+4. Para poder reservar hace falta Mailpit (el `.env.example` ya trae `EMAIL_ENABLED=true`), porque la verificación de correo es obligatoria y no hay forma de desactivarla. La bandeja queda en http://localhost:8025:
    ```bash
    docker compose --profile dev up -d mailpit
    ```
