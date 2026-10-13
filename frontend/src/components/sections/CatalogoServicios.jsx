@@ -87,7 +87,7 @@ const CatalogoServicios = () => {
           {/* En móvil el carrito es una barra inferior; su aviso (servicios que se quitaron) sale aquí, a la vista. */}
           <AvisoSeleccion aviso={aviso} onDescartar={descartarAviso} className='mx-5 mb-4 bg-zinc-950 lg:hidden' />
 
-          <div className='mx-auto grid w-full min-w-0 max-w-450 grid-cols-1 gap-6 px-5 pb-5 lg:px-20 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start'>
+          <div className='mx-auto grid w-full min-w-0 max-w-450 grid-cols-1 gap-6 px-5 pb-5 lg:px-24 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start'>
             {filtro.visibles.length === 0 ? (
               <SinResultados onLimpiar={filtro.limpiar} variante='oscuro' />
             ) : (
