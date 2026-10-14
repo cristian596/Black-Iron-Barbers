@@ -397,7 +397,7 @@ describe('Ventana de bienvenida', () => {
     expect(dialogo).toHaveAttribute('aria-modal', 'true')
     expect(dialogo).toHaveTextContent('Tienes 3 citas para hoy.')
     expect(dialogo).toHaveTextContent('Tu próxima cita: Ana Gómez, Corte clásico, 15:30.')
-    expect(dialogo.contains(document.activeElement)).toBe(true)
+    await waitFor(() => expect(dialogo.contains(document.activeElement)).toBe(true))
 
     await userEvent.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).toBeNull()

@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
@@ -174,7 +174,7 @@ describe('Carrito "Tu selección": móvil (barra inferior y panel)', () => {
 
     await user.click(abrir)
     const panel = await screen.findByRole('dialog', { name: 'Tu selección' })
-    expect(panel).toContainElement(document.activeElement)
+    await waitFor(() => expect(panel).toContainElement(document.activeElement))
     expect(document.body).toHaveClass('overflow-hidden')
     expect(abrir).toHaveAttribute('aria-expanded', 'true')
 
