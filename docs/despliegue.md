@@ -34,8 +34,8 @@ Lista práctica de lo que hay que hacer o decidir **antes de publicar** el sitio
 - [ ] **Fotos de perfil en disco** (`backend/uploads`, volumen `fotos_perfil_data`): con varias instancias moverlas a un almacenamiento compartido.
 - [ ] **Token de sesión en `localStorage`.** Si hubiera un XSS, se leería. Mitigación: CSP estricta en el hosting del front, más `X-Content-Type-Options`, `Referrer-Policy` y `frame-ancestors`. Migrar a cookie `HttpOnly` sería un rediseño. HTTPS obligatorio en el front.
 - [ ] **Número de WhatsApp:** `VITE_WHATSAPP_NUMERO` en el entorno de producción (solo dígitos con indicativo). Sin él, el botón flotante apunta a un marcador de posición.
-- [ ] **Rutas del SPA.** El hosting del front debe reescribir todas las rutas a `index.html` (React Router, SPA); sin eso, recargar `/cortes` o `/acceso` da 404.
-- [ ] **Variables `VITE_*` en el build.** Se incrustan al compilar: cambiar `VITE_API_URL` (incluye el sufijo `/api`) o `VITE_WHATSAPP_NUMERO` exige reconstruir el front. El directorio raíz del proyecto en el hosting es `frontend/`.
+- [ ] **Hosting del front: Cloudflare (Workers con assets estáticos).** La configuración está en `frontend/wrangler.jsonc` (`name` = `black-iron-barbers`, debe coincidir con el proyecto en Cloudflare; `not_found_handling: single-page-application` reescribe todas las rutas a `index.html`, así recargar `/cortes` o `/acceso` no da 404). En el panel: directorio raíz `frontend/`, build `npm run build`, deploy `npx wrangler deploy`.
+- [ ] **Variables `VITE_*` en el build.** Se incrustan al compilar: cambiar `VITE_API_URL` (incluye el sufijo `/api`) o `VITE_WHATSAPP_NUMERO` exige reconstruir el front. En Cloudflare se definen como *Build variables* (no como variables de runtime).
 - [ ] **Dependencias:** `npm audit` periódico en front y back. `bcryptjs` es JS puro y bloquea el bucle de eventos; con mucha carga, valorar `bcrypt` nativo o `argon2`.
 
 ## 5. Decisiones abiertas
