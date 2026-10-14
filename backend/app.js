@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { env } from './config/env.js';
+import { leerTrustProxy } from './config/baseDatos.js';
 import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import barberoRoutes from './routes/barbero.js';
@@ -19,6 +20,10 @@ export const crearApp = () => {
   const app = express();
 
   app.disable('x-powered-by');
+  // TRUST_PROXY = número exacto de proxies delante del servidor (vacío = ninguno). Se lee aquí, no solo al arrancar, para que
+  // las pruebas lo ejerciten; un valor inválido lanza. Los limitadores usan req.ip, que depende de este ajuste.
+  const saltosProxy = leerTrustProxy();
+  if (saltosProxy !== null) app.set('trust proxy', saltosProxy);
   app.use(cabecerasSeguridad);
   app.use(cors({ origin: env.frontendUrl }));
   app.use(express.json({ limit: '100kb' }));

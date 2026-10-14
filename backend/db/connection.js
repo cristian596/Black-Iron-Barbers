@@ -3,17 +3,20 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from '../config/env.js';
+import { describirDestino } from '../config/baseDatos.js';
 import { aplicarMigracionesCatalogo } from './migracionesCatalogo.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const { Pool } = pg;
 
+// Único Pool del proyecto: index.js, seed.js y sembrarDemo.js lo importan, así que DB_SSL y DATABASE_URL aplican a todos.
 export const pool = new Pool({
   user: env.db.user,
   password: env.db.password,
   host: env.db.host,
   port: env.db.port,
   database: env.db.database,
+  ssl: env.db.ssl,
 });
 
 const crearTablas = async () => {
@@ -30,7 +33,7 @@ export const conectarConReintentos = async (intentos = 5, esperaMs = 5000) => {
       await pool.query('SELECT NOW()');
       console.log('✅ Conectado exitosamente a PostgreSQL (Black Iron DB)');
       break;
-    } catch {
+    } catch (err) {
       reintentos -= 1;
       if (reintentos > 0) {
         console.log(
@@ -38,7 +41,9 @@ export const conectarConReintentos = async (intentos = 5, esperaMs = 5000) => {
         );
         await new Promise((resolve) => setTimeout(resolve, esperaMs));
       } else {
-        throw new Error('No se pudo conectar a la base de datos tras varios intentos.');
+        // Nunca la URL ni la contraseña: solo host y base enmascarados y el código del error (p. ej. ECONNREFUSED).
+        const codigo = typeof err?.code === 'string' && /^[A-Z0-9_]+$/.test(err.code) ? `, error ${err.code}` : '';
+        throw new Error(`No se pudo conectar a la base de datos (${describirDestino(env.db)}${codigo}) tras varios intentos.`, { cause: err });
       }
     }
   }

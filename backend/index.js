@@ -6,6 +6,7 @@ import { leerConfigRecordatorios } from './config/recordatorios.js';
 import { validarConfiguracionVerificacion } from './config/verificacion.js';
 import { iniciarPlanificadorRecordatorios } from './utils/recordatorios.js';
 import { validarSecretoJwt, validarOrigenFrontend } from './config/secretos.js';
+import { avisoSslBaseDatos } from './config/baseDatos.js';
 
 const iniciar = async () => {
   // Sin NODE_ENV el servidor se comporta como desarrollo (p. ej. sin las exigencias de producción): que no pase inadvertido.
@@ -25,6 +26,10 @@ const iniciar = async () => {
 
   // Recordatorios: con RECORDATORIOS_ENABLED=true valida los valores (error claro si alguno es inválido).
   const recordatorios = leerConfigRecordatorios();
+
+  // En producción, una base que no es local y sin SSL se avisa (no se bloquea: hay despliegues con red privada).
+  const avisoSsl = avisoSslBaseDatos(env.db);
+  if (avisoSsl) console.warn(`⚠️ ${avisoSsl}`);
 
   await conectarConReintentos();
 

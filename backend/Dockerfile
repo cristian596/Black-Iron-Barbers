@@ -1,9 +1,14 @@
 FROM node:22-alpine
 WORKDIR /app
-COPY package*.json ./
+COPY --chown=node:node package*.json ./
 # Reproducible (respeta el lockfile) y sin dependencias de desarrollo: las pruebas no corren dentro del contenedor.
 RUN npm ci --omit=dev
-COPY . .
+COPY --chown=node:node . .
+# Fotos de perfil (carpetaFotos() en utils/perfil.js): carpeta propiedad de `node` para que un volumen NUEVO montado en
+# /app/uploads herede ese propietario. Un volumen que ya existía es de root: ver docs/despliegue.md (chown, una sola vez).
+RUN mkdir -p /app/uploads/perfiles && chown -R node:node /app/uploads
+# El proceso no corre como root (el usuario `node` de la imagen base, uid 1000).
+USER node
 EXPOSE 5000
 
 # El contenedor se marca "healthy" solo si el servidor responde en su puerto interno.

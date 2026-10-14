@@ -11,6 +11,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // controlador importe config/env.js y abra la conexion real a Postgres.
 dotenv.config({ path: path.resolve(__dirname, '../.env.test'), override: true, quiet: true });
 
+// Las pruebas usan SIEMPRE las DB_* de .env.test: una DATABASE_URL del entorno (que tendría prioridad) las llevaría a otra base.
+// Se fija vacía (no borrada) para que dotenv tampoco la cargue desde el .env de la raíz.
+process.env.DATABASE_URL = '';
+process.env.DB_SSL = '';
+process.env.TRUST_PROXY = '';
+
 asegurarBaseDePrueba();
 
 // La verificación del correo es obligatoria también en las pruebas: se usa un secreto propio de pruebas (distinto del

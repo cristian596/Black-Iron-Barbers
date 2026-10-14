@@ -179,7 +179,7 @@ Detalle en [docs/despliegue.md](./docs/despliegue.md).
 
 - Despliegue con `NODE_ENV=production`, secretos propios y TLS mediante proxy inverso.
 - SMTP real con SPF/DKIM para los correos y recordatorios.
-- Configurar `trust proxy`: hoy no lo está y los límites por IP dependen de ello.
+- Fijar `TRUST_PROXY` (nº exacto de proxies) en el despliegue: los límites por IP dependen de ello. Base gestionada: `DB_SSL` / `DATABASE_URL`.
 - Mitigación de abuso de códigos de verificación (WAF o CAPTCHA) y limitadores compartidos si hay más de una instancia.
 - Decidir los datos de demostración en línea y el oráculo de `POST /api/asesorias/gratis/comprobar`.
 
