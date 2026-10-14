@@ -31,3 +31,7 @@ dist-ssr
 
 # Fotos de perfil subidas desde el dashboard (no versionadas)
 backend/uploads/
+
+# Cloudflare (wrangler)
+.wrangler
+.dev.vars*
