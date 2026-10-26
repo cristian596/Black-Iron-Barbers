@@ -89,7 +89,7 @@ const ResumenReserva = ({ servicios, barbero, asesor = null, mostrarBarbero, fec
       </aside>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-zinc-200 bg-white px-4 py-2 shadow-[0_-2px_8px_rgba(0,0,0,0.08)] lg:hidden"
+        className="fixed inset-x-0 bottom-0 [[data-cookies-banner]_&]:bottom-44 md:[[data-cookies-banner]_&]:bottom-30 z-40 flex items-center justify-between gap-4 border-t border-zinc-200 bg-white px-4 py-2 shadow-[0_-2px_8px_rgba(0,0,0,0.08)] lg:hidden"
         aria-label="Resumen de la reserva"
       >
         <div className="min-w-0 font-poppins">

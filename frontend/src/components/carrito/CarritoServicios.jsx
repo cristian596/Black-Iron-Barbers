@@ -62,7 +62,7 @@ const CarritoServicios = () => {
         <div
           role="region"
           aria-label="Resumen de tu selección"
-          className="fixed inset-x-0 bottom-0 z-40 flex h-16 items-center gap-2 border-t border-oro/40 bg-zinc-950 px-3 text-white shadow-[0_-2px_8px_rgba(0,0,0,0.4)] lg:hidden"
+          className="fixed inset-x-0 bottom-0 [[data-cookies-banner]_&]:bottom-44 md:[[data-cookies-banner]_&]:bottom-30 z-40 flex h-16 items-center gap-2 border-t border-oro/40 bg-zinc-950 px-3 text-white shadow-[0_-2px_8px_rgba(0,0,0,0.4)] lg:hidden"
         >
           <button
             ref={botonRef}

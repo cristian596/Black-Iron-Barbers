@@ -10,6 +10,7 @@ import Campo, { ESTILO_CAMPO } from '../components/admin/CampoFormulario'
 import CampoContrasena from '../components/admin/CampoContrasena'
 import InsigniaLogo from '../components/login/InsigniaLogo'
 import PanelMarca from '../components/login/PanelMarca'
+import { RUTAS_LEGALES } from '../data/legal'
 
 const SEGUNDOS_LIMITE_POR_DEFECTO = 15 * 60
 
@@ -216,6 +217,16 @@ const LoginBarberos = () => {
 
           <Revelar className="relative w-full max-w-md text-center text-sm text-zinc-400">
             <p>¿Olvidaste tu contraseña? Pídele al administrador que la restablezca</p>
+            <p className="mt-1">
+              <Link
+                to={RUTAS_LEGALES.privacidad}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro"
+              >
+                Política de Privacidad
+              </Link>
+            </p>
           </Revelar>
         </main>
       </div>

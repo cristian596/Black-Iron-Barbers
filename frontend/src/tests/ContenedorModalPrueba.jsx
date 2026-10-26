@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
 import { useVerificacionCorreo } from '../hooks/useVerificacionCorreo'
 
@@ -7,7 +8,11 @@ import { useVerificacionCorreo } from '../hooks/useVerificacionCorreo'
 const ContenedorModalPrueba = ({ correoInicial = '', ...props }) => {
   const [correo, setCorreo] = useState(correoInicial)
   const verificacion = useVerificacionCorreo(correo)
-  return <ModalConfirmacion correo={correo} onCorreoChange={setCorreo} verificacion={verificacion} {...props} />
+  return (
+    <MemoryRouter>
+      <ModalConfirmacion correo={correo} onCorreoChange={setCorreo} verificacion={verificacion} {...props} />
+    </MemoryRouter>
+  )
 }
 
 export default ContenedorModalPrueba

@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import * as api from '../services/api'
-import { prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
+import { prepararVerificacionMock, verificarCorreoEnModal, aceptarTratamientoDeDatos } from './verificacionPrueba'
 import { ASESORIAS_API, ASESORA, ASESOR_2, GRATIS_API, PREMIUM_API, BARBA_API } from './fixturesAsesorias'
 
 vi.mock('../services/api')
@@ -72,7 +72,7 @@ const llenarContacto = async (user, correo = 'juan@example.com', telefono = '300
   await user.type(screen.getByLabelText('Correo electrónico'), correo)
   await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo (código de 6 dígitos) antes de poder confirmar
   await user.type(screen.getByLabelText('Teléfono'), telefono)
-  await user.click(screen.getByRole('checkbox'))
+  await aceptarTratamientoDeDatos(user)
 }
 
 const CITA_ASESORIA = {
@@ -303,7 +303,7 @@ describe('Consentimiento del modal de contacto: zona clicable de 44 px', () => {
     expect(fila).toHaveAttribute('for', casilla.id)
     expect(casilla).toHaveClass('h-4', 'w-4') // el aspecto del checkbox no cambia
     expect(casilla).not.toBeChecked()
-    await user.click(within(fila).getByText(/Acepto que Black Iron Barbers/))
+    await user.click(within(fila).getByText(/He leído y acepto el tratamiento/))
     expect(casilla).toBeChecked()
   })
 })
@@ -595,9 +595,21 @@ describe('Asesoría gratuita: una por persona', () => {
     await new Promise((resolver) => setTimeout(resolver, 800))
     expect(api.comprobarAsesoriaGratis).not.toHaveBeenCalled() // teléfono incompleto
 
+    await aceptarTratamientoDeDatos(user) // sin autorización no se envían los datos al servidor
     await user.type(screen.getByLabelText('Teléfono'), '1234567')
     await waitFor(() => expect(api.comprobarAsesoriaGratis).toHaveBeenCalledTimes(1), { timeout: 3000 })
     expect(api.comprobarAsesoriaGratis).toHaveBeenCalledWith('ana@example.com', '3001234567', expect.any(AbortSignal))
+  })
+
+  it('con correo y teléfono válidos pero SIN aceptar el tratamiento de datos, no consulta al servidor', async () => {
+    const user = userEvent.setup()
+    montar(rutaGratis)
+    await llegarAlModal(user)
+
+    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com')
+    await user.type(screen.getByLabelText('Teléfono'), '3001234567')
+    await new Promise((resolver) => setTimeout(resolver, 800))
+    expect(api.comprobarAsesoriaGratis).not.toHaveBeenCalled()
   })
 
   it('si la reserva no incluye la gratis, no se llama a comprobar', async () => {

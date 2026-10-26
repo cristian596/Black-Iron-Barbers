@@ -202,6 +202,16 @@ describe('/panel/configuracion (barbero)', () => {
     expect(screen.getByRole('textbox', { name: 'Nombre de perfil' })).toHaveAttribute('placeholder', 'Leo')
   }, ESPERA_TEST)
 
+  it('enlaza discretamente la política de privacidad en una pestaña nueva, sin casilla de consentimiento', async () => {
+    montar('/panel/configuracion')
+    await titulo()
+    const enlace = screen.getByRole('link', { name: 'Política de Privacidad' })
+    expect(enlace).toHaveAttribute('href', '/politica-de-privacidad')
+    expect(enlace).toHaveAttribute('target', '_blank')
+    expect(enlace.getAttribute('rel')).toMatch(/noopener/)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+  }, ESPERA_TEST)
+
   it('con el perfil sin cambios, "Guardar" está deshabilitado; con un nombre válido se habilita', async () => {
     montar('/panel/configuracion')
     await titulo()

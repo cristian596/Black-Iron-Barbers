@@ -1,11 +1,12 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ModalConfirmacion from '../components/sections/reserva/ModalConfirmacion'
 import { useVerificacionCorreo } from '../hooks/useVerificacionCorreo'
 import * as api from '../services/api'
-import { CODIGO_PRUEBA, TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
+import { CODIGO_PRUEBA, TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal, aceptarTratamientoDeDatos } from './verificacionPrueba'
 
 vi.mock('../services/api', () => ({
   solicitarCodigoCorreo: vi.fn(),
@@ -21,7 +22,11 @@ const BARBERO = { id: 1, nombre: 'Boby' }
 const Contenedor = ({ correoInicial = '', ...props }) => {
   const [correo, setCorreo] = useState(correoInicial)
   const verificacion = useVerificacionCorreo(correo)
-  return <ModalConfirmacion correo={correo} onCorreoChange={setCorreo} verificacion={verificacion} {...props} />
+  return (
+    <MemoryRouter>
+      <ModalConfirmacion correo={correo} onCorreoChange={setCorreo} verificacion={verificacion} {...props} />
+    </MemoryRouter>
+  )
 }
 
 const renderModal = (props = {}) =>
@@ -43,7 +48,7 @@ const llenarFormularioValido = async (user) => {
   await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
   await verificarCorreoEnModal(user)
   await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-  await user.click(screen.getByRole('checkbox'))
+  await aceptarTratamientoDeDatos(user)
 }
 
 beforeEach(() => {
@@ -115,6 +120,8 @@ describe('ModalConfirmacion', () => {
 
     await user.clear(screen.getByLabelText('Teléfono'))
     await user.type(screen.getByLabelText('Teléfono'), '3001234567')
+    // La autorización se dio para poder verificar el correo: se retira antes de confirmar.
+    await user.click(screen.getByRole('checkbox'))
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/tratamiento de datos/i)
     expect(onConfirmar).not.toHaveBeenCalled()
@@ -229,7 +236,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
     await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
     await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-    await user.click(screen.getByRole('checkbox'))
+    await aceptarTratamientoDeDatos(user)
     expect(confirmar).toBeDisabled()
     await user.click(confirmar)
     expect(onConfirmar).not.toHaveBeenCalled()
@@ -240,6 +247,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     renderModal()
     await user.type(screen.getByLabelText('Correo electrónico'), 'Juan@Example.com')
 
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     expect(api.solicitarCodigoCorreo).toHaveBeenCalledWith('juan@example.com')
     const campo = await screen.findByLabelText('Código de verificación')
@@ -259,6 +267,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
   it('el campo del código es numérico, de 6 dígitos y solo admite dígitos', async () => {
     const user = userEvent.setup()
     renderModal({ correoInicial: 'juan@example.com' })
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     const campo = await screen.findByLabelText('Código de verificación')
 
@@ -276,6 +285,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     error.codigo = 'CODIGO_INVALIDO'
     api.confirmarCodigoCorreo.mockRejectedValueOnce(error)
     renderModal({ correoInicial: 'juan@example.com' })
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     const campo = await screen.findByLabelText('Código de verificación')
 
@@ -293,6 +303,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
   it('un código de menos de 6 dígitos no llama al servidor', async () => {
     const user = userEvent.setup()
     renderModal({ correoInicial: 'juan@example.com' })
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     await user.type(await screen.findByLabelText('Código de verificación'), '123')
     await user.click(screen.getByRole('button', { name: 'Verificar código' }))
@@ -304,6 +315,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     const user = userEvent.setup()
     renderModal()
     await user.type(screen.getByLabelText('Correo electrónico'), 'no-es-un-correo')
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/correo válido/i)
     expect(api.solicitarCodigoCorreo).not.toHaveBeenCalled()
@@ -313,6 +325,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     const user = userEvent.setup()
     renderModal()
     await user.type(screen.getByLabelText('Correo electrónico'), 'a@b.com,c.d')
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(/correo válido/i)
     expect(api.solicitarCodigoCorreo).not.toHaveBeenCalled()
@@ -385,6 +398,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     api.solicitarCodigoCorreo.mockRejectedValueOnce(error)
     renderModal({ correoInicial: 'juan@example.com' })
 
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(patron)
@@ -399,6 +413,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     error.reintentar_en_seg = 600
     api.confirmarCodigoCorreo.mockRejectedValueOnce(error)
     renderModal({ correoInicial: 'juan@example.com' })
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     await user.type(await screen.findByLabelText('Código de verificación'), CODIGO_PRUEBA)
     await user.click(screen.getByRole('button', { name: 'Verificar código' }))
@@ -413,6 +428,7 @@ describe('ModalConfirmacion — verificación del correo', () => {
     error.reintentar_en_seg = 40
     api.solicitarCodigoCorreo.mockRejectedValueOnce(error)
     renderModal({ correoInicial: 'juan@example.com' })
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     expect(await screen.findByLabelText('Código de verificación')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Reenviar código \(\d+ s\)/ })).toBeDisabled()
@@ -426,6 +442,7 @@ describe('ModalConfirmacion — reenvío con cuenta regresiva', () => {
   it('"Reenviar código" está deshabilitado 60 s con la cuenta visible y luego vuelve a enviar', async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     renderModal({ correoInicial: 'juan@example.com' })
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     await screen.findByLabelText('Código de verificación')
 

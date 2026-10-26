@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 
 import ScrollToTop from '../components/layout/ScrollToTop'
+import AnaliticaRutas from '../components/layout/AnaliticaRutas'
 import Landingpage from '../pages/Landingpage'
 import ProtectedRoute from './ProtectedRoute';
 import RoleRoute from './RoleRoute';
@@ -12,6 +13,9 @@ const Home = lazy(() => import('../pages/Home'));
 const Cortes = lazy(() => import('../pages/Cortes'));
 const ReservaCorte = lazy(() => import('../pages/ReservaCorte'));
 const Asesorias = lazy(() => import('../pages/Asesorias'));
+const PoliticaPrivacidad = lazy(() => import('../pages/legal/PoliticaPrivacidad'));
+const TratamientoDatos = lazy(() => import('../pages/legal/TratamientoDatos'));
+const PoliticaCookies = lazy(() => import('../pages/legal/PoliticaCookies'));
 const LoginBarberos = lazy(() => import('../pages/LoginBarberos'));
 const PanelLayout = lazy(() => import('../pages/panel/PanelLayout'));
 const ResumenBarbero = lazy(() => import('../pages/panel/Resumen'));
@@ -31,6 +35,7 @@ const NotFound = lazy(() => import('../pages/NotFound'));
 const RaizConScroll = () => (
   <>
     <ScrollToTop />
+    <AnaliticaRutas />
     <Outlet />
   </>
 )
@@ -62,6 +67,18 @@ const AppRouter = createBrowserRouter([
       {
         path: 'asesoria',
         element: <RedirigirAsesoria />
+      },
+      {
+        path: 'politica-de-privacidad',
+        element: <PoliticaPrivacidad />
+      },
+      {
+        path: 'tratamiento-de-datos',
+        element: <TratamientoDatos />
+      },
+      {
+        path: 'politica-de-cookies',
+        element: <PoliticaCookies />
       },
       {
         path: '*',

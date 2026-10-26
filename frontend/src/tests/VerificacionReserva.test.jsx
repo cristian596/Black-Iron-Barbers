@@ -14,7 +14,7 @@ import {
   solicitarCodigoCorreo,
   confirmarCodigoCorreo,
 } from '../services/api'
-import { CODIGO_PRUEBA, TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
+import { CODIGO_PRUEBA, TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal, aceptarTratamientoDeDatos } from './verificacionPrueba'
 
 vi.mock('../services/api', () => ({
   obtenerServicios: vi.fn(),
@@ -73,7 +73,7 @@ const llenarTodoMenosVerificar = async (user, correo = 'juan@example.com') => {
   await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
   await user.type(screen.getByLabelText('Correo electrónico'), correo)
   await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-  await user.click(screen.getByRole('checkbox'))
+  await aceptarTratamientoDeDatos(user)
 }
 
 const montar = () =>
@@ -111,6 +111,7 @@ describe('Verificación del correo en la reserva', () => {
     await user.click(confirmarBoton())
     expect(crearCita).not.toHaveBeenCalled()
 
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: 'Enviar código' }))
     await user.type(await screen.findByLabelText('Código de verificación'), CODIGO_PRUEBA)
     await user.click(screen.getByRole('button', { name: 'Verificar código' }))
@@ -171,7 +172,7 @@ describe('Verificación del correo en la reserva', () => {
     // Los datos personales del modal se vuelven a escribir (comportamiento de siempre), el correo NO se vuelve a verificar.
     await user.type(screen.getByLabelText('Nombre'), 'Juan Pérez')
     await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-    await user.click(screen.getByRole('checkbox'))
+    await aceptarTratamientoDeDatos(user)
     await user.click(confirmarBoton())
 
     expect(await screen.findByText(/¡cita agendada con éxito!/i)).toBeInTheDocument()

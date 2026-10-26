@@ -133,4 +133,5 @@ docs/               despliegue.md (pendientes de producción) y pruebas-manuales
 
 - `POST /api/asesorias/gratis/comprobar` es un oráculo conocido (decisión pendiente en `docs/despliegue.md`).
 - Redes sociales y número de WhatsApp son provisionales (`'#'` y `PENDIENTE_NUMERO`; el número real va en `VITE_WHATSAPP_NUMERO`).
+- **Legal y cookies (solo front):** datos del responsable y versión de las políticas en `frontend/src/data/legal.js` (campos vacíos no se muestran); tres páginas en `pages/legal/` (`/politica-de-privacidad`, `/tratamiento-de-datos`, `/politica-de-cookies`). Consentimiento de cookies: almacén `utils/consentimiento.js` + `hooks/useConsentimiento.js`, banner/panel en `components/cookies/`. GA4 (`utils/analitica.js`, `VITE_GA_MEASUREMENT_ID`) solo con consentimiento y sin rutas privadas. Si se añade una clave de storage o cookie, actualizar `data/almacenamiento.js` (un test lo comprueba). La casilla de tratamiento de datos de la reserva se exige **antes** de pedir el código de correo.
 - Pruebas manuales por funcionalidad: `docs/pruebas-manuales-*.md`.

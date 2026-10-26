@@ -2,6 +2,8 @@ import { Link, useLocation } from 'react-router-dom'
 import { FaFacebookF, FaInstagram, FaTiktok } from 'react-icons/fa'
 import { RiScissorsCutFill } from 'react-icons/ri'
 import BotonAcento from '../ui/BotonAcento'
+import { NOMBRES_LEGALES, RUTAS_LEGALES } from '../../data/legal'
+import { abrirPanelCookies } from '../../utils/consentimiento'
 import {
   NOMBRE_NEGOCIO,
   contacto,
@@ -23,7 +25,13 @@ const NAVEGACION = [
   { to: '/reservar-corte', texto: 'Reservar' },
 ]
 
-const FOCO = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro'
+const ENLACES_LEGALES = [
+  { to: RUTAS_LEGALES.privacidad, texto: NOMBRES_LEGALES.privacidad },
+  { to: RUTAS_LEGALES.datos, texto: 'Tratamiento de datos personales' },
+  { to: RUTAS_LEGALES.cookies, texto: NOMBRES_LEGALES.cookies },
+]
+
+const FOCO ='focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro'
 const ENLACE = `inline-flex min-h-11 items-center gap-3 text-zinc-300 duration-200 hover:text-oro motion-reduce:transition-none ${FOCO}`
 const TITULO = 'mb-3 text-sm font-semibold uppercase tracking-[0.25em] text-oro'
 
@@ -188,7 +196,24 @@ const Footer = ({ redes = REDES_SOCIALES }) => {
             </div>
           </div>
 
-          <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-6 text-sm md:flex-row md:items-center md:justify-between">
+          <nav aria-label="Legal" className="mt-8">
+            <ul className="flex flex-wrap gap-x-6">
+              {ENLACES_LEGALES.map(({ to, texto }) => (
+                <li key={to}>
+                  <Link to={to} className={ENLACE}>
+                    {texto}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <button type="button" onClick={abrirPanelCookies} className={`${ENLACE} cursor-pointer`}>
+                  Configuración de cookies
+                </button>
+              </li>
+            </ul>
+          </nav>
+
+          <div className="mt-4 flex flex-col gap-3 border-t border-white/10 pt-6 text-sm md:flex-row md:items-center md:justify-between">
             <p className="font-semibold text-zinc-200">El corte cambia. La filosofía nunca.</p>
             <p>
               &copy; {new Date().getFullYear()} {NOMBRE_NEGOCIO} — Todos los derechos reservados

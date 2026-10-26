@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
-import { prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
+import { prepararVerificacionMock, verificarCorreoEnModal, aceptarTratamientoDeDatos } from './verificacionPrueba'
 
 vi.mock('../services/api', () => ({
   solicitarCodigoCorreo: vi.fn(),
@@ -91,7 +91,7 @@ const llenarContacto = async (user) => {
   await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
   await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo (código de 6 dígitos) antes de poder confirmar
   await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-  await user.click(screen.getByRole('checkbox'))
+  await aceptarTratamientoDeDatos(user)
 }
 
 const error = (mensaje, extra) => Object.assign(new Error(mensaje), extra)

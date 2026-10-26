@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
 import ContenedorModal from './ContenedorModalPrueba'
-import { prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
+import { prepararVerificacionMock, verificarCorreoEnModal, aceptarTratamientoDeDatos } from './verificacionPrueba'
 import PantallaExito from '../components/sections/reserva/PantallaExito'
 
 vi.mock('../services/api', () => ({
@@ -150,7 +150,7 @@ describe('ModalConfirmacion con 1, 2 y 3 servicios', () => {
     await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
     await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo antes de confirmar
     await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-    await user.click(screen.getByRole('checkbox'))
+    await aceptarTratamientoDeDatos(user)
     await user.click(screen.getByRole('button', { name: /confirmar reserva/i }))
     expect(onConfirmar).toHaveBeenCalledWith(expect.objectContaining({ cliente: 'Juan Pérez', consentimiento: true }))
   })

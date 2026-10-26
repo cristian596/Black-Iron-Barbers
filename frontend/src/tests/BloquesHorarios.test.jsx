@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import PasoFechaHora from '../components/sections/reserva/PasoFechaHora'
 import ResumenReserva from '../components/sections/reserva/ResumenReserva'
@@ -233,17 +234,19 @@ describe('hora exacta en resumen, modal y éxito', () => {
 
   it('ModalConfirmacion muestra el bloque y la hora exacta', () => {
     render(
-      <ModalConfirmacion
-        servicios={[SERVICIO]}
-        barbero={BARBERO}
-        fecha="2030-06-15"
-        hora="10:30"
-        correo=""
-        onCorreoChange={vi.fn()}
-        verificacion={VERIFICACION_VACIA}
-        onClose={vi.fn()}
-        onConfirmar={vi.fn()}
-      />
+      <MemoryRouter>
+        <ModalConfirmacion
+          servicios={[SERVICIO]}
+          barbero={BARBERO}
+          fecha="2030-06-15"
+          hora="10:30"
+          correo=""
+          onCorreoChange={vi.fn()}
+          verificacion={VERIFICACION_VACIA}
+          onClose={vi.fn()}
+          onConfirmar={vi.fn()}
+        />
+      </MemoryRouter>
     )
     expect(screen.getByText('Bloque 10–11 · tu cita es a las 10:30')).toBeInTheDocument()
   })

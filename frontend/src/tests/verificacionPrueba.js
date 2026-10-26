@@ -14,8 +14,16 @@ export const prepararVerificacionMock = () => {
   vi.mocked(api.confirmarCodigoCorreo).mockReset().mockResolvedValue({ token: TOKEN_PRUEBA, expira_en_seg: 1800 })
 }
 
-// Con el correo ya escrito: pide el código, lo escribe y lo verifica. Al terminar el correo está verificado.
+// Marca la casilla de tratamiento de datos si aún no lo está (nunca la desmarca).
+export const aceptarTratamientoDeDatos = async (user) => {
+  const casilla = screen.getByRole('checkbox')
+  if (!casilla.checked) await user.click(casilla)
+}
+
+// Con el correo ya escrito: acepta el tratamiento de datos (se exige ANTES de pedir el código), pide el código, lo
+// escribe y lo verifica. Al terminar el correo está verificado.
 export const verificarCorreoEnModal = async (user) => {
+  await aceptarTratamientoDeDatos(user)
   await user.click(screen.getByRole('button', { name: 'Enviar código' }))
   const campo = await screen.findByLabelText('Código de verificación')
   await user.type(campo, CODIGO_PRUEBA)

@@ -4,6 +4,8 @@ import NavBar from '../components/layout/NavBar';
 import Footer from '../components/layout/Footer';
 import FixedWhatsapp from '../components/layout/FixedWhatsapp';
 import FixedHome from '../components/layout/FixedHome';
+import BannerCookies from '../components/cookies/BannerCookies';
+import PanelCookies from '../components/cookies/PanelCookies';
 import FranjaGarantia from '../components/layout/FranjaGarantia';
 import CargandoPagina from '../components/ui/CargandoPagina';
 import { ProveedorCarrito } from '../context/CarritoContext';
@@ -36,7 +38,9 @@ const Landingpage = () => {
     <FixedHome/>
     {/*Boton de Whatsapp Fixed*/}
     <FixedWhatsapp/>
-
+    {/*Aviso de cookies (primera visita) y panel de configuración; el pie y las políticas también lo abren*/}
+    <BannerCookies/>
+    <PanelCookies/>
 
     </ProveedorCarrito>
   )

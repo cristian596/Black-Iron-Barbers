@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { FiCamera, FiInfo, FiTrash2 } from 'react-icons/fi'
 import { useAuth } from '../context/AuthContext'
 import { usePerfil } from '../context/PerfilContext'
@@ -7,6 +8,7 @@ import { LIMITES_PERFIL, TIPOS_FOTO, mensajeErrorPerfil, resolverUrlFoto, valida
 import AvatarBarbero from '../components/ui/AvatarBarbero'
 import CambiosPerfilBarberos from '../components/admin/CambiosPerfilBarberos'
 import ErrorCarga from '../components/ui/ErrorCarga'
+import { RUTAS_LEGALES } from '../data/legal'
 import CampoFormulario, { ESTILO_CAMPO } from '../components/admin/CampoFormulario'
 
 const BOTON_PRIMARIO =
@@ -300,6 +302,18 @@ const Configuracion = () => {
       </section>
 
       {esAdmin && <CambiosPerfilBarberos />}
+
+      <p className="text-xs text-zinc-400">
+        Cómo tratamos tus datos:{' '}
+        <Link
+          to={RUTAS_LEGALES.privacidad}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-4 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oro"
+        >
+          Política de Privacidad
+        </Link>
+      </p>
     </div>
   )
 }

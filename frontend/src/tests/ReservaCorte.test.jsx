@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import ReservaCorte from '../pages/ReservaCorte'
 import { ProveedorCarrito } from '../context/CarritoContext'
 import { obtenerServicios, obtenerBarberos, obtenerDisponibilidad, crearCita } from '../services/api'
-import { TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal } from './verificacionPrueba'
+import { TOKEN_PRUEBA, prepararVerificacionMock, verificarCorreoEnModal, aceptarTratamientoDeDatos } from './verificacionPrueba'
 
 vi.mock('../services/api', () => ({
   obtenerServicios: vi.fn(),
@@ -81,7 +81,7 @@ const llenarContactoValido = async (user) => {
   await user.type(screen.getByLabelText('Correo electrónico'), 'juan@example.com')
   await verificarCorreoEnModal(user) // MODIFICADO: ahora hay que verificar el correo (código de 6 dígitos) antes de poder confirmar
   await user.type(screen.getByLabelText('Teléfono'), '3001234567')
-  await user.click(screen.getByRole('checkbox'))
+  await aceptarTratamientoDeDatos(user)
 }
 
 // MODIFICADO: reloj fijo a las 09:00 de Bogotá. Estas pruebas eligen HOY y esperan el bloque 10–11; como ahora los bloques

@@ -139,10 +139,15 @@ describe('LoginBarberos — diseño y contenido', () => {
     expect(await screen.findByText('Inicio público')).toBeInTheDocument()
   })
 
-  it('el panel de marca lista sus puntos de valor y no hay más enlaces que "Volver al sitio"', () => {
+  it('el panel de marca lista sus puntos de valor y no hay más enlaces que "Volver al sitio" y la política de privacidad', () => {
     renderLogin()
     expect(screen.getAllByRole('listitem')).toHaveLength(3)
-    expect(screen.getAllByRole('link')).toHaveLength(1)
+    const enlaces = screen.getAllByRole('link')
+    expect(enlaces).toHaveLength(2)
+    expect(enlaces.map((a) => a.getAttribute('href')).sort()).toEqual(['/', '/politica-de-privacidad'])
+    const privacidad = screen.getByRole('link', { name: 'Política de Privacidad' })
+    expect(privacidad).toHaveAttribute('target', '_blank')
+    expect(privacidad.getAttribute('rel')).toMatch(/noopener/)
   })
 })
 

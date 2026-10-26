@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { formatearFechaLegible } from '../../../utils/fechas'
 import { esTelefonoValido } from '../../../utils/telefono'
 import { formatearDuracion, formatearPrecio } from '../../../utils/formato'
@@ -7,6 +8,7 @@ import { TITULO_CITA, esAsesoriaGratis, planCitas, separarPorArea } from '../../
 import { useComprobarGratis } from '../../../hooks/useComprobarGratis'
 import { rangoBloqueDeHora, textoHoraAsignada } from '../../../utils/bloquesHorarios'
 import { esCorreoValido } from '../../../utils/correo'
+import { NOMBRES_LEGALES, RUTAS_LEGALES } from '../../../data/legal'
 import ListaServiciosReserva from './ListaServiciosReserva'
 
 export const CODIGO_GRATIS_YA_USADA = 'ASESORIA_GRATIS_YA_USADA'
@@ -27,6 +29,8 @@ const mensajeParaError = (err) => {
   if (!err.status) return 'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.'
   return err.message || 'Ocurrió un error inesperado. Inténtalo de nuevo.'
 }
+
+const MENSAJE_CONSENTIMIENTO = 'Debes aceptar el tratamiento de datos personales para continuar'
 
 const FOCUSABLES = 'button, input, [href], select, textarea, [tabindex]:not([tabindex="-1"])'
 
@@ -65,13 +69,15 @@ const ModalConfirmacion = ({
   const [codigo, setCodigo] = useState('')
   const [telefono, setTelefono] = useState('')
   const [consentimiento, setConsentimiento] = useState(false)
+  const [errorConsentimiento, setErrorConsentimiento] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState('')
   // Datos (correo + teléfono) con los que el servidor ya respondió 409 ASESORIA_GRATIS_YA_USADA.
   const [datosRechazados, setDatosRechazados] = useState('')
 
   const gratis = servicios.find(esAsesoriaGratis) ?? null
-  const disponibleGratis = useComprobarGratis({ activo: Boolean(gratis), correo, telefono })
+  // La comprobación temprana envía correo y teléfono al servidor: solo con la autorización ya dada.
+  const disponibleGratis = useComprobarGratis({ activo: Boolean(gratis) && consentimiento, correo, telefono })
   const claveDatos = `${correo}\n${telefono}`
   // El aviso nunca dice qué dato coincidió. Si el cliente cambia sus datos, se vuelve a evaluar.
   const gratisUsada = Boolean(gratis) && (disponibleGratis === false || datosRechazados === claveDatos)
@@ -86,6 +92,21 @@ const ModalConfirmacion = ({
   const correoRef = useRef(null)
   const codigoRef = useRef(null)
   const botonConfirmarRef = useRef(null)
+  const consentimientoRef = useRef(null)
+
+  // Pedir o reenviar el código ya trata el correo: antes se exige la autorización (mensaje bajo la casilla y foco en ella).
+  const exigirConsentimiento = () => {
+    setErrorConsentimiento(MENSAJE_CONSENTIMIENTO)
+    consentimientoRef.current?.focus()
+  }
+
+  const solicitarCodigo = () => {
+    if (!consentimiento) {
+      exigirConsentimiento()
+      return
+    }
+    verificacion.solicitar()
+  }
 
   // Foco: al pedir el código pasa al campo del código; al verificar, al botón de confirmar. Solo en la transición (si el
   // modal se reabre con el correo ya verificado no se roba el foco).
@@ -156,7 +177,6 @@ const ModalConfirmacion = ({
     if (!esTelefonoValido(telefono)) {
       return 'El teléfono debe ser un celular colombiano válido (10 dígitos, inicia en 3)'
     }
-    if (!consentimiento) return 'Debes aceptar el tratamiento de datos personales para continuar'
     return ''
   }
 
@@ -171,6 +191,11 @@ const ModalConfirmacion = ({
     const mensajeValidacion = validar()
     if (mensajeValidacion) {
       setError(mensajeValidacion)
+      return
+    }
+    if (!consentimiento) {
+      setError('')
+      exigirConsentimiento()
       return
     }
 
@@ -322,6 +347,73 @@ const ModalConfirmacion = ({
             />
           </div>
 
+          <div>
+            <label htmlFor="reserva-telefono" className="block font-poppins text-sm font-medium text-zinc-700">
+              Teléfono
+            </label>
+            <input
+              id="reserva-telefono"
+              name="telefono"
+              type="tel"
+              placeholder="300 123 4567"
+              value={telefono}
+              onChange={(evento) => setTelefono(evento.target.value)}
+              className="mt-1 min-h-11 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-oro focus:outline-none focus:ring-2 focus:ring-oro"
+            />
+          </div>
+
+          {/* La autorización va ANTES de verificar el correo: pedir el código ya trata sus datos. Los enlaces abren otra
+              pestaña para no perder lo escrito. Toda la fila es la etiqueta (zona clicable de al menos 44 px de alto);
+              el checkbox conserva su tamaño de 16 px. */}
+          <div>
+            <label
+              htmlFor="reserva-consentimiento"
+              className="flex min-h-11 cursor-pointer items-start gap-2 py-1 font-poppins text-xs text-zinc-600"
+            >
+              <input
+                ref={consentimientoRef}
+                id="reserva-consentimiento"
+                name="consentimiento"
+                type="checkbox"
+                checked={consentimiento}
+                aria-invalid={errorConsentimiento ? true : undefined}
+                aria-describedby={errorConsentimiento ? 'error-consentimiento' : undefined}
+                onChange={(evento) => {
+                  setConsentimiento(evento.target.checked)
+                  if (evento.target.checked) setErrorConsentimiento('')
+                }}
+                className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-300 text-oro focus:ring-oro"
+              />
+              <span>
+                He leído y acepto el tratamiento de mis datos personales (nombre, correo y teléfono), únicamente para
+                gestionar esta cita, conforme a la{' '}
+                <Link
+                  to={RUTAS_LEGALES.datos}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-black underline underline-offset-2"
+                >
+                  {NOMBRES_LEGALES.datos}
+                </Link>{' '}
+                y la{' '}
+                <Link
+                  to={RUTAS_LEGALES.privacidad}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-black underline underline-offset-2"
+                >
+                  {NOMBRES_LEGALES.privacidad}
+                </Link>
+                .
+              </span>
+            </label>
+            {errorConsentimiento && (
+              <p id="error-consentimiento" role="alert" className="font-poppins text-sm font-semibold text-red-600">
+                {errorConsentimiento}
+              </p>
+            )}
+          </div>
+
           <section
             aria-labelledby="titulo-verificar-correo"
             className="rounded-xl border border-zinc-200 bg-zinc-50 p-3 font-poppins text-sm"
@@ -379,7 +471,7 @@ const ModalConfirmacion = ({
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={verificacion.solicitar}
+                    onClick={solicitarCodigo}
                     disabled={verificacion.restante > 0 || verificacion.pendiente !== ''}
                     className={`${botonAviso} w-auto! grow whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-black`}
                   >
@@ -397,7 +489,7 @@ const ModalConfirmacion = ({
                 </p>
                 <button
                   type="button"
-                  onClick={verificacion.solicitar}
+                  onClick={solicitarCodigo}
                   disabled={verificacion.pendiente !== ''}
                   className="min-h-11 w-full rounded-xl bg-oro py-2 font-cinzel font-bold text-black duration-200 hover:bg-black hover:text-oro disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-oro disabled:hover:text-black"
                 >
@@ -420,41 +512,6 @@ const ModalConfirmacion = ({
               </p>
             )}
           </section>
-
-          <div>
-            <label htmlFor="reserva-telefono" className="block font-poppins text-sm font-medium text-zinc-700">
-              Teléfono
-            </label>
-            <input
-              id="reserva-telefono"
-              name="telefono"
-              type="tel"
-              placeholder="300 123 4567"
-              value={telefono}
-              onChange={(evento) => setTelefono(evento.target.value)}
-              className="mt-1 min-h-11 w-full rounded-lg border border-zinc-300 p-2 font-poppins focus:border-oro focus:outline-none focus:ring-2 focus:ring-oro"
-            />
-          </div>
-
-          {/* Toda la fila es la etiqueta (zona clicable de al menos 44 px de alto); el checkbox conserva su tamaño de 16 px. */}
-          <label
-            htmlFor="reserva-consentimiento"
-            className="flex min-h-11 cursor-pointer items-start gap-2 py-1 font-poppins text-xs text-zinc-600"
-          >
-            <input
-              id="reserva-consentimiento"
-              name="consentimiento"
-              type="checkbox"
-              checked={consentimiento}
-              onChange={(evento) => setConsentimiento(evento.target.checked)}
-              className="mt-1 h-4 w-4 shrink-0 rounded border-zinc-300 text-oro focus:ring-oro"
-            />
-            <span>
-              Acepto que Black Iron Barbers use mis datos de contacto (nombre, correo y teléfono)
-              únicamente para gestionar esta cita, conforme a la Ley 1581 de 2012 de Protección de Datos
-              Personales. No se usarán con fines publicitarios ni se compartirán con terceros.
-            </span>
-          </label>
 
           {/* Siempre presente para que el lector de pantalla anuncie el aviso cuando aparece. No dice qué dato coincidió. */}
           <div role="status" aria-live="polite">
